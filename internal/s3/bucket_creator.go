@@ -1,8 +1,15 @@
 package s3
 
 import (
+	"context"
+	e "errors"
 	"fmt"
+	"log"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/smithy-go"
 	"ziniki.org/deployer/coremod/pkg/files"
 	"ziniki.org/deployer/deployer/pkg/errors"
 	"ziniki.org/deployer/deployer/pkg/pluggable"
@@ -35,6 +42,28 @@ func (b *bucketCreator) DumpTo(iw pluggable.IndentWriter) {
 
 // This is called during the "Prepare" phase
 func (b *bucketCreator) Prepare(pres pluggable.ValuePresenter) {
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	client := s3.NewFromConfig(cfg)
+	_, err = client.HeadBucket(context.TODO(), &s3.HeadBucketInput{
+		Bucket: aws.String(b.name),
+	})
+	if err != nil {
+		var api smithy.APIError
+		if e.As(err, &api) {
+			// log.Printf("code: %s", api.ErrorCode())
+			if api.ErrorCode() == "NotFound" {
+				log.Printf("bucket does not exist: %s", b.name)
+				return
+			}
+		}
+		log.Fatal(err)
+	}
+
+	log.Printf("bucket exists: %s", b.name)
 	/*
 		tmp := b.tools.Recall.ObtainDriver("testS3.TestAwsEnv")
 		testAwsEnv, ok := tmp.(*TestAwsEnv)
