@@ -5,6 +5,7 @@ import (
 
 	"ziniki.org/deployer/deployer/pkg/deployer"
 	"ziniki.org/deployer/deployer/pkg/pluggable"
+	"ziniki.org/deployer/modules/aws/internal/env"
 	"ziniki.org/deployer/modules/aws/internal/s3"
 )
 
@@ -22,6 +23,7 @@ func RegisterWithDeployer(deployer deployer.Deployer) error {
 	// }
 
 	tools := deployer.ObtainTools()
+	tools.Register.ProvideDriver("aws.AwsEnv", env.InitAwsEnv())
 
 	// tools.Register.Register(reflect.TypeFor[pluggable.TopCommand](), "target", target.MakeCoreTargetVerb(tools))
 

@@ -7,25 +7,25 @@ import (
 	"log"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/smithy-go"
 	"ziniki.org/deployer/coremod/pkg/files"
-	"ziniki.org/deployer/deployer/pkg/errors"
+	"ziniki.org/deployer/deployer/pkg/errorsink"
 	"ziniki.org/deployer/deployer/pkg/pluggable"
+	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
 type bucketCreator struct {
 	tools *pluggable.Tools
 
-	loc  *errors.Location
+	loc  *errorsink.Location
 	name string
 
 	// env   *TestAwsEnv
 	// cloud *BucketCloud
 }
 
-func (b *bucketCreator) Loc() *errors.Location {
+func (b *bucketCreator) Loc() *errorsink.Location {
 	return b.loc
 }
 
@@ -42,13 +42,14 @@ func (b *bucketCreator) DumpTo(iw pluggable.IndentWriter) {
 
 // This is called during the "Prepare" phase
 func (b *bucketCreator) Prepare(pres pluggable.ValuePresenter) {
-	cfg, err := config.LoadDefaultConfig(context.TODO())
-	if err != nil {
-		log.Fatal(err)
+	eq := b.tools.Recall.ObtainDriver("aws.AwsEnv")
+	awsEnv, ok := eq.(*env.AwsEnv)
+	if !ok {
+		panic("could not cast env to AwsEnv")
 	}
 
-	client := s3.NewFromConfig(cfg)
-	_, err = client.HeadBucket(context.TODO(), &s3.HeadBucketInput{
+	client := awsEnv.S3Client()
+	_, err := client.HeadBucket(context.TODO(), &s3.HeadBucketInput{
 		Bucket: aws.String(b.name),
 	})
 	if err != nil {
@@ -65,11 +66,6 @@ func (b *bucketCreator) Prepare(pres pluggable.ValuePresenter) {
 
 	log.Printf("bucket exists: %s", b.name)
 	/*
-		tmp := b.tools.Recall.ObtainDriver("testS3.TestAwsEnv")
-		testAwsEnv, ok := tmp.(*TestAwsEnv)
-		if !ok {
-			panic("could not cast env to TestAwsEnv")
-		}
 
 		tmp = b.tools.Recall.ObtainDriver("testhelpers.TestStepLogger")
 		testLogger, ok := tmp.(testhelpers.TestStepLogger)

@@ -1,17 +1,17 @@
 package s3
 
 import (
-	"ziniki.org/deployer/deployer/pkg/errors"
+	"ziniki.org/deployer/deployer/pkg/errorsink"
 	"ziniki.org/deployer/deployer/pkg/pluggable"
 )
 
 type BucketBlank struct{}
 
-func (b *BucketBlank) Mint(tools *pluggable.Tools, loc *errors.Location, named string) any {
+func (b *BucketBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location, named string) any {
 	return &bucketCreator{tools: tools, loc: loc, name: named}
 }
 
-func (b *BucketBlank) Loc() *errors.Location {
+func (b *BucketBlank) Loc() *errorsink.Location {
 	panic("not implemented")
 }
 
