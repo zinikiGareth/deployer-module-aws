@@ -5,6 +5,7 @@ import (
 	e "errors"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -21,7 +22,7 @@ type bucketCreator struct {
 	loc  *errorsink.Location
 	name string
 
-	// env   *TestAwsEnv
+	client *s3.Client
 	// cloud *BucketCloud
 }
 
@@ -48,8 +49,8 @@ func (b *bucketCreator) Prepare(pres pluggable.ValuePresenter) {
 		panic("could not cast env to AwsEnv")
 	}
 
-	client := awsEnv.S3Client()
-	_, err := client.HeadBucket(context.TODO(), &s3.HeadBucketInput{
+	b.client = awsEnv.S3Client()
+	_, err := b.client.HeadBucket(context.TODO(), &s3.HeadBucketInput{
 		Bucket: aws.String(b.name),
 	})
 	if err != nil {
@@ -79,7 +80,25 @@ func (b *bucketCreator) Prepare(pres pluggable.ValuePresenter) {
 	*/
 }
 
-func (eb *bucketCreator) Execute() {
+func (b *bucketCreator) Execute() {
+	// TODO: need to consider cases ...
+	bucket, err := b.client.CreateBucket(context.TODO(), &s3.CreateBucketInput{
+		Bucket: aws.String(b.name),
+	})
+	if err != nil {
+		log.Fatalf("error creating bucket %s: %v\n", b.name, err)
+	} else {
+		err = s3.NewBucketExistsWaiter(b.client).Wait(
+			context.TODO(), &s3.HeadBucketInput{Bucket: aws.String(b.name)},
+			time.Minute,
+		)
+		if err != nil {
+			log.Printf("Failed attempt to wait for bucket %s to exist: %v.\n", b.name, err)
+		}
+	}
+	// b.cloud = bucket.
+	log.Printf("created bucket %s\n", *bucket.Location)
+
 	/*
 		tmp := eb.tools.Recall.ObtainDriver("testhelpers.TestStepLogger")
 		testLogger, ok := tmp.(testhelpers.TestStepLogger)
