@@ -119,10 +119,14 @@ func (b *bucketCreator) Execute() {
 	*/
 }
 
-func (eb *bucketCreator) ObtainDest() files.FileDest {
+func (b *bucketCreator) TearDown() {
+	log.Printf("you have asked to tear down bucket %s\n", b.name)
+}
+
+func (b *bucketCreator) ObtainDest() files.FileDest {
 	return nil // eb.cloud
 }
 
-func (eb *bucketCreator) String() string {
-	return fmt.Sprintf("EnsureBucket[%s:%s]", "" /* eb.env.Region */, eb.name)
+func (b *bucketCreator) String() string {
+	return fmt.Sprintf("EnsureBucket[%s:%s]", "" /* eb.env.Region */, b.name)
 }
