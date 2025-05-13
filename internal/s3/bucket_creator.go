@@ -121,7 +121,23 @@ func (b *bucketCreator) Execute() {
 }
 
 func (b *bucketCreator) TearDown() {
-	log.Printf("you have asked to tear down bucket %s\n", b.name)
+	log.Printf("you have asked to tear down bucket %s %s\n", b.name, b.teardown.Mode())
+	switch b.teardown.Mode() {
+	case "preserve":
+		log.Printf("not deleting bucket %s because teardown mode is 'preserve'", b.name)
+	case "delete":
+		log.Printf("deleting bucket %s with teardown mode 'delete'", b.name)
+		out, err := b.client.DeleteBucket(context.TODO(), &s3.DeleteBucketInput{
+			Bucket: aws.String(b.name),
+		})
+		if err != nil {
+			log.Fatalf("error deleting bucket %s: %v\n", b.name, err)
+		} else {
+			log.Printf("Deleted bucket %s: %v\n", b.name, out)
+		}
+	default:
+		log.Printf("cannot handle teardown mode '%s' for bucket %s", b.teardown.Mode(), b.name)
+	}
 }
 
 func (b *bucketCreator) ObtainDest() files.FileDest {
