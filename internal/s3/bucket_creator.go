@@ -5,7 +5,6 @@ import (
 	e "errors"
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -23,7 +22,8 @@ type bucketCreator struct {
 	name     string
 	teardown pluggable.TearDown
 
-	client *s3.Client
+	client        *s3.Client
+	alreadyExists bool
 	// cloud *BucketCloud
 }
 
@@ -67,81 +67,42 @@ func (b *bucketCreator) Prepare(pres pluggable.ValuePresenter) {
 	}
 
 	log.Printf("bucket exists: %s", b.name)
-	/*
-
-		tmp = b.tools.Recall.ObtainDriver("testhelpers.TestStepLogger")
-		testLogger, ok := tmp.(testhelpers.TestStepLogger)
-		if !ok {
-			panic("could not cast logger to TestStepLogger")
-		}
-
-		b.env = testAwsEnv
-		testLogger.Log("ensuring bucket exists action %s\n", b.String())
-		pres.Present(b)
-	*/
+	b.alreadyExists = true
+	pres.Present(b)
 }
 
 func (b *bucketCreator) Execute() {
-	// TODO: need to consider cases ...
-	bucket, err := b.client.CreateBucket(context.TODO(), &s3.CreateBucketInput{
-		Bucket: aws.String(b.name),
-	})
-	if err != nil {
-		log.Fatalf("error creating bucket %s: %v\n", b.name, err)
-	} else {
-		err = s3.NewBucketExistsWaiter(b.client).Wait(
-			context.TODO(), &s3.HeadBucketInput{Bucket: aws.String(b.name)},
-			time.Minute,
-		)
-		if err != nil {
-			log.Printf("Failed attempt to wait for bucket %s to exist: %v.\n", b.name, err)
-		}
+	if b.alreadyExists {
+		log.Printf("bucket %s already existed\n", b.name)
+		return
 	}
-	// b.cloud = bucket.
-	log.Printf("created bucket %s\n", *bucket.Location)
 
-	/*
-		tmp := eb.tools.Recall.ObtainDriver("testhelpers.TestStepLogger")
-		testLogger, ok := tmp.(testhelpers.TestStepLogger)
-		if !ok {
-			panic("could not cast logger to TestStepLogger")
-		}
-
-		b := eb.env.FindBucket(eb.name)
-		if b != nil {
-			testLogger.Log("the bucket %s in region %s already exists\n", eb.name, eb.env.Region)
-		} else {
-			testLogger.Log("we need to create a bucket called %s in region %s\n", eb.name, eb.env.Region)
-			// TODO: we should also handle all the properties we have stored somewhere ...
-			b = eb.env.CreateBucket(eb.name)
-		}
-
-		eb.cloud = b
-	*/
+	bucket := CreateBucket(b.client, b.name)
+	if bucket != nil {
+		log.Printf("created bucket %s\n", *bucket.Location)
+	}
 }
 
 func (b *bucketCreator) TearDown() {
+	if !b.alreadyExists {
+		log.Printf("bucket %s does not exist\n", b.name)
+		return
+	}
 	log.Printf("you have asked to tear down bucket %s %s\n", b.name, b.teardown.Mode())
 	switch b.teardown.Mode() {
 	case "preserve":
 		log.Printf("not deleting bucket %s because teardown mode is 'preserve'", b.name)
+		// case "empty" seems like it might be a reasonable option
 	case "delete":
 		log.Printf("deleting bucket %s with teardown mode 'delete'", b.name)
-		out, err := b.client.DeleteBucket(context.TODO(), &s3.DeleteBucketInput{
-			Bucket: aws.String(b.name),
-		})
-		if err != nil {
-			log.Fatalf("error deleting bucket %s: %v\n", b.name, err)
-		} else {
-			log.Printf("Deleted bucket %s: %v\n", b.name, out)
-		}
+		DeleteBucket(b.client, b.name)
 	default:
 		log.Printf("cannot handle teardown mode '%s' for bucket %s", b.teardown.Mode(), b.name)
 	}
 }
 
 func (b *bucketCreator) ObtainDest() files.FileDest {
-	return nil // eb.cloud
+	return NewBucketTransfer(b.client, b.name)
 }
 
 func (b *bucketCreator) String() string {
