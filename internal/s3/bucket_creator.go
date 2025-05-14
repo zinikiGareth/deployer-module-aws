@@ -95,6 +95,7 @@ func (b *bucketCreator) TearDown() {
 		// case "empty" seems like it might be a reasonable option
 	case "delete":
 		log.Printf("deleting bucket %s with teardown mode 'delete'", b.name)
+		EmptyBucket(b.client, b.name)
 		DeleteBucket(b.client, b.name)
 	default:
 		log.Printf("cannot handle teardown mode '%s' for bucket %s", b.teardown.Mode(), b.name)
