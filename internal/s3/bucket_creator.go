@@ -60,14 +60,17 @@ func (b *bucketCreator) Prepare(pres pluggable.ValuePresenter) {
 			// log.Printf("code: %s", api.ErrorCode())
 			if api.ErrorCode() == "NotFound" {
 				log.Printf("bucket does not exist: %s", b.name)
-				return
+			} else {
+				log.Fatal(err)
 			}
+		} else {
+			log.Fatal(err)
 		}
-		log.Fatal(err)
+	} else {
+		log.Printf("bucket exists: %s", b.name)
+		b.alreadyExists = true
 	}
 
-	log.Printf("bucket exists: %s", b.name)
-	b.alreadyExists = true
 	pres.Present(b)
 }
 
