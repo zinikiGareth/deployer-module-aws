@@ -11,6 +11,10 @@ func (b *BucketBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location, name
 	return &bucketCreator{tools: tools, loc: loc, name: named, teardown: teardown}
 }
 
+func (b *BucketBlank) Find(tools *pluggable.Tools, loc *errorsink.Location, named string) any {
+	return &bucketFinder{tools: tools, loc: loc, name: named}
+}
+
 func (b *BucketBlank) Loc() *errorsink.Location {
 	panic("not implemented")
 }
