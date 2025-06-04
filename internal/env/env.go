@@ -6,12 +6,16 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/route53"
+	"github.com/aws/aws-sdk-go-v2/service/route53domains"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 type AwsEnv struct {
-	cfg      aws.Config
-	s3client *s3.Client
+	cfg                  aws.Config
+	route53client        *route53.Client
+	route53domainsclient *route53domains.Client
+	s3client             *s3.Client
 }
 
 func (a *AwsEnv) Init() {
@@ -21,7 +25,16 @@ func (a *AwsEnv) Init() {
 		log.Fatal(err)
 	}
 	a.s3client = s3.NewFromConfig(a.cfg)
+	a.route53client = route53.NewFromConfig(a.cfg)
+	a.route53domainsclient = route53domains.NewFromConfig(a.cfg)
+}
 
+func (a *AwsEnv) Route53Client() *route53.Client {
+	return a.route53client
+}
+
+func (a *AwsEnv) Route53DomainsClient() *route53domains.Client {
+	return a.route53domainsclient
 }
 
 func (a *AwsEnv) S3Client() *s3.Client {

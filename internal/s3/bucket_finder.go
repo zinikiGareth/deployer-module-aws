@@ -83,5 +83,5 @@ func (b *bucketFinder) ObtainDest() files.FileDest {
 }
 
 func (b *bucketFinder) String() string {
-	return fmt.Sprintf("EnsureBucket[%s:%s]", "" /* eb.env.Region */, b.name)
+	return fmt.Sprintf("FindBucket[%s:%s]", "" /* eb.env.Region */, b.name)
 }
