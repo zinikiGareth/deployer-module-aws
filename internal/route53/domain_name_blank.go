@@ -7,7 +7,7 @@ import (
 
 type DomainNameBlank struct{}
 
-func (b *DomainNameBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location, named string, teardown pluggable.TearDown) any {
+func (b *DomainNameBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown pluggable.TearDown) any {
 	tools.Reporter.At(loc.Line)
 	tools.Reporter.Reportf(loc.Offset, "cannot create domain names automatically; use find")
 	return nil

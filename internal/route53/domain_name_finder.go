@@ -7,6 +7,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/service/route53"
 	"github.com/aws/aws-sdk-go-v2/service/route53domains"
 	"github.com/aws/smithy-go"
 	"ziniki.org/deployer/deployer/pkg/errorsink"
@@ -14,12 +15,19 @@ import (
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
+type ExportedDomain interface {
+	HostedZoneId() string
+}
+
 type domainNameFinder struct {
 	tools *pluggable.Tools
 
-	loc    *errorsink.Location
-	name   string
-	client *route53domains.Client
+	loc           *errorsink.Location
+	name          string
+	route53Client *route53.Client
+	domainsClient *route53domains.Client
+	Details       *route53domains.GetDomainDetailOutput
+	hzid          string
 }
 
 func (dnf *domainNameFinder) Loc() *errorsink.Location {
@@ -45,8 +53,9 @@ func (dnf *domainNameFinder) Prepare(pres pluggable.ValuePresenter) {
 		panic("could not cast env to AwsEnv")
 	}
 
-	dnf.client = awsEnv.Route53DomainsClient()
-	_, err := dnf.client.GetDomainDetail(context.TODO(), &route53domains.GetDomainDetailInput{DomainName: &dnf.name})
+	dnf.domainsClient = awsEnv.Route53DomainsClient()
+	dnf.route53Client = awsEnv.Route53Client()
+	detail, err := dnf.domainsClient.GetDomainDetail(context.TODO(), &route53domains.GetDomainDetailInput{DomainName: &dnf.name})
 	if err != nil {
 		var api smithy.APIError
 		if e.As(err, &api) {
@@ -60,8 +69,22 @@ func (dnf *domainNameFinder) Prepare(pres pluggable.ValuePresenter) {
 			log.Fatal(err)
 		}
 	}
+	dnf.Details = detail
 	// log.Printf("%v\n", detail)
-	// TODO: Do we need to capture this?  Or just use the name?
+
+	zones, err := dnf.route53Client.ListHostedZones(context.TODO(), &route53.ListHostedZonesInput{})
+	if err != nil {
+		panic(err)
+	}
+	for _, z := range zones.HostedZones {
+		if *z.Name == dnf.name+"." {
+			dnf.hzid = strings.Replace(*z.Id, "/hostedzone/", "", 1)
+			log.Printf("%s: %s\n", dnf.hzid, *z.Name)
+		}
+	}
+	if dnf.hzid == "" {
+		log.Fatalf("No hosted zone found for " + dnf.name)
+	}
 	pres.Present(dnf)
 }
 
@@ -70,4 +93,8 @@ func (dnf *domainNameFinder) Execute() {
 
 func (dnf *domainNameFinder) String() string {
 	return fmt.Sprintf("FindDomainName[%s]", dnf.name)
+}
+
+func (dnf *domainNameFinder) HostedZoneId() string {
+	return dnf.hzid
 }
