@@ -110,20 +110,16 @@ func (acm *certificateCreator) TearDown() {
 		log.Printf("no certificate existed for %s\n", acm.name)
 		return
 	}
-	/*
-		log.Printf("you have asked to tear down bucket %s %s\n", acm.name, acm.teardown.Mode())
-		switch acm.teardown.Mode() {
-		case "preserve":
-			log.Printf("not deleting bucket %s because teardown mode is 'preserve'", acm.name)
-			// case "empty" seems like it might be a reasonable option
-		case "delete":
-			log.Printf("deleting bucket %s with teardown mode 'delete'", acm.name)
-			EmptyBucket(acm.client, acm.name)
-			DeleteBucket(acm.client, acm.name)
-		default:
-			log.Printf("cannot handle teardown mode '%s' for bucket %s", acm.teardown.Mode(), acm.name)
-		}
-	*/
+	log.Printf("you have asked to tear down certificate for %s (arn: %s) with mode %s\n", acm.name, acm.arn, acm.teardown.Mode())
+	switch acm.teardown.Mode() {
+	case "preserve":
+		log.Printf("not deleting certificate %s because teardown mode is 'preserve'", acm.name)
+	case "delete":
+		log.Printf("deleting certificate for %s with teardown mode 'delete'", acm.name)
+		DeleteCertificate(acm.client, acm.arn)
+	default:
+		log.Printf("cannot handle teardown mode '%s' for bucket %s", acm.teardown.Mode(), acm.name)
+	}
 }
 
 func (acmc *certificateCreator) findCertificatesFor(name string) []string {
@@ -198,4 +194,12 @@ func find(props map[pluggable.Identifier]pluggable.Expr, key string) pluggable.E
 		}
 	}
 	return nil
+}
+
+func DeleteCertificate(client *acm.Client, arn string) {
+	_, err := client.DeleteCertificate(context.TODO(), &acm.DeleteCertificateInput{CertificateArn: &arn})
+	if err != nil {
+		panic(err)
+	}
+	log.Printf("I think the certificate was deleted because no error was reported")
 }
