@@ -20,7 +20,7 @@ func (b *CertificateBlank) Loc() *errorsink.Location {
 }
 
 func (b *CertificateBlank) ShortDescription() string {
-	return "test.S3.Bucket[]"
+	return "aws.CertificateManager.Certificate[]"
 }
 
 func (b *CertificateBlank) DumpTo(iw pluggable.IndentWriter) {

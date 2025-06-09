@@ -39,25 +39,10 @@ func (acm *certificateFinder) Prepare(pres pluggable.ValuePresenter) {
 		panic("could not cast env to AwsEnv")
 	}
 
-	/*
-		acm.client = awsEnv.Route53DomainsClient()
-		_, err := acm.client.GetDomainDetail(context.TODO(), &route53domains.GetDomainDetailInput{DomainName: &acm.name})
-		if err != nil {
-			var api smithy.APIError
-			if e.As(err, &api) {
-				if api.ErrorCode() == "NotFound" || strings.Contains(api.ErrorMessage(), "not found in account") {
-					acm.tools.Reporter.At(acm.loc.Line)
-					acm.tools.Reporter.Reportf(acm.loc.Offset, "domain does not belong to this account: %s\n", acm.name)
-				} else {
-					log.Fatal(err)
-				}
-			} else {
-				log.Fatal(err)
-			}
-		}
-	*/
 	log.Printf("%v\n", awsEnv)
 	pres.Present(acm)
+
+	panic("not implemented")
 }
 
 func (acm *certificateFinder) Execute() {

@@ -79,7 +79,7 @@ func (dnf *domainNameFinder) Prepare(pres pluggable.ValuePresenter) {
 	for _, z := range zones.HostedZones {
 		if *z.Name == dnf.name+"." {
 			dnf.hzid = strings.Replace(*z.Id, "/hostedzone/", "", 1)
-			log.Printf("%s: %s\n", dnf.hzid, *z.Name)
+			log.Printf("found zone %s: %s\n", dnf.hzid, *z.Name)
 		}
 	}
 	if dnf.hzid == "" {

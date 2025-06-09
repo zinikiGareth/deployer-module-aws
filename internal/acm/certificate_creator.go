@@ -38,11 +38,11 @@ func (acm *certificateCreator) Loc() *errorsink.Location {
 }
 
 func (acm *certificateCreator) ShortDescription() string {
-	return "aws.s3.Certificate[" + acm.name + "]"
+	return "aws.CertificateManager.Certificate[" + acm.name + "]"
 }
 
 func (acm *certificateCreator) DumpTo(iw pluggable.IndentWriter) {
-	iw.Intro("aws.s3.Certificate[")
+	iw.Intro("aws.CertificateManager.Certificate[")
 	iw.AttrsWhere(acm)
 	iw.TextAttr("named", acm.name)
 	iw.EndAttrs()
@@ -55,7 +55,7 @@ func (acmc *certificateCreator) Prepare(pres pluggable.ValuePresenter) {
 		log.Fatalf("must specify a domain instance to create a certificate")
 	}
 	domainObj := domainExpr.Eval(acmc.tools.Storage)
-	log.Printf("%T %p %v\n", domainObj, domainObj, domainObj)
+	// log.Printf("have domain obj: %T %p %v\n", domainObj, domainObj, domainObj)
 	domain, ok := domainObj.(myroute53.ExportedDomain)
 	if !ok {
 		log.Fatalf("Domain did not point to a domain instance")
@@ -74,12 +74,12 @@ func (acmc *certificateCreator) Prepare(pres pluggable.ValuePresenter) {
 
 	certs := acmc.findCertificatesFor(acmc.name)
 	if len(certs) == 0 {
-		log.Printf("there were no certs found for %s\n", acmc.name)
+		// log.Printf("there were no certs found for %s\n", acmc.name)
 	} else {
-		log.Printf("found %d certs for %s\n", len(certs), acmc.name)
+		// log.Printf("found %d certs for %s\n", len(certs), acmc.name)
 		acmc.alreadyExists = true
 		acmc.arn = certs[0]
-		acmc.describeCertificate(acmc.arn)
+		// acmc.describeCertificate(acmc.arn)
 	}
 
 	// TODO: do we need to capture something here?
@@ -89,20 +89,23 @@ func (acmc *certificateCreator) Prepare(pres pluggable.ValuePresenter) {
 func (acmc *certificateCreator) Execute() {
 	if acmc.alreadyExists {
 		log.Printf("certificate %s already existed for %s\n", acmc.arn, acmc.name)
-		return
+	} else {
+		req, err := acmc.client.RequestCertificate(context.TODO(), &acm.RequestCertificateInput{DomainName: &acmc.name, ValidationMethod: acmc.validationMethod})
+		if err != nil {
+			log.Printf("failed to request cert %s: %v\n", acmc.name, err)
+		}
+		log.Printf("requested cert for %s: %v\n", acmc.name, req)
+		acmc.arn = *req.CertificateArn
 	}
 
-	req, err := acmc.client.RequestCertificate(context.TODO(), &acm.RequestCertificateInput{DomainName: &acmc.name, ValidationMethod: acmc.validationMethod})
-	if err != nil {
-		log.Printf("failed to request cert %s: %v\n", acmc.name, err)
-	}
-	log.Printf("requested cert for %s: %v\n", acmc.name, req)
-	acmc.describeCertificate(*req.CertificateArn)
+	// Check if we still need to validate it ...
+
+	// acmc.describeCertificate(*req.CertificateArn)
 	var waitFor time.Duration = 1
 	for {
 		log.Printf("sleeping for %ds\n", waitFor)
 		time.Sleep(waitFor * time.Second)
-		if acmc.tryToValidateCert(*req.CertificateArn) {
+		if acmc.tryToValidateCert(acmc.arn) {
 			break
 		}
 		waitFor = min(2*waitFor, 60)
@@ -135,7 +138,7 @@ func (acmc *certificateCreator) findCertificatesFor(name string) []string {
 		log.Fatalf("Failed to get certificates: %v\n", err)
 	}
 	for _, c := range certs.CertificateSummaryList {
-		log.Printf("have cert %s: %s\n", *c.DomainName, *c.CertificateArn)
+		// log.Printf("have cert %s: %s\n", *c.DomainName, *c.CertificateArn)
 		if *c.DomainName == name {
 			log.Printf("found cert %s for %s\n", *c.CertificateArn, *c.DomainName)
 			ret = append(ret, *c.CertificateArn)
@@ -144,7 +147,7 @@ func (acmc *certificateCreator) findCertificatesFor(name string) []string {
 	return ret
 }
 
-func (acmc *certificateCreator) describeCertificate(arn string) {
+func (acmc *certificateCreator) DescribeCertificate(arn string) {
 	cert, err := acmc.client.DescribeCertificate(context.TODO(), &acm.DescribeCertificateInput{CertificateArn: &arn})
 	if err != nil {
 		log.Fatalf("Failed to describe certificate %s: %v\n", arn, err)
