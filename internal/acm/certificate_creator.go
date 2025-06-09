@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/acm"
 	"github.com/aws/aws-sdk-go-v2/service/acm/types"
@@ -97,12 +98,16 @@ func (acmc *certificateCreator) Execute() {
 	}
 	log.Printf("requested cert for %s: %v\n", acmc.name, req)
 	acmc.describeCertificate(*req.CertificateArn)
-	/*
-		bucket := CreateBucket(acm.client, acm.name)
-		if bucket != nil {
-			log.Printf("created bucket %s\n", *bucket.Location)
+	var waitFor time.Duration = 1
+	for {
+		log.Printf("sleeping for %ds\n", waitFor)
+		time.Sleep(waitFor * time.Second)
+		if acmc.tryToValidateCert(*req.CertificateArn) {
+			break
 		}
-	*/
+		waitFor = min(2*waitFor, 60)
+		fmt.Printf("still pending validation; wait another %ds\n", waitFor)
+	}
 }
 
 func (acm *certificateCreator) TearDown() {
@@ -145,7 +150,9 @@ func (acmc *certificateCreator) describeCertificate(arn string) {
 		log.Fatalf("Failed to describe certificate %s: %v\n", arn, err)
 	}
 	fmt.Printf("cert arn: %s\n", arn)
-	fmt.Printf("cert domain: %s\n", *cert.Certificate.DomainName)
+	if cert.Certificate.DomainName != nil {
+		fmt.Printf("cert domain: %s\n", *cert.Certificate.DomainName)
+	}
 	fmt.Printf("status: %s\n", cert.Certificate.Status)
 	if cert.Certificate.Status == types.CertificateStatusFailed {
 		fmt.Printf("failed: %s\n", cert.Certificate.FailureReason)
@@ -153,10 +160,28 @@ func (acmc *certificateCreator) describeCertificate(arn string) {
 		fmt.Printf("until: %s\n", *cert.Certificate.NotAfter)
 	} else if cert.Certificate.Status == types.CertificateStatusPendingValidation {
 		fmt.Printf("pending validation\n")
+	}
+}
+
+func (acmc *certificateCreator) tryToValidateCert(arn string) bool {
+	cert, err := acmc.client.DescribeCertificate(context.TODO(), &acm.DescribeCertificateInput{CertificateArn: &arn})
+	if err != nil {
+		log.Fatalf("Failed to describe certificate %s: %v\n", arn, err)
+	}
+
+	if cert.Certificate.Status == types.CertificateStatusFailed {
+		fmt.Printf("failed: %s\n", cert.Certificate.FailureReason)
+		return true
+	} else if cert.Certificate.Status == types.CertificateStatusIssued {
+		fmt.Printf("certificate issued until: %s\n", *cert.Certificate.NotAfter)
+		return true
+	} else if cert.Certificate.Status == types.CertificateStatusPendingValidation {
 		dns := make(map[string]string, 0)
 		for _, x := range cert.Certificate.DomainValidationOptions {
-			fmt.Printf("need %s => %s\n", *x.ResourceRecord.Name, *x.ResourceRecord.Value)
-			dns[*x.ResourceRecord.Name] = *x.ResourceRecord.Value
+			if x.ResourceRecord != nil && x.ResourceRecord.Name != nil && x.ResourceRecord.Value != nil {
+				fmt.Printf("need %s => %s\n", *x.ResourceRecord.Name, *x.ResourceRecord.Value)
+				dns[*x.ResourceRecord.Name] = *x.ResourceRecord.Value
+			}
 		}
 		rrs, err := acmc.route53.ListResourceRecordSets(context.TODO(), &route53.ListResourceRecordSetsInput{HostedZoneId: &acmc.hzid})
 		if err != nil {
@@ -164,13 +189,13 @@ func (acmc *certificateCreator) describeCertificate(arn string) {
 		}
 		for _, r := range rrs.ResourceRecordSets {
 			if r.Type == "CNAME" {
-				fmt.Printf("have %s %v\n", *r.Name, *r.ResourceRecords[0].Value)
+				fmt.Printf("already have %s %v\n", *r.Name, *r.ResourceRecords[0].Value)
 				dns[*r.Name] = ""
 			}
 		}
 		for k, v := range dns {
 			if v != "" {
-				fmt.Printf("set %s to %s\n", k, v)
+				fmt.Printf("creating %s to %s\n", k, v)
 				var ttl int64 = 300
 				changes := r53types.ResourceRecordSet{Name: &k, Type: "CNAME", TTL: &ttl, ResourceRecords: []r53types.ResourceRecord{{Value: &v}}}
 				cb := r53types.ChangeBatch{Changes: []r53types.Change{{Action: "CREATE", ResourceRecordSet: &changes}}}
@@ -180,6 +205,10 @@ func (acmc *certificateCreator) describeCertificate(arn string) {
 				}
 			}
 		}
+
+		return false
+	} else {
+		panic("what is this? " + cert.Certificate.Status)
 	}
 }
 
