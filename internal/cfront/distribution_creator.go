@@ -19,6 +19,8 @@ type distributionCreator struct {
 	teardown pluggable.TearDown
 
 	client        *cloudfront.Client
+	oacId         string
+	cpId          string
 	alreadyExists bool
 	arn           string
 	props         map[pluggable.Identifier]pluggable.Expr
@@ -63,6 +65,50 @@ func (cfdc *distributionCreator) Prepare(pres pluggable.ValuePresenter) {
 		panic("could not cast env to AwsEnv")
 	}
 	cfdc.client = awsEnv.CFClient()
+
+	distros, err := cfdc.client.ListDistributions(context.TODO(), &cloudfront.ListDistributionsInput{})
+	if err != nil {
+		log.Fatalf("could not list OACs")
+	}
+	for _, p := range distros.DistributionList.Items {
+		tags, err := cfdc.client.ListTagsForResource(context.TODO(), &cloudfront.ListTagsForResourceInput{Resource: p.ARN})
+		if err != nil {
+			log.Fatalf("error trying to obtain tags for %s\n", *p.ARN)
+		}
+		for _, q := range tags.Tags.Items {
+			if q.Key != nil && *q.Key == "deployer-name" && q.Value != nil && *q.Value == cfdc.name {
+				cfdc.arn = *p.ARN
+				cfdc.alreadyExists = true
+			}
+		}
+	}
+
+	if !cfdc.alreadyExists {
+		oaccname := "oac-name"
+		fred, err := cfdc.client.ListOriginAccessControls(context.TODO(), &cloudfront.ListOriginAccessControlsInput{})
+		if err != nil {
+			log.Fatalf("could not list OACs")
+		}
+		for _, p := range fred.OriginAccessControlList.Items {
+			if p.Id != nil && p.Name != nil && *p.Name == oaccname {
+				cfdc.oacId = *p.Id
+				log.Printf("found OAC for %s with id %s\n", oaccname, cfdc.oacId)
+			}
+		}
+
+		cpname := "cp-name"
+		bert, err := cfdc.client.ListCachePolicies(context.TODO(), &cloudfront.ListCachePoliciesInput{})
+		if err != nil {
+			log.Fatalf("could not list CPs")
+		}
+		for _, p := range bert.CachePolicyList.Items {
+			if p.CachePolicy.Id != nil && p.CachePolicy.CachePolicyConfig.Name != nil && *p.CachePolicy.CachePolicyConfig.Name == cpname {
+				cfdc.cpId = *p.CachePolicy.Id
+				log.Printf("found CachePolicy for %s with id %s\n", cpname, cfdc.cpId)
+			}
+		}
+	}
+
 	/*
 		cfdc.route53 = awsEnv.Route53Client()
 
@@ -86,18 +132,44 @@ func (cfdc *distributionCreator) Execute() {
 		log.Printf("distribution %s already existed for %s\n", cfdc.arn, cfdc.name)
 		return
 	}
-
 	comment := "we should probably have this be a required parameter"
+
+	if cfdc.oacId == "" {
+		oaccname := "oac-name"
+		oacComment := "OAC for " + comment
+		oaccfg := types.OriginAccessControlConfig{Name: &oaccname, OriginAccessControlOriginType: types.OriginAccessControlOriginTypesS3, SigningBehavior: types.OriginAccessControlSigningBehaviorsAlways, SigningProtocol: types.OriginAccessControlSigningProtocolsSigv4, Description: &oacComment}
+		oac, err := cfdc.client.CreateOriginAccessControl(context.TODO(), &cloudfront.CreateOriginAccessControlInput{OriginAccessControlConfig: &oaccfg})
+		if err != nil {
+			log.Fatalf("failed to create OAC for %s: %v\n", cfdc.name, err)
+		}
+		cfdc.oacId = *oac.OriginAccessControl.Id
+	}
+
+	if cfdc.cpId == "" {
+		cpname := "cp-name"
+		cpComment := "CP for " + comment
+		var minttl int64 = 300
+		cpc := types.CachePolicyConfig{Name: &cpname, Comment: &cpComment, MinTTL: &minttl}
+		oac, err := cfdc.client.CreateCachePolicy(context.TODO(), &cloudfront.CreateCachePolicyInput{CachePolicyConfig: &cpc})
+		if err != nil {
+			log.Fatalf("failed to create CachePolicy for %s: %v\n", cfdc.name, err)
+		}
+		cfdc.cpId = *oac.CachePolicy.Id
+	}
 
 	origindns := "news.consolidator.info.s3.us-east-1.amazonaws.com"
 	fred := "a-unique-id" + cfdc.name
-	dcb := types.DefaultCacheBehavior{TargetOriginId: &fred, ViewerProtocolPolicy: types.ViewerProtocolPolicyRedirectToHttps}
+	dcb := types.DefaultCacheBehavior{TargetOriginId: &fred, ViewerProtocolPolicy: types.ViewerProtocolPolicyRedirectToHttps, CachePolicyId: &cfdc.cpId}
 	e := true
 	// dn := "www.consolidator.news"
-	items := []types.Origin{{DomainName: &origindns, Id: &fred}}
+	empty := ""
+	s3orig := types.S3OriginConfig{OriginAccessIdentity: &empty}
+	items := []types.Origin{{DomainName: &origindns, Id: &fred, OriginAccessControlId: &cfdc.oacId, S3OriginConfig: &s3orig}}
 	quant := int32(len(items))
 	config := types.DistributionConfig{CallerReference: &cfdc.name, Comment: &comment, DefaultCacheBehavior: &dcb, Enabled: &e, Origins: &types.Origins{Items: items, Quantity: &quant}}
-	req, err := cfdc.client.CreateDistribution(context.TODO(), &cloudfront.CreateDistributionInput{DistributionConfig: &config})
+	tagkey := "deployer-name"
+	tags := types.Tags{Items: []types.Tag{{Key: &tagkey, Value: &cfdc.name}}}
+	req, err := cfdc.client.CreateDistributionWithTags(context.TODO(), &cloudfront.CreateDistributionWithTagsInput{DistributionConfigWithTags: &types.DistributionConfigWithTags{DistributionConfig: &config, Tags: &tags}})
 	if err != nil {
 		log.Fatalf("failed to create distribution %s: %v\n", cfdc.name, err)
 	}

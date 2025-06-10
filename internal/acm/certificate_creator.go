@@ -89,14 +89,15 @@ func (acmc *certificateCreator) Prepare(pres pluggable.ValuePresenter) {
 func (acmc *certificateCreator) Execute() {
 	if acmc.alreadyExists {
 		log.Printf("certificate %s already existed for %s\n", acmc.arn, acmc.name)
-	} else {
-		req, err := acmc.client.RequestCertificate(context.TODO(), &acm.RequestCertificateInput{DomainName: &acmc.name, ValidationMethod: acmc.validationMethod})
-		if err != nil {
-			log.Printf("failed to request cert %s: %v\n", acmc.name, err)
-		}
-		log.Printf("requested cert for %s: %v\n", acmc.name, req)
-		acmc.arn = *req.CertificateArn
+		return
 	}
+
+	req, err := acmc.client.RequestCertificate(context.TODO(), &acm.RequestCertificateInput{DomainName: &acmc.name, ValidationMethod: acmc.validationMethod})
+	if err != nil {
+		log.Printf("failed to request cert %s: %v\n", acmc.name, err)
+	}
+	log.Printf("requested cert for %s: %v\n", acmc.name, req)
+	acmc.arn = *req.CertificateArn
 
 	// Check if we still need to validate it ...
 
