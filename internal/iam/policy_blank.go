@@ -15,7 +15,8 @@ func (b *PolicyBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location, name
 	for p, v := range props {
 		switch p.Id() {
 		case "Policy":
-			policy = v
+			// TODO: I think we need to call Eval ...
+			policy = v.(external.PolicyDocument)
 		default:
 			tools.Reporter.Reportf(loc.Offset, "invalid property for IAM policy: %s", p.Id())
 		}
