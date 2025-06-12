@@ -5,6 +5,7 @@ import (
 	"ziniki.org/deployer/modules/aws/internal/acm"
 	"ziniki.org/deployer/modules/aws/internal/cfront"
 	"ziniki.org/deployer/modules/aws/internal/env"
+	"ziniki.org/deployer/modules/aws/internal/iam"
 	"ziniki.org/deployer/modules/aws/internal/route53"
 	"ziniki.org/deployer/modules/aws/internal/s3"
 )
@@ -24,6 +25,7 @@ func RegisterWithDeployer(deployer deployer.Deployer) error {
 	tools.Register.Register("blank", "aws.CertificateManager.Certificate", &acm.CertificateBlank{})
 	tools.Register.Register("blank", "aws.CloudFront.Distribution", &cfront.DistributionBlank{})
 	tools.Register.Register("blank", "aws.S3.Bucket", &s3.BucketBlank{})
+	tools.Register.Register("blank", "aws.IAM.Policy", &iam.PolicyBlank{})
 
 	return nil
 }

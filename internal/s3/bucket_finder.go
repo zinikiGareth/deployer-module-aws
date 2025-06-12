@@ -75,9 +75,6 @@ func (b *bucketFinder) BuildModel(pres pluggable.ValuePresenter) {
 	pres.Present(b)
 }
 
-func (b *bucketFinder) UpdateReality() {
-}
-
 func (b *bucketFinder) ObtainDest() files.FileDest {
 	return NewBucketTransfer(b.client, b.name)
 }
