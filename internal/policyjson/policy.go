@@ -33,10 +33,18 @@ func makeStmtJson(policyName string, k int, item external.PolicyEffect) stmtJson
 	as := item.Actions()
 	if len(as) == 0 {
 		ret.Action = "*"
+	} else if len(as) == 1 {
+		ret.Action = as[0]
+	} else {
+		ret.Action = as
 	}
 	rs := item.Resources()
 	if len(rs) == 0 {
 		ret.Resource = "*"
+	} else if len(rs) == 1 {
+		ret.Resource = rs[0]
+	} else {
+		ret.Resource = rs
 	}
 	return ret
 }
