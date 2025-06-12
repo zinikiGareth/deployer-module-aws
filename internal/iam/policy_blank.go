@@ -9,19 +9,27 @@ import (
 type PolicyBlank struct{}
 
 func (b *PolicyBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown pluggable.TearDown) any {
-	tools.Reporter.At(loc.Line)
-
 	var policy external.PolicyDocument
+	seenErr := false
 	for p, v := range props {
 		switch p.Id() {
 		case "Policy":
-			// TODO: I think we need to call Eval ...
-			policy = v.(external.PolicyDocument)
+			pv := v.Eval(tools.Storage)
+			pi, ok := pv.(external.PolicyDocument)
+			if !ok {
+				tools.Reporter.At(v.Loc().Line)
+				tools.Reporter.Reportf(loc.Offset, "expression was not a policy")
+				seenErr = true
+				continue
+			}
+			policy = pi
 		default:
+			tools.Reporter.At(p.Loc().Line)
 			tools.Reporter.Reportf(loc.Offset, "invalid property for IAM policy: %s", p.Id())
 		}
 	}
-	if policy == nil {
+	if !seenErr && policy == nil {
+		tools.Reporter.At(loc.Line)
 		tools.Reporter.Reportf(loc.Offset, "no Policy property was specified for %s", named)
 	}
 	return &policyCreator{tools: tools, loc: loc, name: named, policy: policy, teardown: teardown}
