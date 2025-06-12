@@ -32,7 +32,7 @@ func (acm *certificateFinder) DumpTo(iw pluggable.IndentWriter) {
 }
 
 // This is called during the "Prepare" phase
-func (acm *certificateFinder) Prepare(pres pluggable.ValuePresenter) {
+func (acm *certificateFinder) BuildModel(pres pluggable.ValuePresenter) {
 	eq := acm.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {
@@ -45,7 +45,7 @@ func (acm *certificateFinder) Prepare(pres pluggable.ValuePresenter) {
 	panic("not implemented")
 }
 
-func (acm *certificateFinder) Execute() {
+func (acm *certificateFinder) UpdateReality() {
 }
 
 func (acm *certificateFinder) String() string {

@@ -42,7 +42,7 @@ func (b *bucketFinder) DumpTo(iw pluggable.IndentWriter) {
 }
 
 // This is called during the "Prepare" phase
-func (b *bucketFinder) Prepare(pres pluggable.ValuePresenter) {
+func (b *bucketFinder) BuildModel(pres pluggable.ValuePresenter) {
 	eq := b.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {
@@ -75,7 +75,7 @@ func (b *bucketFinder) Prepare(pres pluggable.ValuePresenter) {
 	pres.Present(b)
 }
 
-func (b *bucketFinder) Execute() {
+func (b *bucketFinder) UpdateReality() {
 }
 
 func (b *bucketFinder) ObtainDest() files.FileDest {

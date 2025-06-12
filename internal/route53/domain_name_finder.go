@@ -46,7 +46,7 @@ func (dnf *domainNameFinder) DumpTo(iw pluggable.IndentWriter) {
 }
 
 // This is called during the "Prepare" phase
-func (dnf *domainNameFinder) Prepare(pres pluggable.ValuePresenter) {
+func (dnf *domainNameFinder) BuildModel(pres pluggable.ValuePresenter) {
 	eq := dnf.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {
@@ -88,7 +88,7 @@ func (dnf *domainNameFinder) Prepare(pres pluggable.ValuePresenter) {
 	pres.Present(dnf)
 }
 
-func (dnf *domainNameFinder) Execute() {
+func (dnf *domainNameFinder) UpdateReality() {
 }
 
 func (dnf *domainNameFinder) String() string {

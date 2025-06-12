@@ -32,7 +32,7 @@ func (acm *distributionFinder) DumpTo(iw pluggable.IndentWriter) {
 }
 
 // This is called during the "Prepare" phase
-func (cfc *distributionFinder) Prepare(pres pluggable.ValuePresenter) {
+func (cfc *distributionFinder) BuildModel(pres pluggable.ValuePresenter) {
 	eq := cfc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {
@@ -45,7 +45,7 @@ func (cfc *distributionFinder) Prepare(pres pluggable.ValuePresenter) {
 	panic("not implemented")
 }
 
-func (cfc *distributionFinder) Execute() {
+func (cfc *distributionFinder) UpdateReality() {
 }
 
 func (cfc *distributionFinder) String() string {

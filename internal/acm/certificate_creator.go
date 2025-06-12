@@ -49,7 +49,7 @@ func (acm *certificateCreator) DumpTo(iw pluggable.IndentWriter) {
 }
 
 // This is called during the "Prepare" phase
-func (acmc *certificateCreator) Prepare(pres pluggable.ValuePresenter) {
+func (acmc *certificateCreator) BuildModel(pres pluggable.ValuePresenter) {
 	domainExpr := find(acmc.props, "Domain")
 	if domainExpr == nil {
 		log.Fatalf("must specify a domain instance to create a certificate")
@@ -86,7 +86,7 @@ func (acmc *certificateCreator) Prepare(pres pluggable.ValuePresenter) {
 	pres.Present(acmc)
 }
 
-func (acmc *certificateCreator) Execute() {
+func (acmc *certificateCreator) UpdateReality() {
 	if acmc.alreadyExists {
 		log.Printf("certificate %s already existed for %s\n", acmc.arn, acmc.name)
 		return

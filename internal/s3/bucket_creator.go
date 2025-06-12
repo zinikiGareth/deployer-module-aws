@@ -43,7 +43,7 @@ func (b *bucketCreator) DumpTo(iw pluggable.IndentWriter) {
 }
 
 // This is called during the "Prepare" phase
-func (b *bucketCreator) Prepare(pres pluggable.ValuePresenter) {
+func (b *bucketCreator) BuildModel(pres pluggable.ValuePresenter) {
 	eq := b.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {
@@ -75,7 +75,7 @@ func (b *bucketCreator) Prepare(pres pluggable.ValuePresenter) {
 	pres.Present(b)
 }
 
-func (b *bucketCreator) Execute() {
+func (b *bucketCreator) UpdateReality() {
 	if b.alreadyExists {
 		log.Printf("bucket %s already existed\n", b.name)
 		return

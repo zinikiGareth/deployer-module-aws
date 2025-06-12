@@ -42,7 +42,7 @@ func (cfdc *distributionCreator) DumpTo(iw pluggable.IndentWriter) {
 }
 
 // This is called during the "Prepare" phase
-func (cfdc *distributionCreator) Prepare(pres pluggable.ValuePresenter) {
+func (cfdc *distributionCreator) BuildModel(pres pluggable.ValuePresenter) {
 	/*
 		domainExpr := find(cfdc.props, "Domain")
 		if domainExpr == nil {
@@ -127,7 +127,7 @@ func (cfdc *distributionCreator) Prepare(pres pluggable.ValuePresenter) {
 	pres.Present(cfdc)
 }
 
-func (cfdc *distributionCreator) Execute() {
+func (cfdc *distributionCreator) UpdateReality() {
 	if cfdc.alreadyExists {
 		log.Printf("distribution %s already existed for %s\n", cfdc.arn, cfdc.name)
 		return
