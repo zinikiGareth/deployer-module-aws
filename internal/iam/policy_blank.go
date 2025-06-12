@@ -1,7 +1,7 @@
 package iam
 
 import (
-	"ziniki.org/deployer/coremod/pkg/coremod"
+	"ziniki.org/deployer/coremod/pkg/external"
 	"ziniki.org/deployer/deployer/pkg/errorsink"
 	"ziniki.org/deployer/deployer/pkg/pluggable"
 )
@@ -11,7 +11,7 @@ type PolicyBlank struct{}
 func (b *PolicyBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown pluggable.TearDown) any {
 	tools.Reporter.At(loc.Line)
 
-	var policy coremod.PolicyDocument
+	var policy external.PolicyDocument
 	for p, v := range props {
 		switch p.Id() {
 		case "Policy":

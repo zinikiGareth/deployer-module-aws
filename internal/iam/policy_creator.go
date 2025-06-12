@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"log"
 
-	"ziniki.org/deployer/coremod/pkg/coremod"
+	"ziniki.org/deployer/coremod/pkg/external"
 	"ziniki.org/deployer/deployer/pkg/errorsink"
 	"ziniki.org/deployer/deployer/pkg/pluggable"
+	"ziniki.org/deployer/modules/aws/internal/policyjson"
 )
 
 type policyCreator struct {
@@ -15,7 +16,7 @@ type policyCreator struct {
 	loc      *errorsink.Location
 	name     string
 	teardown pluggable.TearDown
-	policy   coremod.PolicyDocument
+	policy   external.PolicyDocument
 
 	// client        *s3.Client
 	// alreadyExists bool
@@ -37,7 +38,21 @@ func (p *policyCreator) DumpTo(iw pluggable.IndentWriter) {
 }
 
 func (p *policyCreator) BuildModel(pres pluggable.ValuePresenter) {
+	p.tools.Reporter.At(p.loc.Line)
 	log.Printf("Need to find and/or build a policy model for %s\n", p.name)
+
+	// We need to do three things here:
+	// 1. Find if the policy already exists
+	// 2. Generate a JSON policy document
+	// 3. Determine if the policy needs creating, updating or is fine.
+
+	// 2. Generate the JSON Policy document
+	json, err := policyjson.BuildFrom(p.policy)
+	if err != nil {
+		p.tools.Reporter.Reportf(p.loc.Offset, "error compiling JSON policy: %v", err)
+	}
+	log.Printf("json policy:\n====\n%s\n====\n", json)
+
 	/*
 		eq := p.tools.Recall.ObtainDriver("aws.AwsEnv")
 		awsEnv, ok := eq.(*env.AwsEnv)
