@@ -12,7 +12,7 @@ import (
 )
 
 var loc *errorsink.Location = &errorsink.Location{}
-var doc external.PolicyDocument = coremod.NewPolicyDocument(loc, "policy-name")
+var doc external.PolicyDocument = coremod.NewPolicyDocument(loc)
 
 func compare(t *testing.T, doc external.PolicyDocument, test string) {
 	// expand tabs
@@ -20,7 +20,7 @@ func compare(t *testing.T, doc external.PolicyDocument, test string) {
 	// remember that you are no worse off with the other 10%
 	test = strings.ReplaceAll(test, "\t", "    ")
 
-	json, err := policyjson.BuildFrom(doc)
+	json, err := policyjson.BuildFrom("test", doc)
 	if err != nil {
 		t.Fatalf("error generating json")
 	}

@@ -11,12 +11,12 @@ type policyJson struct {
 	Statement []stmtJson
 }
 
-func makePolicyJson(policy external.PolicyDocument) *policyJson {
+func makePolicyJson(name string, policy external.PolicyDocument) *policyJson {
 	ret := &policyJson{}
 	ret.Version = "2012-10-17"
 	ret.Statement = []stmtJson{}
 	for k, item := range policy.Items() {
-		ret.Statement = append(ret.Statement, makeStmtJson(policy.Name(), k, item))
+		ret.Statement = append(ret.Statement, makeStmtJson(name, k, item))
 	}
 	return ret
 }

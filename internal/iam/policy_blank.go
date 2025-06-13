@@ -1,7 +1,6 @@
 package iam
 
 import (
-	"ziniki.org/deployer/coremod/pkg/external"
 	"ziniki.org/deployer/deployer/pkg/errorsink"
 	"ziniki.org/deployer/deployer/pkg/pluggable"
 )
@@ -9,20 +8,12 @@ import (
 type PolicyBlank struct{}
 
 func (b *PolicyBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown pluggable.TearDown) any {
-	var policy external.PolicyDocument
+	var policy pluggable.Expr
 	seenErr := false
 	for p, v := range props {
 		switch p.Id() {
 		case "Policy":
-			pv := v.Eval(tools.Storage)
-			pi, ok := pv.(external.PolicyDocument)
-			if !ok {
-				tools.Reporter.At(v.Loc().Line)
-				tools.Reporter.Reportf(loc.Offset, "expression was not a policy")
-				seenErr = true
-				continue
-			}
-			policy = pi
+			policy = v
 		default:
 			tools.Reporter.At(p.Loc().Line)
 			tools.Reporter.Reportf(loc.Offset, "invalid property for IAM policy: %s", p.Id())

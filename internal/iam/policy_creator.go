@@ -16,7 +16,7 @@ type policyCreator struct {
 	loc      *errorsink.Location
 	name     string
 	teardown pluggable.TearDown
-	policy   external.PolicyDocument
+	policy   pluggable.Expr
 
 	// client        *s3.Client
 	// alreadyExists bool
@@ -38,7 +38,6 @@ func (p *policyCreator) DumpTo(iw pluggable.IndentWriter) {
 }
 
 func (p *policyCreator) BuildModel(pres pluggable.ValuePresenter) {
-	p.tools.Reporter.At(p.loc.Line)
 	log.Printf("Need to find and/or build a policy model for %s\n", p.name)
 
 	// We need to do three things here:
@@ -47,7 +46,27 @@ func (p *policyCreator) BuildModel(pres pluggable.ValuePresenter) {
 	// 3. Determine if the policy needs creating, updating or is fine.
 
 	// 2. Generate the JSON Policy document
-	json, err := policyjson.BuildFrom(p.policy)
+
+	/*
+		log.Printf("v = %v\n", v)
+		log.Printf("storage = %v", tools.Storage)
+		tools.Storage.DumpTo(os.Stdout)
+	*/
+	loc := p.policy.Loc()
+	pv := p.policy.Eval(p.tools.Storage)
+	if pv == nil {
+		p.tools.Reporter.At(loc.Line)
+		p.tools.Reporter.Reportf(loc.Offset, "policy was nil")
+		return
+	}
+	pi, ok := pv.(external.PolicyDocument)
+	if !ok {
+		p.tools.Reporter.At(loc.Line)
+		p.tools.Reporter.Reportf(loc.Offset, "expression was not a policy but %T %v", pv, pv)
+		return
+	}
+
+	json, err := policyjson.BuildFrom(p.name, pi)
 	if err != nil {
 		p.tools.Reporter.Reportf(p.loc.Offset, "error compiling JSON policy: %v", err)
 	}
