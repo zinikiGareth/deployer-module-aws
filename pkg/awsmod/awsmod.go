@@ -1,7 +1,9 @@
 package awsmod
 
 import (
+	"ziniki.org/deployer/deployer/pkg/creator"
 	"ziniki.org/deployer/deployer/pkg/deployer"
+	"ziniki.org/deployer/deployer/pkg/pluggable"
 	"ziniki.org/deployer/modules/aws/internal/acm"
 	"ziniki.org/deployer/modules/aws/internal/cfront"
 	"ziniki.org/deployer/modules/aws/internal/env"
@@ -26,6 +28,9 @@ func RegisterWithDeployer(deployer deployer.Deployer) error {
 	tools.Register.Register("blank", "aws.CloudFront.Distribution", &cfront.DistributionBlank{})
 	tools.Register.Register("blank", "aws.S3.Bucket", &s3.BucketBlank{})
 	tools.Register.Register("blank", "aws.IAM.Policy", &iam.PolicyBlank{})
+
+	val := creator.MakeString("s3:GetObject")
+	tools.Repository.IntroduceSymbol(pluggable.SymbolName("aws.action.S3.GetObject"), val)
 
 	return nil
 }
