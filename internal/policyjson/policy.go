@@ -22,10 +22,11 @@ func makePolicyJson(name string, policy external.PolicyDocument) *policyJson {
 }
 
 type stmtJson struct {
-	Sid      string
-	Effect   string
-	Action   any // can be string or []string
-	Resource any // can be string or []string
+	Sid       string
+	Effect    string
+	Action    any // can be string or []string
+	Resource  any // can be string or []string
+	Principal any // can be string or []string
 }
 
 func makeStmtJson(policyName string, k int, item external.PolicyEffect) stmtJson {
@@ -45,6 +46,14 @@ func makeStmtJson(policyName string, k int, item external.PolicyEffect) stmtJson
 		ret.Resource = rs[0]
 	} else {
 		ret.Resource = rs
+	}
+	ps := item.Principals()
+	if len(ps) == 0 {
+		ret.Principal = "*"
+	} else if len(ps) == 1 {
+		ret.Principal = ps[0]
+	} else {
+		ret.Principal = ps
 	}
 	return ret
 }

@@ -110,6 +110,32 @@ func (b *bucketCreator) ObtainDest() files.FileDest {
 	return NewBucketTransfer(b.client, b.name)
 }
 
+func (b *bucketCreator) ObtainMethod(name string) pluggable.Method {
+	switch name {
+	case "allResources":
+		return &allResourcesMethod{}
+	}
+	return nil
+}
+
 func (b *bucketCreator) String() string {
 	return fmt.Sprintf("EnsureBucket[%s:%s]", "" /* eb.env.Region */, b.name)
 }
+
+type allResourcesMethod struct {
+}
+
+func (a *allResourcesMethod) Invoke(s pluggable.RuntimeStorage, on pluggable.Expr, args []pluggable.Expr) any {
+	e := on.Eval(s)
+	bucket, ok := e.(*bucketCreator)
+	if !ok {
+		panic(fmt.Sprintf("allResources can only be called on a bucket, not a %T", e))
+	}
+	if len(args) != 0 {
+		panic("invalid number of arguments")
+	}
+	return fmt.Sprintf("arn:aws:s3:::%s/", bucket.name)
+}
+
+var _ pluggable.HasMethods = &bucketCreator{}
+var _ pluggable.Method = &allResourcesMethod{}

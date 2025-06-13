@@ -29,8 +29,8 @@ func RegisterWithDeployer(deployer deployer.Deployer) error {
 	tools.Register.Register("blank", "aws.S3.Bucket", &s3.BucketBlank{})
 	tools.Register.Register("blank", "aws.IAM.Policy", &iam.PolicyBlank{})
 
-	val := creator.MakeString("s3:GetObject")
-	tools.Repository.IntroduceSymbol(pluggable.SymbolName("aws.action.S3.GetObject"), val)
+	tools.Repository.IntroduceSymbol(pluggable.SymbolName("aws.action.S3.GetObject"), creator.MakeString("s3:GetObject"))
+	tools.Repository.IntroduceSymbol(pluggable.SymbolName("aws.principal.CloudFront"), creator.MakeString("aws.principal.CloudFront"))
 
 	return nil
 }
