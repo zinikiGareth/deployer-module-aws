@@ -26,7 +26,7 @@ type stmtJson struct {
 	Effect    string
 	Action    any // can be string or []string
 	Resource  any // can be string or []string
-	Principal any // can be string or []string
+	Principal any `json:",omitempty"`
 }
 
 func makeStmtJson(policyName string, k int, item external.PolicyEffect) stmtJson {
@@ -49,11 +49,21 @@ func makeStmtJson(policyName string, k int, item external.PolicyEffect) stmtJson
 	}
 	ps := item.Principals()
 	if len(ps) == 0 {
-		ret.Principal = "*"
+		ret.Principal = nil
 	} else if len(ps) == 1 {
-		ret.Principal = ps[0]
+		ret.Principal = makePrincipal(ps[0])
 	} else {
-		ret.Principal = ps
+		rps := []map[string]string{}
+		for _, p := range ps {
+			ret.Principal = append(rps, makePrincipal(p))
+		}
+		ret.Principal = rps
 	}
+	return ret
+}
+
+func makePrincipal(p external.PolicyPrincipal) map[string]string {
+	ret := map[string]string{}
+	ret[p.Key()] = p.Value()
 	return ret
 }

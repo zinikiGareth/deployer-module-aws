@@ -134,7 +134,7 @@ func (a *allResourcesMethod) Invoke(s pluggable.RuntimeStorage, on pluggable.Exp
 	if len(args) != 0 {
 		panic("invalid number of arguments")
 	}
-	return fmt.Sprintf("arn:aws:s3:::%s/", bucket.name)
+	return fmt.Sprintf("arn:aws:s3:::%s/*", bucket.name)
 }
 
 var _ pluggable.HasMethods = &bucketCreator{}
