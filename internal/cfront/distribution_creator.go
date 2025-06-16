@@ -142,11 +142,15 @@ func (cfdc *distributionCreator) UpdateReality() {
 	s3orig := types.S3OriginConfig{OriginAccessIdentity: &empty}
 	origins := []types.Origin{{DomainName: &origindns, Id: &fred, OriginAccessControlId: &cfdc.oacId, S3OriginConfig: &s3orig}}
 	nOrigins := int32(len(origins))
-	aliases := []string{"www.consolidator.news", "consolidator.news"}
+
+	domain := cfdc.tools.Storage.EvalAsString(cfdc.domain)
+
+	aliases := []string{domain}
 	nAliases := int32(len(aliases))
 	config := types.DistributionConfig{CallerReference: &cfdc.name, Comment: &comment, DefaultCacheBehavior: &dcb, Enabled: &e, Origins: &types.Origins{Items: origins, Quantity: &nOrigins}, Aliases: &types.Aliases{Items: aliases, Quantity: &nAliases}}
 	if cfdc.viewerCert != nil {
 		vc := cfdc.tools.Storage.Eval(cfdc.viewerCert)
+		log.Printf("have vc %T %v\n", vc, vc)
 		vcs, ok := vc.(string)
 		if !ok {
 			tmp, ok := vc.(fmt.Stringer)
@@ -155,8 +159,12 @@ func (cfdc *distributionCreator) UpdateReality() {
 			}
 			vcs = tmp.String()
 		}
-		log.Printf("have cert arn %T", vcs)
-		config.ViewerCertificate = &types.ViewerCertificate{ACMCertificateArn: &vcs}
+		log.Printf("have cert arn %T %s\n", vcs, vcs)
+		minver := types.MinimumProtocolVersionTLSv122021
+		supp := types.SSLSupportMethodSniOnly
+		cfdef := false
+		config.ViewerCertificate = &types.ViewerCertificate{ACMCertificateArn: &vcs, MinimumProtocolVersion: minver, SSLSupportMethod: supp, CloudFrontDefaultCertificate: &cfdef}
+		log.Printf("config.vc = %v\n", config.ViewerCertificate)
 	}
 	tagkey := "deployer-name"
 	tags := types.Tags{Items: []types.Tag{{Key: &tagkey, Value: &cfdc.name}}}
@@ -307,9 +315,9 @@ type DeferReadingDomainName struct {
 
 func (d *DeferReadingDomainName) String() string {
 	if d.cfdc.domainName == "" {
-		panic("arn is still not set")
+		panic("domainName is still not set")
 	}
-	return d.cfdc.arn
+	return d.cfdc.domainName
 }
 
 var _ pluggable.HasMethods = &distributionCreator{}

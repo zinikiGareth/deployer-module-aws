@@ -74,7 +74,7 @@ func (acmc *certificateCreator) BuildModel(pres pluggable.ValuePresenter) {
 
 	certs := acmc.findCertificatesFor(acmc.name)
 	if len(certs) == 0 {
-		// log.Printf("there were no certs found for %s\n", acmc.name)
+		log.Printf("there were no certs found for %s\n", acmc.name)
 	} else {
 		// log.Printf("found %d certs for %s\n", len(certs), acmc.name)
 		acmc.alreadyExists = true
@@ -216,8 +216,46 @@ func (acmc *certificateCreator) tryToValidateCert(arn string) bool {
 	}
 }
 
+func (acm *certificateCreator) ObtainMethod(name string) pluggable.Method {
+	switch name {
+	case "arn":
+		return &arnMethod{}
+	}
+	return nil
+}
+
 func (acm *certificateCreator) String() string {
 	return fmt.Sprintf("EnsureBucket[%s:%s]", "" /* eacm.env.Region */, acm.name)
+}
+
+type arnMethod struct {
+}
+
+func (a *arnMethod) Invoke(s pluggable.RuntimeStorage, on pluggable.Expr, args []pluggable.Expr) any {
+	e := on.Eval(s)
+	cc, ok := e.(*certificateCreator)
+	if !ok {
+		panic(fmt.Sprintf("arn can only be called on a certificate, not a %T", e))
+	}
+	if len(args) != 0 {
+		panic("invalid number of arguments")
+	}
+	if cc.alreadyExists {
+		return cc.arn
+	} else {
+		return &DeferReadingArn{cc: cc}
+	}
+}
+
+type DeferReadingArn struct {
+	cc *certificateCreator
+}
+
+func (d *DeferReadingArn) String() string {
+	if d.cc.arn == "" {
+		panic("arn is still not set")
+	}
+	return d.cc.arn
 }
 
 func find(props map[pluggable.Identifier]pluggable.Expr, key string) pluggable.Expr {
@@ -236,3 +274,5 @@ func DeleteCertificate(client *acm.Client, arn string) {
 	}
 	log.Printf("I think the certificate was deleted because no error was reported")
 }
+
+var _ pluggable.HasMethods = &certificateCreator{}
