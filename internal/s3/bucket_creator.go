@@ -127,7 +127,7 @@ func (b *bucketCreator) Attach(doc external.PolicyDocument) {
 		log.Fatalf("could not build policy: %v", err)
 	}
 	b.client.PutBucketPolicy(context.TODO(), &s3.PutBucketPolicyInput{Bucket: &b.name, Policy: &policyJson})
-	fmt.Printf("attached policy to bucket %s\n", b.name)
+	log.Printf("attached policy to bucket %s\n", b.name)
 }
 
 func (b *bucketCreator) String() string {

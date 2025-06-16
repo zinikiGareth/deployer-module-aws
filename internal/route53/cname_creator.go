@@ -1,0 +1,123 @@
+package route53
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/aws/aws-sdk-go-v2/service/route53"
+	r53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
+	"ziniki.org/deployer/deployer/pkg/errorsink"
+	"ziniki.org/deployer/deployer/pkg/pluggable"
+	"ziniki.org/deployer/modules/aws/internal/env"
+)
+
+type cnameCreator struct {
+	tools *pluggable.Tools
+
+	loc      *errorsink.Location
+	name     string
+	pointsTo pluggable.Expr
+	zone     pluggable.Expr
+	teardown pluggable.TearDown
+
+	client        *route53.Client
+	alreadyExists bool
+	otherDomain   any
+	zoneId        string
+}
+
+func (p *cnameCreator) Loc() *errorsink.Location {
+	return p.loc
+}
+
+func (p *cnameCreator) ShortDescription() string {
+	return "aws.IAM.Policy[" + p.name + "]"
+}
+
+func (p *cnameCreator) DumpTo(iw pluggable.IndentWriter) {
+	iw.Intro("aws.IAM.Policy[")
+	iw.AttrsWhere(p)
+	iw.TextAttr("named", p.name)
+	iw.EndAttrs()
+}
+
+func (cc *cnameCreator) BuildModel(pres pluggable.ValuePresenter) {
+	eq := cc.tools.Recall.ObtainDriver("aws.AwsEnv")
+	awsEnv, ok := eq.(*env.AwsEnv)
+	if !ok {
+		panic("could not cast env to AwsEnv")
+	}
+
+	// cc.domainsClient = awsEnv.Route53DomainsClient()
+	cc.client = awsEnv.Route53Client()
+
+	cc.zoneId = cc.tools.Storage.EvalAsString(cc.zone)
+	pt := cc.pointsTo.Eval(cc.tools.Storage)
+	cc.otherDomain = pt
+
+	log.Printf("scanning zone %s\n", cc.zoneId)
+	rrs, err := cc.client.ListResourceRecordSets(context.TODO(), &route53.ListResourceRecordSetsInput{HostedZoneId: &cc.zoneId})
+	if err != nil {
+		panic(err)
+	}
+
+	for _, r := range rrs.ResourceRecordSets {
+		// log.Printf("found rrs %s %s", *r.Name, *r.ResourceRecords[0].Value)
+		if r.Type == "CNAME" && *r.Name == cc.name+"." {
+			// TODO: we should also handle the case where it has changed
+			log.Printf("already have %s %v\n", *r.Name, *r.ResourceRecords[0].Value)
+			cc.alreadyExists = true
+		}
+	}
+}
+
+func (cc *cnameCreator) UpdateReality() {
+	if cc.alreadyExists {
+		log.Printf("CNAME %s already exists\n", cc.name)
+		return
+	}
+
+	log.Printf("creating CNAME %s\n", cc.name)
+
+	var ttl int64 = 300
+	od, ok := cc.otherDomain.(string)
+	if !ok {
+		str, ok := cc.otherDomain.(fmt.Stringer)
+		if !ok {
+			panic("not a string or Stringer)")
+		}
+		od = str.String()
+	}
+
+	changes := r53types.ResourceRecordSet{Name: &cc.name, Type: "CNAME", TTL: &ttl, ResourceRecords: []r53types.ResourceRecord{{Value: &od}}}
+	cb := r53types.ChangeBatch{Changes: []r53types.Change{{Action: "CREATE", ResourceRecordSet: &changes}}}
+	_, err := cc.client.ChangeResourceRecordSets(context.TODO(), &route53.ChangeResourceRecordSetsInput{HostedZoneId: &cc.zoneId, ChangeBatch: &cb})
+	if err != nil {
+		panic(err)
+	}
+
+}
+
+func (p *cnameCreator) TearDown() {
+	log.Printf("Need to remove a CNAME record for %s\n", p.name)
+}
+
+func (p *cnameCreator) String() string {
+	return fmt.Sprintf("EnsurePolicy[%s:%s]", "" /* eb.env.Region */, p.name)
+}
+
+type asAWS struct {
+	Name string
+	Id   string
+	ARN  string
+}
+
+func CreatePolicy(client *iam.Client, name string, text string) *asAWS {
+	pol, err := client.CreatePolicy(context.TODO(), &iam.CreatePolicyInput{PolicyName: &name, PolicyDocument: &text})
+	if err != nil {
+		log.Fatalf("failed to create policy: %v", err)
+	}
+	return &asAWS{Name: *pol.Policy.PolicyName, Id: *pol.Policy.PolicyId, ARN: *pol.Policy.Arn}
+}

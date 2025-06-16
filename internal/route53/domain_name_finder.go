@@ -98,3 +98,28 @@ func (dnf *domainNameFinder) String() string {
 func (dnf *domainNameFinder) HostedZoneId() string {
 	return dnf.hzid
 }
+
+func (dnf *domainNameFinder) ObtainMethod(name string) pluggable.Method {
+	switch name {
+	case "zoneId":
+		return &zoneIdMethod{}
+	}
+	return nil
+}
+
+type zoneIdMethod struct {
+}
+
+func (a *zoneIdMethod) Invoke(s pluggable.RuntimeStorage, on pluggable.Expr, args []pluggable.Expr) any {
+	e := on.Eval(s)
+	cfdc, ok := e.(*domainNameFinder)
+	if !ok {
+		panic(fmt.Sprintf("zoneId can only be called on a domain, not a %T", e))
+	}
+	if len(args) != 0 {
+		panic("invalid number of arguments")
+	}
+	return cfdc.hzid
+}
+
+var _ pluggable.HasMethods = &domainNameFinder{}

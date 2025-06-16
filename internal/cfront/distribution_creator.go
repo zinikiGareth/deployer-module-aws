@@ -26,6 +26,7 @@ type distributionCreator struct {
 	distroId      string
 	alreadyExists bool
 	arn           string
+	domainName    string
 	props         map[pluggable.Identifier]pluggable.Expr
 }
 
@@ -65,8 +66,9 @@ func (cfdc *distributionCreator) BuildModel(pres pluggable.ValuePresenter) {
 			if q.Key != nil && *q.Key == "deployer-name" && q.Value != nil && *q.Value == cfdc.name {
 				cfdc.arn = *p.ARN
 				cfdc.distroId = *p.Id
+				cfdc.domainName = *p.DomainName
 				cfdc.alreadyExists = true
-				log.Printf("found distro %s: %s %s\n", cfdc.name, cfdc.arn, cfdc.distroId)
+				log.Printf("found distro %s: %s %s %s\n", cfdc.name, cfdc.arn, cfdc.distroId, cfdc.domainName)
 			}
 		}
 	}
@@ -145,8 +147,10 @@ func (cfdc *distributionCreator) UpdateReality() {
 	if err != nil {
 		log.Fatalf("failed to create distribution %s: %v\n", cfdc.name, err)
 	}
-	log.Printf("created distribution %s: %s\n", cfdc.name, *req.Distribution.ARN)
+	log.Printf("created distribution %s: %s %s %s\n", cfdc.name, *req.Distribution.ARN, *req.Distribution.Id, *req.Distribution.DomainName)
 	cfdc.arn = *req.Distribution.ARN
+	cfdc.distroId = *req.Distribution.Id
+	cfdc.domainName = *req.Distribution.DomainName
 }
 
 func (cfdc *distributionCreator) TearDown() {
@@ -227,6 +231,8 @@ func (cfdc *distributionCreator) ObtainMethod(name string) pluggable.Method {
 	switch name {
 	case "arn":
 		return &arnMethod{}
+	case "domainName":
+		return &domainNameMethod{}
 	}
 	return nil
 }
@@ -256,6 +262,36 @@ type DeferReadingArn struct {
 
 func (d *DeferReadingArn) String() string {
 	if d.cfdc.arn == "" {
+		panic("arn is still not set")
+	}
+	return d.cfdc.arn
+}
+
+type domainNameMethod struct {
+}
+
+func (a *domainNameMethod) Invoke(s pluggable.RuntimeStorage, on pluggable.Expr, args []pluggable.Expr) any {
+	e := on.Eval(s)
+	cfdc, ok := e.(*distributionCreator)
+	if !ok {
+		panic(fmt.Sprintf("domainName can only be called on a distribution, not a %T", e))
+	}
+	if len(args) != 0 {
+		panic("invalid number of arguments")
+	}
+	if cfdc.alreadyExists {
+		return cfdc.domainName
+	} else {
+		return &DeferReadingDomainName{cfdc: cfdc}
+	}
+}
+
+type DeferReadingDomainName struct {
+	cfdc *distributionCreator
+}
+
+func (d *DeferReadingDomainName) String() string {
+	if d.cfdc.domainName == "" {
 		panic("arn is still not set")
 	}
 	return d.cfdc.arn
