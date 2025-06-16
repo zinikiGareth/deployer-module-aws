@@ -9,10 +9,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/smithy-go"
+	"ziniki.org/deployer/coremod/pkg/external"
 	"ziniki.org/deployer/coremod/pkg/files"
 	"ziniki.org/deployer/deployer/pkg/errorsink"
 	"ziniki.org/deployer/deployer/pkg/pluggable"
 	"ziniki.org/deployer/modules/aws/internal/env"
+	"ziniki.org/deployer/modules/aws/internal/policyjson"
 )
 
 type bucketCreator struct {
@@ -118,6 +120,16 @@ func (b *bucketCreator) ObtainMethod(name string) pluggable.Method {
 	return nil
 }
 
+func (b *bucketCreator) Attach(doc external.PolicyDocument) {
+	// TODO: I assume we either have to merge or do duplicate detection
+	policyJson, err := policyjson.BuildFrom(b.name, doc)
+	if err != nil {
+		log.Fatalf("could not build policy: %v", err)
+	}
+	b.client.PutBucketPolicy(context.TODO(), &s3.PutBucketPolicyInput{Bucket: &b.name, Policy: &policyJson})
+	fmt.Printf("attached policy to bucket %s\n", b.name)
+}
+
 func (b *bucketCreator) String() string {
 	return fmt.Sprintf("EnsureBucket[%s:%s]", "" /* eb.env.Region */, b.name)
 }
@@ -139,3 +151,4 @@ func (a *allResourcesMethod) Invoke(s pluggable.RuntimeStorage, on pluggable.Exp
 
 var _ pluggable.HasMethods = &bucketCreator{}
 var _ pluggable.Method = &allResourcesMethod{}
+var _ external.PolicyAttacher = &bucketCreator{}
