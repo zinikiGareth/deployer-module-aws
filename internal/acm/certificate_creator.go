@@ -96,7 +96,7 @@ func (acmc *certificateCreator) UpdateReality() {
 	if err != nil {
 		log.Printf("failed to request cert %s: %v\n", acmc.name, err)
 	}
-	log.Printf("requested cert for %s: %v\n", acmc.name, req)
+	log.Printf("requested cert for %s: %s\n", acmc.name, *req.CertificateArn)
 	acmc.arn = *req.CertificateArn
 
 	// Check if we still need to validate it ...

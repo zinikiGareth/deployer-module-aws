@@ -100,6 +100,10 @@ func (cc *cnameCreator) UpdateReality() {
 }
 
 func (cc *cnameCreator) TearDown() {
+	if !cc.alreadyExists {
+		log.Printf("CNAME %s already deleted\n", cc.name)
+		return
+	}
 	log.Printf("need to remove a CNAME record for %s\n", cc.name)
 	od, ok := cc.otherDomain.(string)
 	if !ok {

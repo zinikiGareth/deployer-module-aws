@@ -169,7 +169,8 @@ func (cfdc *distributionCreator) UpdateReality() {
 
 	aliases := []string{domain}
 	nAliases := int32(len(aliases))
-	config := types.DistributionConfig{CallerReference: &cfdc.name, Comment: &comment, DefaultCacheBehavior: &dcb, CacheBehaviors: &behaviors, Enabled: &e, Origins: &types.Origins{Items: origins, Quantity: &nOrigins}, Aliases: &types.Aliases{Items: aliases, Quantity: &nAliases}}
+	rootObject := "index.html"
+	config := types.DistributionConfig{CallerReference: &cfdc.name, Comment: &comment, DefaultCacheBehavior: &dcb, CacheBehaviors: &behaviors, Enabled: &e, DefaultRootObject: &rootObject, Origins: &types.Origins{Items: origins, Quantity: &nOrigins}, Aliases: &types.Aliases{Items: aliases, Quantity: &nAliases}}
 	if cfdc.viewerCert != nil {
 		vc := cfdc.tools.Storage.Eval(cfdc.viewerCert)
 		log.Printf("have vc %T %v\n", vc, vc)
@@ -181,12 +182,11 @@ func (cfdc *distributionCreator) UpdateReality() {
 			}
 			vcs = tmp.String()
 		}
-		log.Printf("have cert arn %T %s\n", vcs, vcs)
+		log.Printf("have cert arn %s\n", vcs)
 		minver := types.MinimumProtocolVersionTLSv122021
 		supp := types.SSLSupportMethodSniOnly
 		cfdef := false
 		config.ViewerCertificate = &types.ViewerCertificate{ACMCertificateArn: &vcs, MinimumProtocolVersion: minver, SSLSupportMethod: supp, CloudFrontDefaultCertificate: &cfdef}
-		log.Printf("config.vc = %v\n", config.ViewerCertificate)
 	}
 	tagkey := "deployer-name"
 	tags := types.Tags{Items: []types.Tag{{Key: &tagkey, Value: &cfdc.name}}}
