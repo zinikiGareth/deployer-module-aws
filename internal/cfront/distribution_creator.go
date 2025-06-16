@@ -2,6 +2,7 @@ package cfront
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
@@ -208,3 +209,28 @@ func (cfdc *distributionCreator) TearDown() {
 		}
 	*/
 }
+
+func (cfdc *distributionCreator) ObtainMethod(name string) pluggable.Method {
+	switch name {
+	case "arn":
+		return &arnMethod{}
+	}
+	return nil
+}
+
+type arnMethod struct {
+}
+
+func (a *arnMethod) Invoke(s pluggable.RuntimeStorage, on pluggable.Expr, args []pluggable.Expr) any {
+	e := on.Eval(s)
+	distro, ok := e.(*distributionCreator)
+	if !ok {
+		panic(fmt.Sprintf("arn can only be called on a distribution, not a %T", e))
+	}
+	if len(args) != 0 {
+		panic("invalid number of arguments")
+	}
+	return distro.arn
+}
+
+var _ pluggable.HasMethods = &distributionCreator{}

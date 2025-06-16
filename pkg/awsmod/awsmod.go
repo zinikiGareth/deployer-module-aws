@@ -40,5 +40,8 @@ func RegisterWithDeployer(deployer deployer.Deployer) error {
 	// Service Principals
 	tools.Repository.IntroduceSymbol(pluggable.SymbolName("aws.principal.CloudFront"), creator.MakeString("cloudfront.amazonaws.com"))
 
+	// other strings
+	tools.Repository.IntroduceSymbol(pluggable.SymbolName("aws.cond.StringEquals"), creator.MakeString("StringEquals"))
+
 	return nil
 }
