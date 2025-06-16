@@ -74,7 +74,7 @@ func DeleteFromBucket(client *s3.Client, name string, keys []types.ObjectIdentif
 }
 
 func DeleteBucket(client *s3.Client, name string) bool {
-	out, err := client.DeleteBucket(context.TODO(), &s3.DeleteBucketInput{
+	_, err := client.DeleteBucket(context.TODO(), &s3.DeleteBucketInput{
 		Bucket: aws.String(name),
 	})
 	if err != nil {
@@ -88,7 +88,7 @@ func DeleteBucket(client *s3.Client, name string) bool {
 		if err != nil {
 			log.Printf("Failed attempt to wait for bucket %s to be deleted: %v.\n", name, err)
 		}
-		log.Printf("Deleted bucket %s: %v\n", name, out)
+		log.Printf("Deleted bucket %s\n", name)
 	}
 	return true
 }

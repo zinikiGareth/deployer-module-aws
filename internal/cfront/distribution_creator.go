@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront/types"
@@ -22,6 +23,7 @@ type distributionCreator struct {
 	client        *cloudfront.Client
 	oacId         string
 	cpId          string
+	distroId      string
 	alreadyExists bool
 	arn           string
 	props         map[pluggable.Identifier]pluggable.Expr
@@ -42,7 +44,6 @@ func (cfdc *distributionCreator) DumpTo(iw pluggable.IndentWriter) {
 	iw.EndAttrs()
 }
 
-// This is called during the "Prepare" phase
 func (cfdc *distributionCreator) BuildModel(pres pluggable.ValuePresenter) {
 	eq := cfdc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
@@ -63,12 +64,14 @@ func (cfdc *distributionCreator) BuildModel(pres pluggable.ValuePresenter) {
 		for _, q := range tags.Tags.Items {
 			if q.Key != nil && *q.Key == "deployer-name" && q.Value != nil && *q.Value == cfdc.name {
 				cfdc.arn = *p.ARN
+				cfdc.distroId = *p.Id
 				cfdc.alreadyExists = true
+				log.Printf("found distro %s: %s %s\n", cfdc.name, cfdc.arn, cfdc.distroId)
 			}
 		}
 	}
 
-	if !cfdc.alreadyExists {
+	if !cfdc.alreadyExists || cfdc.tools.Options.TearDown {
 		oaccname := "oac-name"
 		fred, err := cfdc.client.ListOriginAccessControls(context.TODO(), &cloudfront.ListOriginAccessControlsInput{})
 		if err != nil {
@@ -147,22 +150,77 @@ func (cfdc *distributionCreator) UpdateReality() {
 }
 
 func (cfdc *distributionCreator) TearDown() {
-	/*
-		if !cfdc.alreadyExists {
-			log.Printf("no certificate existed for %s\n", cfdc.name)
+	if !cfdc.alreadyExists {
+		log.Printf("no distribution existed for %s\n", cfdc.name)
+		return
+	}
+	log.Printf("you have asked to tear down distribution %s (id: %s, arn: %s) with mode %s\n", cfdc.name, cfdc.distroId, cfdc.arn, cfdc.teardown.Mode())
+
+	cfdc.DisableIt()
+	cfdc.DeleteIt()
+}
+
+func (cfdc *distributionCreator) DisableIt() {
+	distro, err := cfdc.client.GetDistribution(context.TODO(), &cloudfront.GetDistributionInput{Id: &cfdc.distroId})
+	if err != nil {
+		log.Fatalf("failed to recover distribution for %s: %v", cfdc.distroId, err)
+	}
+	fmt.Printf("have a distro %s\n", *distro.Distribution.Status)
+
+	if *distro.Distribution.Status == "Deployed" && *distro.Distribution.DistributionConfig.Enabled {
+		log.Printf("Disabling %s\n", cfdc.distroId)
+		isFalse := false
+		distro.Distribution.DistributionConfig.Enabled = &isFalse
+		upd, err := cfdc.client.UpdateDistribution(context.TODO(), &cloudfront.UpdateDistributionInput{Id: &cfdc.distroId, IfMatch: distro.ETag, DistributionConfig: distro.Distribution.DistributionConfig})
+		if err != nil {
+			log.Fatalf("error disabling %s: %v\n", cfdc.distroId, err)
+		}
+		fmt.Printf("upd has %s %v\n", *upd.Distribution.Status, *upd.Distribution.DistributionConfig.Enabled)
+	}
+
+	for {
+		distro, err := cfdc.client.GetDistribution(context.TODO(), &cloudfront.GetDistributionInput{Id: &cfdc.distroId})
+		if err != nil {
+			log.Fatalf("failed to recover distribution for %s: %v", cfdc.distroId, err)
+		}
+		fmt.Printf("disabling distro ... %s\n", *distro.Distribution.Status)
+		if *distro.Distribution.Status != "InProgress" {
 			return
 		}
-		log.Printf("you have asked to tear down certificate for %s (arn: %s) with mode %s\n", cfdc.name, cfdc.arn, cfdc.teardown.Mode())
-		switch cfdc.teardown.Mode() {
-		case "preserve":
-			log.Printf("not deleting certificate %s because teardown mode is 'preserve'", cfdc.name)
-		case "delete":
-			log.Printf("deleting certificate for %s with teardown mode 'delete'", cfdc.name)
-			DeleteCertificate(cfdc.client, cfdc.arn)
-		default:
-			log.Printf("cannot handle teardown mode '%s' for bucket %s", cfdc.teardown.Mode(), cfdc.name)
+		time.Sleep(time.Duration(1) * time.Second)
+	}
+}
+
+func (cfdc *distributionCreator) DeleteIt() {
+	distro, err := cfdc.client.GetDistribution(context.TODO(), &cloudfront.GetDistributionInput{Id: &cfdc.distroId})
+	if err != nil {
+		log.Fatalf("failed to recover distribution for %s: %v", cfdc.distroId, err)
+	}
+	fmt.Printf("have a distro %s %v\n", *distro.Distribution.Status, *distro.Distribution.DistributionConfig.Enabled)
+
+	if *distro.Distribution.DistributionConfig.Enabled {
+		log.Fatalf("the distribution is still enabled")
+	}
+	if *distro.Distribution.Status == "Deployed" {
+		log.Printf("Deleting %s\n", cfdc.distroId)
+		_, err := cfdc.client.DeleteDistribution(context.TODO(), &cloudfront.DeleteDistributionInput{Id: &cfdc.distroId, IfMatch: distro.ETag})
+		if err != nil {
+			log.Fatalf("error disabling %s: %v\n", cfdc.distroId, err)
 		}
-	*/
+	}
+
+	for {
+		distro, err := cfdc.client.GetDistribution(context.TODO(), &cloudfront.GetDistributionInput{Id: &cfdc.distroId})
+		if err != nil {
+			// We can't get it because it isn't there
+			return
+		}
+		fmt.Printf("deleting distro ... %s\n", *distro.Distribution.Status)
+		if *distro.Distribution.Status != "InProgress" {
+			return
+		}
+		time.Sleep(time.Duration(1) * time.Second)
+	}
 }
 
 func (cfdc *distributionCreator) ObtainMethod(name string) pluggable.Method {
