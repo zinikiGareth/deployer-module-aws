@@ -87,10 +87,20 @@ func makeCondition(p any) map[string]any {
 	if !ok {
 		return nil
 	}
-	// ret := map[string]string{}
-	// for k,v := range input {
-	// 	ret[k] = map
-	// }
-	// ret[p.Key()] = p.Value()
-	return input
+	ret := map[string]any{}
+	for k, v := range input {
+		mv, ok := v.(map[string]any)
+		if !ok {
+			continue
+		}
+		rm := map[string]string{}
+		ret[k] = rm
+		for l, r := range mv {
+			rs, ok := r.(fmt.Stringer)
+			if ok {
+				rm[l] = rs.String()
+			}
+		}
+	}
+	return ret
 }

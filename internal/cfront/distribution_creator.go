@@ -44,22 +44,6 @@ func (cfdc *distributionCreator) DumpTo(iw pluggable.IndentWriter) {
 
 // This is called during the "Prepare" phase
 func (cfdc *distributionCreator) BuildModel(pres pluggable.ValuePresenter) {
-	/*
-		domainExpr := find(cfdc.props, "Domain")
-		if domainExpr == nil {
-			log.Fatalf("must specify a domain instance to create a certificate")
-		}
-		domainObj := domainExpr.Eval(cfdc.tools.Storage)
-		log.Printf("%T %p %v\n", domainObj, domainObj, domainObj)
-		domain, ok := domainObj.(myroute53.ExportedDomain)
-		if !ok {
-			log.Fatalf("Domain did not point to a domain instance")
-		}
-		cfdc.hzid = domain.HostedZoneId()
-		if cfdc.validationMethod == "" {
-			cfdc.validationMethod = types.ValidationMethodDns
-		}
-	*/
 	eq := cfdc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {
@@ -110,21 +94,6 @@ func (cfdc *distributionCreator) BuildModel(pres pluggable.ValuePresenter) {
 		}
 	}
 
-	/*
-		cfdc.route53 = awsEnv.Route53Client()
-
-		certs := cfdc.findCertificatesFor(cfdc.name)
-		if len(certs) == 0 {
-			log.Printf("there were no certs found for %s\n", cfdc.name)
-		} else {
-			log.Printf("found %d certs for %s\n", len(certs), cfdc.name)
-			cfdc.alreadyExists = true
-			cfdc.arn = certs[0]
-			cfdc.describeCertificate(cfdc.arn)
-		}
-
-	*/
-	// TODO: do we need to capture something here?
 	pres.Present(cfdc)
 }
 
@@ -162,7 +131,6 @@ func (cfdc *distributionCreator) UpdateReality() {
 	fred := "a-unique-id" + cfdc.name
 	dcb := types.DefaultCacheBehavior{TargetOriginId: &fred, ViewerProtocolPolicy: types.ViewerProtocolPolicyRedirectToHttps, CachePolicyId: &cfdc.cpId}
 	e := true
-	// dn := "www.consolidator.news"
 	empty := ""
 	s3orig := types.S3OriginConfig{OriginAccessIdentity: &empty}
 	items := []types.Origin{{DomainName: &origindns, Id: &fred, OriginAccessControlId: &cfdc.oacId, S3OriginConfig: &s3orig}}
@@ -176,19 +144,6 @@ func (cfdc *distributionCreator) UpdateReality() {
 	}
 	log.Printf("created distribution %s: %s\n", cfdc.name, *req.Distribution.ARN)
 	cfdc.arn = *req.Distribution.ARN
-	/*
-		cfdc.describeCertificate(*req.CertificateArn)
-		var waitFor time.Duration = 1
-		for {
-			log.Printf("sleeping for %ds\n", waitFor)
-			time.Sleep(waitFor * time.Second)
-			if cfdc.tryToValidateCert(*req.CertificateArn) {
-				break
-			}
-			waitFor = min(2*waitFor, 60)
-			fmt.Printf("still pending validation; wait another %ds\n", waitFor)
-		}
-	*/
 }
 
 func (cfdc *distributionCreator) TearDown() {
@@ -223,14 +178,29 @@ type arnMethod struct {
 
 func (a *arnMethod) Invoke(s pluggable.RuntimeStorage, on pluggable.Expr, args []pluggable.Expr) any {
 	e := on.Eval(s)
-	distro, ok := e.(*distributionCreator)
+	cfdc, ok := e.(*distributionCreator)
 	if !ok {
 		panic(fmt.Sprintf("arn can only be called on a distribution, not a %T", e))
 	}
 	if len(args) != 0 {
 		panic("invalid number of arguments")
 	}
-	return distro.arn
+	if cfdc.alreadyExists {
+		return cfdc.arn
+	} else {
+		return &DeferReadingArn{cfdc: cfdc}
+	}
+}
+
+type DeferReadingArn struct {
+	cfdc *distributionCreator
+}
+
+func (d *DeferReadingArn) String() string {
+	if d.cfdc.arn == "" {
+		panic("arn is still not set")
+	}
+	return d.cfdc.arn
 }
 
 var _ pluggable.HasMethods = &distributionCreator{}

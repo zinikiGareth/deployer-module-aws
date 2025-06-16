@@ -18,6 +18,8 @@ type policyCreator struct {
 	teardown pluggable.TearDown
 	policy   pluggable.Expr
 
+	policyDoc external.PolicyDocument
+
 	// client        *s3.Client
 	// alreadyExists bool
 }
@@ -66,12 +68,7 @@ func (p *policyCreator) BuildModel(pres pluggable.ValuePresenter) {
 		return
 	}
 
-	json, err := policyjson.BuildFrom(p.name, pi)
-	if err != nil {
-		p.tools.Reporter.Reportf(p.loc.Offset, "error compiling JSON policy: %v", err)
-	}
-	log.Printf("json policy:\n====\n%s\n====\n", json)
-
+	p.policyDoc = pi
 	/*
 		eq := p.tools.Recall.ObtainDriver("aws.AwsEnv")
 		awsEnv, ok := eq.(*env.AwsEnv)
@@ -107,6 +104,12 @@ func (p *policyCreator) BuildModel(pres pluggable.ValuePresenter) {
 
 func (p *policyCreator) UpdateReality() {
 	log.Printf("Need to actually create the policy for %s on AWS\n", p.name)
+
+	json, err := policyjson.BuildFrom(p.name, p.policyDoc)
+	if err != nil {
+		p.tools.Reporter.Reportf(p.loc.Offset, "error compiling JSON policy: %v", err)
+	}
+	log.Printf("json policy:\n====\n%s\n====\n", json)
 
 	/*
 		if p.alreadyExists {
