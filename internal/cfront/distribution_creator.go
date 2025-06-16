@@ -134,20 +134,42 @@ func (cfdc *distributionCreator) UpdateReality() {
 		cfdc.cpId = *oac.CachePolicy.Id
 	}
 
+	/* More stuff hacked in that shouldn't be ... */
+	// Again, probably wants to be found somewhere and passed in ...
+	rpname := "fred"
+	ct := "Content-Type"
+	ov := true
+	th := "text/html"
+	rhs := []types.ResponseHeadersPolicyCustomHeader{{Header: &ct, Override: &ov, Value: &th}}
+	rhslen := int32(len(rhs))
+	ch := types.ResponseHeadersPolicyCustomHeadersConfig{Items: rhs, Quantity: &rhslen}
+	rhp := types.ResponseHeadersPolicyConfig{Name: &rpname, CustomHeadersConfig: &ch}
+	crhp, err := cfdc.client.CreateResponseHeadersPolicy(context.TODO(), &cloudfront.CreateResponseHeadersPolicyInput{ResponseHeadersPolicyConfig: &rhp})
+	if err != nil {
+		log.Fatalf("failed to create CRHP for %s (%s): %v\n", cfdc.name, rpname, err)
+	}
+	rpid := *crhp.ResponseHeadersPolicy.Id
+
 	origindns := "news.consolidator.info.s3.us-east-1.amazonaws.com"
-	fred := "a-unique-id" + cfdc.name
-	dcb := types.DefaultCacheBehavior{TargetOriginId: &fred, ViewerProtocolPolicy: types.ViewerProtocolPolicyRedirectToHttps, CachePolicyId: &cfdc.cpId}
+	targetOriginId := "a-unique-id" + cfdc.name
+	dcb := types.DefaultCacheBehavior{TargetOriginId: &targetOriginId, ViewerProtocolPolicy: types.ViewerProtocolPolicyRedirectToHttps, CachePolicyId: &cfdc.cpId}
 	e := true
 	empty := ""
 	s3orig := types.S3OriginConfig{OriginAccessIdentity: &empty}
-	origins := []types.Origin{{DomainName: &origindns, Id: &fred, OriginAccessControlId: &cfdc.oacId, S3OriginConfig: &s3orig}}
+	origins := []types.Origin{{DomainName: &origindns, Id: &targetOriginId, OriginAccessControlId: &cfdc.oacId, S3OriginConfig: &s3orig}}
 	nOrigins := int32(len(origins))
 
+	forHtml := "*.html"
+	htmlBehavior := types.CacheBehavior{TargetOriginId: &targetOriginId, PathPattern: &forHtml, ViewerProtocolPolicy: types.ViewerProtocolPolicyRedirectToHttps, CachePolicyId: &cfdc.cpId, ResponseHeadersPolicyId: &rpid}
+	cbs := []types.CacheBehavior{htmlBehavior}
+	cbl := int32(len(cbs))
+
+	behaviors := types.CacheBehaviors{Quantity: &cbl, Items: cbs}
 	domain := cfdc.tools.Storage.EvalAsString(cfdc.domain)
 
 	aliases := []string{domain}
 	nAliases := int32(len(aliases))
-	config := types.DistributionConfig{CallerReference: &cfdc.name, Comment: &comment, DefaultCacheBehavior: &dcb, Enabled: &e, Origins: &types.Origins{Items: origins, Quantity: &nOrigins}, Aliases: &types.Aliases{Items: aliases, Quantity: &nAliases}}
+	config := types.DistributionConfig{CallerReference: &cfdc.name, Comment: &comment, DefaultCacheBehavior: &dcb, CacheBehaviors: &behaviors, Enabled: &e, Origins: &types.Origins{Items: origins, Quantity: &nOrigins}, Aliases: &types.Aliases{Items: aliases, Quantity: &nAliases}}
 	if cfdc.viewerCert != nil {
 		vc := cfdc.tools.Storage.Eval(cfdc.viewerCert)
 		log.Printf("have vc %T %v\n", vc, vc)
