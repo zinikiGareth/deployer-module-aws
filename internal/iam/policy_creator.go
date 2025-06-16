@@ -1,12 +1,15 @@
 package iam
 
 import (
+	"context"
 	"fmt"
 	"log"
 
+	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"ziniki.org/deployer/coremod/pkg/external"
 	"ziniki.org/deployer/deployer/pkg/errorsink"
 	"ziniki.org/deployer/deployer/pkg/pluggable"
+	"ziniki.org/deployer/modules/aws/internal/env"
 	"ziniki.org/deployer/modules/aws/internal/policyjson"
 )
 
@@ -20,8 +23,8 @@ type policyCreator struct {
 
 	policyDoc external.PolicyDocument
 
-	// client        *s3.Client
-	// alreadyExists bool
+	client        *iam.Client
+	alreadyExists bool
 }
 
 func (p *policyCreator) Loc() *errorsink.Location {
@@ -69,14 +72,14 @@ func (p *policyCreator) BuildModel(pres pluggable.ValuePresenter) {
 	}
 
 	p.policyDoc = pi
-	/*
-		eq := p.tools.Recall.ObtainDriver("aws.AwsEnv")
-		awsEnv, ok := eq.(*env.AwsEnv)
-		if !ok {
-			panic("could not cast env to AwsEnv")
-		}
+	eq := p.tools.Recall.ObtainDriver("aws.AwsEnv")
+	awsEnv, ok := eq.(*env.AwsEnv)
+	if !ok {
+		panic("could not cast env to AwsEnv")
+	}
 
-		p.client = awsEnv.S3Client()
+	p.client = awsEnv.IAMClient()
+	/*
 		_, err := p.client.HeadBucket(context.TODO(), &s3.HeadBucketInput{
 			Bucket: aws.String(p.name),
 		})
@@ -111,17 +114,15 @@ func (p *policyCreator) UpdateReality() {
 	}
 	log.Printf("json policy:\n====\n%s\n====\n", json)
 
-	/*
-		if p.alreadyExists {
-			log.Printf("bucket %s already existed\n", p.name)
-			return
-		}
+	if p.alreadyExists {
+		log.Printf("policy %s already existed\n", p.name)
+		return
+	}
 
-		bucket := CreateBucket(p.client, p.name)
-		if bucket != nil {
-			log.Printf("created bucket %s\n", *bucket.Location)
-		}
-	*/
+	policy := CreatePolicy(p.client, p.name, json)
+	if policy != nil {
+		log.Printf("created policy %s as %s with ARN %s\n", p.name, policy.Id, policy.ARN)
+	}
 }
 
 func (p *policyCreator) TearDown() {
@@ -148,4 +149,18 @@ func (p *policyCreator) TearDown() {
 
 func (p *policyCreator) String() string {
 	return fmt.Sprintf("EnsurePolicy[%s:%s]", "" /* eb.env.Region */, p.name)
+}
+
+type asAWS struct {
+	Name string
+	Id   string
+	ARN  string
+}
+
+func CreatePolicy(client *iam.Client, name string, text string) *asAWS {
+	pol, err := client.CreatePolicy(context.TODO(), &iam.CreatePolicyInput{PolicyName: &name, PolicyDocument: &text})
+	if err != nil {
+		log.Fatalf("failed to create policy: %v", err)
+	}
+	return &asAWS{Name: *pol.Policy.PolicyName, Id: *pol.Policy.PolicyId, ARN: *pol.Policy.Arn}
 }

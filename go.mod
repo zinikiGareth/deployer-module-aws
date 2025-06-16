@@ -4,16 +4,19 @@ go 1.23.4
 
 require ziniki.org/deployer/deployer v0.0.0
 
-require ziniki.org/deployer/coremod v0.0.0
+require (
+	github.com/aws/aws-sdk-go-v2/service/iam v1.42.1
+	ziniki.org/deployer/coremod v0.0.0
+)
 
 require (
-	github.com/aws/aws-sdk-go-v2 v1.36.3
+	github.com/aws/aws-sdk-go-v2 v1.36.4
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.10 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.29.14
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.67 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.30 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.34 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.34 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.35 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.35 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.3 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.3.34 // indirect
 	github.com/aws/aws-sdk-go-v2/service/acm v1.32.0
