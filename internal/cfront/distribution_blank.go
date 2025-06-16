@@ -8,7 +8,20 @@ import (
 type DistributionBlank struct{}
 
 func (b *DistributionBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown pluggable.TearDown) any {
-	return &distributionCreator{tools: tools, loc: loc, name: named, props: props, teardown: teardown}
+	var cert pluggable.Expr
+	var domain pluggable.Expr
+	for p, v := range props {
+		switch p.Id() {
+		case "Certificate":
+			cert = v
+		case "Domain":
+			domain = v
+		default:
+			tools.Reporter.At(p.Loc().Line)
+			tools.Reporter.Reportf(loc.Offset, "invalid property for IAM policy: %s", p.Id())
+		}
+	}
+	return &distributionCreator{tools: tools, loc: loc, name: named, props: props, domain: domain, viewerCert: cert, teardown: teardown}
 }
 
 func (b *DistributionBlank) Find(tools *pluggable.Tools, loc *errorsink.Location, named string) any {

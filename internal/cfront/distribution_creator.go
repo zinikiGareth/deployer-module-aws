@@ -16,9 +16,11 @@ import (
 type distributionCreator struct {
 	tools *pluggable.Tools
 
-	loc      *errorsink.Location
-	name     string
-	teardown pluggable.TearDown
+	loc        *errorsink.Location
+	name       string
+	domain     pluggable.Expr
+	viewerCert pluggable.Expr
+	teardown   pluggable.TearDown
 
 	client        *cloudfront.Client
 	oacId         string
@@ -138,9 +140,24 @@ func (cfdc *distributionCreator) UpdateReality() {
 	e := true
 	empty := ""
 	s3orig := types.S3OriginConfig{OriginAccessIdentity: &empty}
-	items := []types.Origin{{DomainName: &origindns, Id: &fred, OriginAccessControlId: &cfdc.oacId, S3OriginConfig: &s3orig}}
-	quant := int32(len(items))
-	config := types.DistributionConfig{CallerReference: &cfdc.name, Comment: &comment, DefaultCacheBehavior: &dcb, Enabled: &e, Origins: &types.Origins{Items: items, Quantity: &quant}}
+	origins := []types.Origin{{DomainName: &origindns, Id: &fred, OriginAccessControlId: &cfdc.oacId, S3OriginConfig: &s3orig}}
+	nOrigins := int32(len(origins))
+	aliases := []string{"www.consolidator.news", "consolidator.news"}
+	nAliases := int32(len(aliases))
+	config := types.DistributionConfig{CallerReference: &cfdc.name, Comment: &comment, DefaultCacheBehavior: &dcb, Enabled: &e, Origins: &types.Origins{Items: origins, Quantity: &nOrigins}, Aliases: &types.Aliases{Items: aliases, Quantity: &nAliases}}
+	if cfdc.viewerCert != nil {
+		vc := cfdc.tools.Storage.Eval(cfdc.viewerCert)
+		vcs, ok := vc.(string)
+		if !ok {
+			tmp, ok := vc.(fmt.Stringer)
+			if !ok {
+				log.Fatalf("not a string or Stringer but %T", vc)
+			}
+			vcs = tmp.String()
+		}
+		log.Printf("have cert arn %T", vcs)
+		config.ViewerCertificate = &types.ViewerCertificate{ACMCertificateArn: &vcs}
+	}
 	tagkey := "deployer-name"
 	tags := types.Tags{Items: []types.Tag{{Key: &tagkey, Value: &cfdc.name}}}
 	req, err := cfdc.client.CreateDistributionWithTags(context.TODO(), &cloudfront.CreateDistributionWithTagsInput{DistributionConfigWithTags: &types.DistributionConfigWithTags{DistributionConfig: &config, Tags: &tags}})
@@ -169,17 +186,15 @@ func (cfdc *distributionCreator) DisableIt() {
 	if err != nil {
 		log.Fatalf("failed to recover distribution for %s: %v", cfdc.distroId, err)
 	}
-	fmt.Printf("have a distro %s\n", *distro.Distribution.Status)
 
 	if *distro.Distribution.Status == "Deployed" && *distro.Distribution.DistributionConfig.Enabled {
 		log.Printf("Disabling %s\n", cfdc.distroId)
 		isFalse := false
 		distro.Distribution.DistributionConfig.Enabled = &isFalse
-		upd, err := cfdc.client.UpdateDistribution(context.TODO(), &cloudfront.UpdateDistributionInput{Id: &cfdc.distroId, IfMatch: distro.ETag, DistributionConfig: distro.Distribution.DistributionConfig})
+		_, err := cfdc.client.UpdateDistribution(context.TODO(), &cloudfront.UpdateDistributionInput{Id: &cfdc.distroId, IfMatch: distro.ETag, DistributionConfig: distro.Distribution.DistributionConfig})
 		if err != nil {
 			log.Fatalf("error disabling %s: %v\n", cfdc.distroId, err)
 		}
-		fmt.Printf("upd has %s %v\n", *upd.Distribution.Status, *upd.Distribution.DistributionConfig.Enabled)
 	}
 
 	for {
@@ -187,7 +202,7 @@ func (cfdc *distributionCreator) DisableIt() {
 		if err != nil {
 			log.Fatalf("failed to recover distribution for %s: %v", cfdc.distroId, err)
 		}
-		fmt.Printf("disabling distro ... %s\n", *distro.Distribution.Status)
+		log.Printf("disabling distro %s ... %s\n", cfdc.distroId, *distro.Distribution.Status)
 		if *distro.Distribution.Status != "InProgress" {
 			return
 		}

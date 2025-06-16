@@ -97,11 +97,25 @@ func (cc *cnameCreator) UpdateReality() {
 	if err != nil {
 		panic(err)
 	}
-
 }
 
-func (p *cnameCreator) TearDown() {
-	log.Printf("Need to remove a CNAME record for %s\n", p.name)
+func (cc *cnameCreator) TearDown() {
+	log.Printf("need to remove a CNAME record for %s\n", cc.name)
+	od, ok := cc.otherDomain.(string)
+	if !ok {
+		str, ok := cc.otherDomain.(fmt.Stringer)
+		if !ok {
+			panic("not a string or Stringer)")
+		}
+		od = str.String()
+	}
+	var ttl int64 = 300
+	changes := r53types.ResourceRecordSet{Name: &cc.name, Type: "CNAME", TTL: &ttl, ResourceRecords: []r53types.ResourceRecord{{Value: &od}}}
+	cb := r53types.ChangeBatch{Changes: []r53types.Change{{Action: "DELETE", ResourceRecordSet: &changes}}}
+	_, err := cc.client.ChangeResourceRecordSets(context.TODO(), &route53.ChangeResourceRecordSetsInput{HostedZoneId: &cc.zoneId, ChangeBatch: &cb})
+	if err != nil {
+		panic(err)
+	}
 }
 
 func (p *cnameCreator) String() string {
