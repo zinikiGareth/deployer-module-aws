@@ -42,6 +42,7 @@ func RegisterWithDeployer(deployer deployer.Deployer) error {
 
 	// other strings
 	tools.Repository.IntroduceSymbol(pluggable.SymbolName("aws.cond.StringEquals"), creator.MakeString("StringEquals"))
+	tools.Repository.IntroduceSymbol(pluggable.SymbolName("aws.SourceArn"), creator.MakeString("aws:SourceArn"))
 
 	return nil
 }
