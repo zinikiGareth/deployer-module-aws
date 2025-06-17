@@ -66,6 +66,7 @@ func (cfdc *RHPCreator) BuildModel(pres pluggable.ValuePresenter) {
 			}
 			if rhc.ResponseHeadersPolicyConfig.Name != nil && *rhc.ResponseHeadersPolicyConfig.Name == cfdc.name {
 				cfdc.rpId = *p.ResponseHeadersPolicy.Id
+				cfdc.alreadyExists = true
 				log.Printf("found rhpc %s\n", cfdc.rpId)
 			}
 		}
