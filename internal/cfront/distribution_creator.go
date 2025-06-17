@@ -25,6 +25,7 @@ type distributionCreator struct {
 	client        *cloudfront.Client
 	oacId         string
 	cpId          string
+	rpId          string
 	distroId      string
 	alreadyExists bool
 	arn           string
@@ -97,6 +98,24 @@ func (cfdc *distributionCreator) BuildModel(pres pluggable.ValuePresenter) {
 			if p.CachePolicy.Id != nil && p.CachePolicy.CachePolicyConfig.Name != nil && *p.CachePolicy.CachePolicyConfig.Name == cpname {
 				cfdc.cpId = *p.CachePolicy.Id
 				log.Printf("found CachePolicy for %s with id %s\n", cpname, cfdc.cpId)
+			}
+		}
+
+		rhname := "fred"
+		zeb, err := cfdc.client.ListResponseHeadersPolicies(context.TODO(), &cloudfront.ListResponseHeadersPoliciesInput{})
+		if err != nil {
+			log.Fatalf("could not list RHPs")
+		}
+		for _, p := range zeb.ResponseHeadersPolicyList.Items {
+			if p.ResponseHeadersPolicy.Id != nil {
+				rhc, err := cfdc.client.GetResponseHeadersPolicyConfig(context.TODO(), &cloudfront.GetResponseHeadersPolicyConfigInput{Id: p.ResponseHeadersPolicy.Id})
+				if err != nil {
+					log.Fatalf("could not recover RHP %s", *p.ResponseHeadersPolicy.Id)
+				}
+				if rhc.ResponseHeadersPolicyConfig.Name != nil && *rhc.ResponseHeadersPolicyConfig.Name == rhname {
+					cfdc.rpId = *p.ResponseHeadersPolicy.Id
+					log.Printf("found rhpc %s\n", cfdc.rpId)
+				}
 			}
 		}
 	}
@@ -201,14 +220,50 @@ func (cfdc *distributionCreator) UpdateReality() {
 }
 
 func (cfdc *distributionCreator) TearDown() {
-	if !cfdc.alreadyExists {
-		log.Printf("no distribution existed for %s\n", cfdc.name)
-		return
-	}
-	log.Printf("you have asked to tear down distribution %s (id: %s, arn: %s) with mode %s\n", cfdc.name, cfdc.distroId, cfdc.arn, cfdc.teardown.Mode())
+	if cfdc.alreadyExists {
+		log.Printf("you have asked to tear down distribution %s (id: %s, arn: %s) with mode %s\n", cfdc.name, cfdc.distroId, cfdc.arn, cfdc.teardown.Mode())
 
-	cfdc.DisableIt()
-	cfdc.DeleteIt()
+		cfdc.DisableIt()
+		cfdc.DeleteIt()
+	} else {
+		log.Printf("no distribution existed for %s\n", cfdc.name)
+	}
+
+	if cfdc.cpId != "" {
+		x, err := cfdc.client.GetCachePolicy(context.TODO(), &cloudfront.GetCachePolicyInput{Id: &cfdc.cpId})
+		if err != nil {
+			log.Fatalf("could not get CP %s: %v", cfdc.cpId, err)
+		}
+		_, err = cfdc.client.DeleteCachePolicy(context.TODO(), &cloudfront.DeleteCachePolicyInput{Id: &cfdc.cpId, IfMatch: x.ETag})
+		if err != nil {
+			log.Fatalf("could not delete CP %s: %v", cfdc.cpId, err)
+		}
+		log.Printf("deleted CP %s\n", cfdc.cpId)
+	}
+
+	if cfdc.rpId != "" {
+		x, err := cfdc.client.GetResponseHeadersPolicy(context.TODO(), &cloudfront.GetResponseHeadersPolicyInput{Id: &cfdc.rpId})
+		if err != nil {
+			log.Fatalf("could not get RHP %s: %v", cfdc.rpId, err)
+		}
+		_, err = cfdc.client.DeleteResponseHeadersPolicy(context.TODO(), &cloudfront.DeleteResponseHeadersPolicyInput{Id: &cfdc.rpId, IfMatch: x.ETag})
+		if err != nil {
+			log.Fatalf("could not delete RHP %s: %v", cfdc.rpId, err)
+		}
+		log.Printf("deleted RHP %s\n", cfdc.rpId)
+	}
+
+	if cfdc.oacId != "" {
+		x, err := cfdc.client.GetOriginAccessControl(context.TODO(), &cloudfront.GetOriginAccessControlInput{Id: &cfdc.oacId})
+		if err != nil {
+			log.Fatalf("could not get OAC %s: %v", cfdc.oacId, err)
+		}
+		_, err = cfdc.client.DeleteOriginAccessControl(context.TODO(), &cloudfront.DeleteOriginAccessControlInput{Id: &cfdc.oacId, IfMatch: x.ETag})
+		if err != nil {
+			log.Fatalf("could not delete OAC %s: %v", cfdc.oacId, err)
+		}
+		log.Printf("deleted OAC %s\n", cfdc.oacId)
+	}
 }
 
 func (cfdc *distributionCreator) DisableIt() {
@@ -254,7 +309,7 @@ func (cfdc *distributionCreator) DeleteIt() {
 		log.Printf("Deleting %s\n", cfdc.distroId)
 		_, err := cfdc.client.DeleteDistribution(context.TODO(), &cloudfront.DeleteDistributionInput{Id: &cfdc.distroId, IfMatch: distro.ETag})
 		if err != nil {
-			log.Fatalf("error disabling %s: %v\n", cfdc.distroId, err)
+			log.Fatalf("error deleting %s: %v\n", cfdc.distroId, err)
 		}
 	}
 
