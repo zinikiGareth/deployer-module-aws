@@ -287,8 +287,8 @@ func (cfdc *distributionCreator) DisableIt() {
 		if err != nil {
 			log.Fatalf("failed to recover distribution for %s: %v", cfdc.distroId, err)
 		}
-		log.Printf("disabling distro %s ... %s\n", cfdc.distroId, *distro.Distribution.Status)
-		if *distro.Distribution.Status != "InProgress" {
+		log.Printf("disabling distro %s ... %v %s\n", cfdc.distroId, *distro.Distribution.DistributionConfig.Enabled, *distro.Distribution.Status)
+		if !*distro.Distribution.DistributionConfig.Enabled && *distro.Distribution.Status != "InProgress" {
 			return
 		}
 		time.Sleep(time.Duration(1) * time.Second)
