@@ -88,7 +88,7 @@ func (cfdc *RHPCreator) UpdateReality() {
 	rhp := types.ResponseHeadersPolicyConfig{Name: &cfdc.name, CustomHeadersConfig: &ch}
 	crhp, err := cfdc.client.CreateResponseHeadersPolicy(context.TODO(), &cloudfront.CreateResponseHeadersPolicyInput{ResponseHeadersPolicyConfig: &rhp})
 	if err != nil {
-		log.Fatalf("failed to create CRHP %s (%s): %v\n", cfdc.name, err)
+		log.Fatalf("failed to create CRHP %s: %v\n", cfdc.name, err)
 	}
 	cfdc.rpId = *crhp.ResponseHeadersPolicy.Id
 	log.Printf("created RHP for %s: %s\n", cfdc.name, cfdc.rpId)

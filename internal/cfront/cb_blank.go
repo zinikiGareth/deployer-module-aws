@@ -8,23 +8,35 @@ import (
 type CacheBehaviorBlank struct{}
 
 func (b *CacheBehaviorBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown pluggable.TearDown) any {
-	var CacheBehaviorTy pluggable.Expr
-	var sb pluggable.Expr
-	var sp pluggable.Expr
+	var pp pluggable.Expr
+	var rhp pluggable.Expr
+	var cp pluggable.Expr
 	for p, v := range props {
 		switch p.Id() {
-		case "OriginAccessControlOriginType":
-			CacheBehaviorTy = v
-		case "SigningBehavior":
-			sb = v
-		case "SigningProtocol":
-			sp = v
+		case "CachePolicy":
+			cp = v
+		case "PathPattern":
+			pp = v
+		case "ResponseHeadersPolicy":
+			rhp = v
 		default:
 			tools.Reporter.At(p.Loc().Line)
-			tools.Reporter.Reportf(loc.Offset, "invalid property for OriginAccessControl: %s", p.Id())
+			tools.Reporter.Reportf(p.Loc().Offset, "invalid property for OriginAccessControl: %s", p.Id())
 		}
 	}
-	return &CacheBehaviorCreator{tools: tools, loc: loc, name: named, acType: CacheBehaviorTy, signBehavior: sb, signProt: sp, teardown: teardown}
+	if cp == nil {
+		tools.Reporter.At(loc.Line)
+		tools.Reporter.Reportf(loc.Offset, "CachePolicy was not defined")
+	}
+	if rhp == nil {
+		tools.Reporter.At(loc.Line)
+		tools.Reporter.Reportf(loc.Offset, "ResponseHeadersPolicy was not defined")
+	}
+	if pp == nil {
+		tools.Reporter.At(loc.Line)
+		tools.Reporter.Reportf(loc.Offset, "PathPattern was not defined")
+	}
+	return &CacheBehaviorCreator{tools: tools, loc: loc, name: named, cpId: cp, pp: pp, rhp: rhp, teardown: teardown}
 }
 
 func (b *CacheBehaviorBlank) Find(tools *pluggable.Tools, loc *errorsink.Location, named string) any {

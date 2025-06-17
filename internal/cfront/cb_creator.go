@@ -1,7 +1,6 @@
 package cfront
 
 import (
-	"context"
 	"fmt"
 	"log"
 
@@ -15,16 +14,14 @@ import (
 type CacheBehaviorCreator struct {
 	tools *pluggable.Tools
 
-	loc          *errorsink.Location
-	name         string
-	acType       pluggable.Expr
-	signBehavior pluggable.Expr
-	signProt     pluggable.Expr
-	teardown     pluggable.TearDown
+	loc      *errorsink.Location
+	name     string
+	cpId     pluggable.Expr
+	pp       pluggable.Expr
+	rhp      pluggable.Expr
+	teardown pluggable.TearDown
 
-	client        *cloudfront.Client
-	CacheBehaviorId         string
-	alreadyExists bool
+	client *cloudfront.Client
 }
 
 func (cfdc *CacheBehaviorCreator) Loc() *errorsink.Location {
@@ -39,9 +36,8 @@ func (cfdc *CacheBehaviorCreator) DumpTo(iw pluggable.IndentWriter) {
 	iw.Intro("aws.CloudFront.CacheBehavior[")
 	iw.AttrsWhere(cfdc)
 	iw.TextAttr("named", cfdc.name)
-	iw.NestedAttr("acType", cfdc.acType)
-	iw.NestedAttr("signingBehavior", cfdc.signBehavior)
-	iw.NestedAttr("signingProtocol", cfdc.signProt)
+	iw.NestedAttr("pp", cfdc.pp)
+	iw.NestedAttr("rhp", cfdc.rhp)
 	if cfdc.teardown != nil {
 		iw.TextAttr("teardown", cfdc.teardown.Mode())
 	}
@@ -56,90 +52,47 @@ func (cfdc *CacheBehaviorCreator) BuildModel(pres pluggable.ValuePresenter) {
 	}
 	cfdc.client = awsEnv.CFClient()
 
-	fred, err := cfdc.client.ListOriginAccessControls(context.TODO(), &cloudfront.ListOriginAccessControlsInput{})
-	if err != nil {
-		log.Fatalf("could not list CacheBehaviors")
-	}
-	for _, p := range fred.OriginAccessControlList.Items {
-		if p.Id != nil && p.Name != nil && *p.Name == cfdc.name {
-			cfdc.CacheBehaviorId = *p.Id
-			log.Printf("found CacheBehavior for %s with id %s\n", cfdc.name, cfdc.CacheBehaviorId)
-		}
-	}
+	pp := cfdc.tools.Storage.Eval(cfdc.pp)
+	rhp := cfdc.tools.Storage.Eval(cfdc.rhp)
+	targetOriginId := "s3-origin-for-" + cfdc.name // TODO: should this be extracted?  It's not actually a cloud object
 
-	pres.Present(cfdc)
+	// this is going to need to handle "deferred"
+	cpId := cfdc.cpId.Eval(cfdc.tools.Storage)
+
+	pres.Present(cbDefer{cfdc: cfdc, pp: pp, rhp: rhp, targetOriginId: targetOriginId, cpId: cpId})
 }
 
 func (cfdc *CacheBehaviorCreator) UpdateReality() {
-	if cfdc.alreadyExists {
-		log.Printf("CacheBehavior %s already existed for %s\n", cfdc.CacheBehaviorId, cfdc.name)
-		return
-	}
-	ty := types.OriginAccessControlOriginTypes(cfdc.tools.Storage.EvalAsString(cfdc.acType))
-	sb := types.OriginAccessControlSigningBehaviors(cfdc.tools.Storage.EvalAsString(cfdc.signBehavior))
-	sp := types.OriginAccessControlSigningProtocols(cfdc.tools.Storage.EvalAsString(cfdc.signProt))
-	CacheBehaviorcfg := types.OriginAccessControlConfig{Name: &cfdc.name, OriginAccessControlOriginType: ty, SigningBehavior: sb, SigningProtocol: sp}
-	CacheBehavior, err := cfdc.client.CreateOriginAccessControl(context.TODO(), &cloudfront.CreateOriginAccessControlInput{OriginAccessControlConfig: &CacheBehaviorcfg})
-	if err != nil {
-		log.Fatalf("failed to create CacheBehavior for %s: %v\n", cfdc.name, err)
-	}
-	cfdc.CacheBehaviorId = *CacheBehavior.OriginAccessControl.Id
-	log.Printf("created CacheBehavior for %s: %s\n", cfdc.name, cfdc.CacheBehaviorId)
 }
 
 func (cfdc *CacheBehaviorCreator) TearDown() {
-	if cfdc.alreadyExists {
-		log.Printf("you have asked to tear down CacheBehavior %s (id: %s) with mode %s\n", cfdc.name, cfdc.CacheBehaviorId, cfdc.teardown.Mode())
-		x, err := cfdc.client.GetOriginAccessControl(context.TODO(), &cloudfront.GetOriginAccessControlInput{Id: &cfdc.CacheBehaviorId})
-		if err != nil {
-			log.Fatalf("could not get CacheBehavior %s: %v", cfdc.CacheBehaviorId, err)
-		}
-		_, err = cfdc.client.DeleteOriginAccessControl(context.TODO(), &cloudfront.DeleteOriginAccessControlInput{Id: &cfdc.CacheBehaviorId, IfMatch: x.ETag})
-		if err != nil {
-			log.Fatalf("could not delete CacheBehavior %s: %v", cfdc.CacheBehaviorId, err)
-		}
-		log.Printf("deleted CacheBehavior %s\n", cfdc.CacheBehaviorId)
-	} else {
-		log.Printf("no CacheBehavior existed for %s\n", cfdc.name)
-	}
 }
 
-func (cfdc *CacheBehaviorCreator) ObtainMethod(name string) pluggable.Method {
-	switch name {
-	case "id":
-		return &CacheBehaviorIdMethod{}
-	}
-	return nil
+type cbDefer struct {
+	cfdc           *CacheBehaviorCreator
+	pp             any
+	rhp            any
+	targetOriginId string
+	cpId           any
 }
 
-type CacheBehaviorIdMethod struct {
+func (d *cbDefer) Resolve() types.CacheBehavior {
+	toi := asString(d.targetOriginId)
+	pp := asString(d.pp)
+	rhp := asString(d.rhp)
+	cpId := asString(d.cpId)
+	return types.CacheBehavior{TargetOriginId: &toi, PathPattern: &pp, ViewerProtocolPolicy: types.ViewerProtocolPolicyRedirectToHttps, CachePolicyId: &cpId, ResponseHeadersPolicyId: &rhp}
 }
 
-func (a *CacheBehaviorIdMethod) Invoke(s pluggable.RuntimeStorage, on pluggable.Expr, args []pluggable.Expr) any {
-	e := on.Eval(s)
-	cfdc, ok := e.(*CacheBehaviorCreator)
-	if !ok {
-		panic(fmt.Sprintf("arn can only be called on a CacheBehavior, not a %T", e))
+func asString(obj any) string {
+	k, isString := obj.(string)
+	if isString {
+		return k
 	}
-	if len(args) != 0 {
-		panic("invalid number of arguments")
+	l, isStringer := obj.(fmt.Stringer)
+	if isStringer {
+		return l.String()
 	}
-	if cfdc.alreadyExists {
-		return cfdc.CacheBehaviorId
-	} else {
-		return &deferReadingCacheBehaviorId{cfdc: cfdc}
-	}
+	log.Fatalf("Cannot convert to string: %T", obj)
+	return ""
 }
-
-type deferReadingCacheBehaviorId struct {
-	cfdc *CacheBehaviorCreator
-}
-
-func (d *deferReadingCacheBehaviorId) String() string {
-	if d.cfdc.CacheBehaviorId == "" {
-		panic("id is still not set")
-	}
-	return d.cfdc.CacheBehaviorId
-}
-
-var _ pluggable.HasMethods = &CacheBehaviorCreator{}

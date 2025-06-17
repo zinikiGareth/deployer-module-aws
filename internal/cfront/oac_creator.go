@@ -63,6 +63,7 @@ func (cfdc *OACCreator) BuildModel(pres pluggable.ValuePresenter) {
 	for _, p := range fred.OriginAccessControlList.Items {
 		if p.Id != nil && p.Name != nil && *p.Name == cfdc.name {
 			cfdc.oacId = *p.Id
+			cfdc.alreadyExists = true
 			log.Printf("found OAC for %s with id %s\n", cfdc.name, cfdc.oacId)
 		}
 	}

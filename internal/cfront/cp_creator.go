@@ -15,15 +15,13 @@ import (
 type CachePolicyCreator struct {
 	tools *pluggable.Tools
 
-	loc          *errorsink.Location
-	name         string
-	acType       pluggable.Expr
-	signBehavior pluggable.Expr
-	signProt     pluggable.Expr
-	teardown     pluggable.TearDown
+	loc      *errorsink.Location
+	name     string
+	minttl   pluggable.Expr
+	teardown pluggable.TearDown
 
 	client        *cloudfront.Client
-	CachePolicyId         string
+	CachePolicyId string
 	alreadyExists bool
 }
 
@@ -39,9 +37,7 @@ func (cfdc *CachePolicyCreator) DumpTo(iw pluggable.IndentWriter) {
 	iw.Intro("aws.CloudFront.CachePolicy[")
 	iw.AttrsWhere(cfdc)
 	iw.TextAttr("named", cfdc.name)
-	iw.NestedAttr("acType", cfdc.acType)
-	iw.NestedAttr("signingBehavior", cfdc.signBehavior)
-	iw.NestedAttr("signingProtocol", cfdc.signProt)
+	iw.NestedAttr("minttl", cfdc.minttl)
 	if cfdc.teardown != nil {
 		iw.TextAttr("teardown", cfdc.teardown.Mode())
 	}
@@ -56,13 +52,14 @@ func (cfdc *CachePolicyCreator) BuildModel(pres pluggable.ValuePresenter) {
 	}
 	cfdc.client = awsEnv.CFClient()
 
-	fred, err := cfdc.client.ListOriginAccessControls(context.TODO(), &cloudfront.ListOriginAccessControlsInput{})
+	bert, err := cfdc.client.ListCachePolicies(context.TODO(), &cloudfront.ListCachePoliciesInput{})
 	if err != nil {
-		log.Fatalf("could not list CachePolicys")
+		log.Fatalf("could not list CPs")
 	}
-	for _, p := range fred.OriginAccessControlList.Items {
-		if p.Id != nil && p.Name != nil && *p.Name == cfdc.name {
-			cfdc.CachePolicyId = *p.Id
+	for _, p := range bert.CachePolicyList.Items {
+		if p.CachePolicy.Id != nil && p.CachePolicy.CachePolicyConfig.Name != nil && *p.CachePolicy.CachePolicyConfig.Name == cfdc.name {
+			cfdc.CachePolicyId = *p.CachePolicy.Id
+			cfdc.alreadyExists = true
 			log.Printf("found CachePolicy for %s with id %s\n", cfdc.name, cfdc.CachePolicyId)
 		}
 	}
@@ -75,28 +72,31 @@ func (cfdc *CachePolicyCreator) UpdateReality() {
 		log.Printf("CachePolicy %s already existed for %s\n", cfdc.CachePolicyId, cfdc.name)
 		return
 	}
-	ty := types.OriginAccessControlOriginTypes(cfdc.tools.Storage.EvalAsString(cfdc.acType))
-	sb := types.OriginAccessControlSigningBehaviors(cfdc.tools.Storage.EvalAsString(cfdc.signBehavior))
-	sp := types.OriginAccessControlSigningProtocols(cfdc.tools.Storage.EvalAsString(cfdc.signProt))
-	CachePolicycfg := types.OriginAccessControlConfig{Name: &cfdc.name, OriginAccessControlOriginType: ty, SigningBehavior: sb, SigningProtocol: sp}
-	CachePolicy, err := cfdc.client.CreateOriginAccessControl(context.TODO(), &cloudfront.CreateOriginAccessControlInput{OriginAccessControlConfig: &CachePolicycfg})
+	mt := cfdc.tools.Storage.Eval(cfdc.minttl)
+	minttlVal, ok := mt.(float64)
+	if !ok {
+		log.Fatalf("not float64 but %T", mt)
+	}
+	var minttl int64 = int64(minttlVal)
+	cpc := types.CachePolicyConfig{Name: &cfdc.name, MinTTL: &minttl}
+	oac, err := cfdc.client.CreateCachePolicy(context.TODO(), &cloudfront.CreateCachePolicyInput{CachePolicyConfig: &cpc})
 	if err != nil {
 		log.Fatalf("failed to create CachePolicy for %s: %v\n", cfdc.name, err)
 	}
-	cfdc.CachePolicyId = *CachePolicy.OriginAccessControl.Id
+	cfdc.CachePolicyId = *oac.CachePolicy.Id
 	log.Printf("created CachePolicy for %s: %s\n", cfdc.name, cfdc.CachePolicyId)
 }
 
 func (cfdc *CachePolicyCreator) TearDown() {
 	if cfdc.alreadyExists {
 		log.Printf("you have asked to tear down CachePolicy %s (id: %s) with mode %s\n", cfdc.name, cfdc.CachePolicyId, cfdc.teardown.Mode())
-		x, err := cfdc.client.GetOriginAccessControl(context.TODO(), &cloudfront.GetOriginAccessControlInput{Id: &cfdc.CachePolicyId})
+		x, err := cfdc.client.GetCachePolicy(context.TODO(), &cloudfront.GetCachePolicyInput{Id: &cfdc.CachePolicyId})
 		if err != nil {
-			log.Fatalf("could not get CachePolicy %s: %v", cfdc.CachePolicyId, err)
+			log.Fatalf("could not get CP %s: %v", cfdc.CachePolicyId, err)
 		}
-		_, err = cfdc.client.DeleteOriginAccessControl(context.TODO(), &cloudfront.DeleteOriginAccessControlInput{Id: &cfdc.CachePolicyId, IfMatch: x.ETag})
+		_, err = cfdc.client.DeleteCachePolicy(context.TODO(), &cloudfront.DeleteCachePolicyInput{Id: &cfdc.CachePolicyId, IfMatch: x.ETag})
 		if err != nil {
-			log.Fatalf("could not delete CachePolicy %s: %v", cfdc.CachePolicyId, err)
+			log.Fatalf("could not delete CP %s: %v", cfdc.CachePolicyId, err)
 		}
 		log.Printf("deleted CachePolicy %s\n", cfdc.CachePolicyId)
 	} else {
@@ -119,7 +119,7 @@ func (a *CachePolicyIdMethod) Invoke(s pluggable.RuntimeStorage, on pluggable.Ex
 	e := on.Eval(s)
 	cfdc, ok := e.(*CachePolicyCreator)
 	if !ok {
-		panic(fmt.Sprintf("arn can only be called on a CachePolicy, not a %T", e))
+		panic(fmt.Sprintf("id can only be called on a CachePolicy, not a %T", e))
 	}
 	if len(args) != 0 {
 		panic("invalid number of arguments")

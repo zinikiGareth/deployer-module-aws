@@ -16,16 +16,16 @@ import (
 type distributionCreator struct {
 	tools *pluggable.Tools
 
-	loc        *errorsink.Location
-	name       string
-	domain     pluggable.Expr
-	viewerCert pluggable.Expr
-	oac        pluggable.Expr
-	teardown   pluggable.TearDown
+	loc         *errorsink.Location
+	name        string
+	domain      pluggable.Expr // this should be a list
+	viewerCert  pluggable.Expr
+	oac         pluggable.Expr
+	cachePolicy pluggable.Expr
+	behaviors   pluggable.Expr // I think this should ultimately be a list
+	teardown    pluggable.TearDown
 
 	client        *cloudfront.Client
-	cpId          string
-	rpId          string
 	distroId      string
 	alreadyExists bool
 	arn           string
@@ -75,20 +75,6 @@ func (cfdc *distributionCreator) BuildModel(pres pluggable.ValuePresenter) {
 		}
 	}
 
-	if !cfdc.alreadyExists || cfdc.tools.Options.TearDown {
-		cpname := "cp-name"
-		bert, err := cfdc.client.ListCachePolicies(context.TODO(), &cloudfront.ListCachePoliciesInput{})
-		if err != nil {
-			log.Fatalf("could not list CPs")
-		}
-		for _, p := range bert.CachePolicyList.Items {
-			if p.CachePolicy.Id != nil && p.CachePolicy.CachePolicyConfig.Name != nil && *p.CachePolicy.CachePolicyConfig.Name == cpname {
-				cfdc.cpId = *p.CachePolicy.Id
-				log.Printf("found CachePolicy for %s with id %s\n", cpname, cfdc.cpId)
-			}
-		}
-	}
-
 	pres.Present(cfdc)
 }
 
@@ -99,39 +85,28 @@ func (cfdc *distributionCreator) UpdateReality() {
 	}
 	comment := "we should probably have this be a required parameter"
 
-	if cfdc.cpId == "" {
-		cpname := "cp-name"
-		cpComment := "CP for " + comment
-		var minttl int64 = 300
-		cpc := types.CachePolicyConfig{Name: &cpname, Comment: &cpComment, MinTTL: &minttl}
-		oac, err := cfdc.client.CreateCachePolicy(context.TODO(), &cloudfront.CreateCachePolicyInput{CachePolicyConfig: &cpc})
-		if err != nil {
-			log.Fatalf("failed to create CachePolicy for %s: %v\n", cfdc.name, err)
-		}
-		cfdc.cpId = *oac.CachePolicy.Id
-	}
-
-	/* More stuff hacked in that shouldn't be ... */
-	// Again, probably wants to be found somewhere and passed in ...
-
 	oacId := cfdc.tools.Storage.EvalAsString(cfdc.oac)
 
 	origindns := "news.consolidator.info.s3.us-east-1.amazonaws.com"
-	targetOriginId := "a-unique-id" + cfdc.name
-	dcb := types.DefaultCacheBehavior{TargetOriginId: &targetOriginId, ViewerProtocolPolicy: types.ViewerProtocolPolicyRedirectToHttps, CachePolicyId: &cfdc.cpId}
+	targetOriginId := "s3-origin-for-" + cfdc.name
+	cpId := cfdc.tools.Storage.EvalAsString(cfdc.cachePolicy)
+	dcb := types.DefaultCacheBehavior{TargetOriginId: &targetOriginId, ViewerProtocolPolicy: types.ViewerProtocolPolicyRedirectToHttps, CachePolicyId: &cpId}
 	e := true
 	empty := ""
 	s3orig := types.S3OriginConfig{OriginAccessIdentity: &empty}
 	origins := []types.Origin{{DomainName: &origindns, Id: &targetOriginId, OriginAccessControlId: &oacId, S3OriginConfig: &s3orig}}
 	nOrigins := int32(len(origins))
 
-	forHtml := "*.html"
-	htmlBehavior := types.CacheBehavior{TargetOriginId: &targetOriginId, PathPattern: &forHtml, ViewerProtocolPolicy: types.ViewerProtocolPolicyRedirectToHttps, CachePolicyId: &cfdc.cpId, ResponseHeadersPolicyId: &rpid}
-	cbs := []types.CacheBehavior{htmlBehavior}
-	cbl := int32(len(cbs))
-
-	behaviors := types.CacheBehaviors{Quantity: &cbl, Items: cbs}
 	domain := cfdc.tools.Storage.EvalAsString(cfdc.domain)
+
+	cbci := cfdc.behaviors.Eval(cfdc.tools.Storage) // TODO: expect a list
+	cbc, ok := cbci.(types.CacheBehavior)
+	if !ok {
+		panic("not a cache behavior?")
+	}
+	cbs := []types.CacheBehavior{cbc}
+	cbl := int32(len(cbs))
+	behaviors := types.CacheBehaviors{Quantity: &cbl, Items: cbs}
 
 	aliases := []string{domain}
 	nAliases := int32(len(aliases))
@@ -176,17 +151,6 @@ func (cfdc *distributionCreator) TearDown() {
 		log.Printf("no distribution existed for %s\n", cfdc.name)
 	}
 
-	if cfdc.cpId != "" {
-		x, err := cfdc.client.GetCachePolicy(context.TODO(), &cloudfront.GetCachePolicyInput{Id: &cfdc.cpId})
-		if err != nil {
-			log.Fatalf("could not get CP %s: %v", cfdc.cpId, err)
-		}
-		_, err = cfdc.client.DeleteCachePolicy(context.TODO(), &cloudfront.DeleteCachePolicyInput{Id: &cfdc.cpId, IfMatch: x.ETag})
-		if err != nil {
-			log.Fatalf("could not delete CP %s: %v", cfdc.cpId, err)
-		}
-		log.Printf("deleted CP %s\n", cfdc.cpId)
-	}
 }
 
 func (cfdc *distributionCreator) DisableIt() {

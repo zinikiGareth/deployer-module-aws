@@ -11,6 +11,8 @@ func (b *DistributionBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location
 	var cert pluggable.Expr
 	var domain pluggable.Expr
 	var oac pluggable.Expr
+	var cbs pluggable.Expr
+	var cp pluggable.Expr
 	for p, v := range props {
 		switch p.Id() {
 		case "Certificate":
@@ -19,12 +21,16 @@ func (b *DistributionBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location
 			domain = v
 		case "OriginAccessControl":
 			oac = v
+		case "CacheBehaviors":
+			cbs = v
+		case "CachePolicy":
+			cp = v
 		default:
 			tools.Reporter.At(p.Loc().Line)
 			tools.Reporter.Reportf(loc.Offset, "invalid property for Distribution: %s", p.Id())
 		}
 	}
-	return &distributionCreator{tools: tools, loc: loc, name: named, oac: oac, domain: domain, viewerCert: cert, teardown: teardown}
+	return &distributionCreator{tools: tools, loc: loc, name: named, oac: oac, behaviors: cbs, cachePolicy: cp, domain: domain, viewerCert: cert, teardown: teardown}
 }
 
 func (b *DistributionBlank) Find(tools *pluggable.Tools, loc *errorsink.Location, named string) any {
