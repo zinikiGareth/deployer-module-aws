@@ -26,6 +26,7 @@ func RegisterWithDeployer(deployer deployer.Deployer) error {
 	tools.Register.Register("blank", "aws.Route53.DomainName", &route53.DomainNameBlank{})
 	tools.Register.Register("blank", "aws.Route53.CNAME", &route53.CNAMEBlank{})
 	tools.Register.Register("blank", "aws.CertificateManager.Certificate", &acm.CertificateBlank{})
+	tools.Register.Register("blank", "aws.CloudFront.OriginAccessControl", &cfront.OACBlank{})
 	tools.Register.Register("blank", "aws.CloudFront.Distribution", &cfront.DistributionBlank{})
 	tools.Register.Register("blank", "aws.S3.Bucket", &s3.BucketBlank{})
 	tools.Register.Register("blank", "aws.IAM.Policy", &iam.PolicyBlank{})

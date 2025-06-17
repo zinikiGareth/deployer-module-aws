@@ -20,17 +20,16 @@ type distributionCreator struct {
 	name       string
 	domain     pluggable.Expr
 	viewerCert pluggable.Expr
+	oac        pluggable.Expr
 	teardown   pluggable.TearDown
 
 	client        *cloudfront.Client
-	oacId         string
 	cpId          string
 	rpId          string
 	distroId      string
 	alreadyExists bool
 	arn           string
 	domainName    string
-	props         map[pluggable.Identifier]pluggable.Expr
 }
 
 func (cfdc *distributionCreator) Loc() *errorsink.Location {
@@ -77,18 +76,6 @@ func (cfdc *distributionCreator) BuildModel(pres pluggable.ValuePresenter) {
 	}
 
 	if !cfdc.alreadyExists || cfdc.tools.Options.TearDown {
-		oaccname := "oac-name"
-		fred, err := cfdc.client.ListOriginAccessControls(context.TODO(), &cloudfront.ListOriginAccessControlsInput{})
-		if err != nil {
-			log.Fatalf("could not list OACs")
-		}
-		for _, p := range fred.OriginAccessControlList.Items {
-			if p.Id != nil && p.Name != nil && *p.Name == oaccname {
-				cfdc.oacId = *p.Id
-				log.Printf("found OAC for %s with id %s\n", oaccname, cfdc.oacId)
-			}
-		}
-
 		cpname := "cp-name"
 		bert, err := cfdc.client.ListCachePolicies(context.TODO(), &cloudfront.ListCachePoliciesInput{})
 		if err != nil {
@@ -130,17 +117,6 @@ func (cfdc *distributionCreator) UpdateReality() {
 	}
 	comment := "we should probably have this be a required parameter"
 
-	if cfdc.oacId == "" {
-		oaccname := "oac-name"
-		oacComment := "OAC for " + comment
-		oaccfg := types.OriginAccessControlConfig{Name: &oaccname, OriginAccessControlOriginType: types.OriginAccessControlOriginTypesS3, SigningBehavior: types.OriginAccessControlSigningBehaviorsAlways, SigningProtocol: types.OriginAccessControlSigningProtocolsSigv4, Description: &oacComment}
-		oac, err := cfdc.client.CreateOriginAccessControl(context.TODO(), &cloudfront.CreateOriginAccessControlInput{OriginAccessControlConfig: &oaccfg})
-		if err != nil {
-			log.Fatalf("failed to create OAC for %s: %v\n", cfdc.name, err)
-		}
-		cfdc.oacId = *oac.OriginAccessControl.Id
-	}
-
 	if cfdc.cpId == "" {
 		cpname := "cp-name"
 		cpComment := "CP for " + comment
@@ -169,13 +145,15 @@ func (cfdc *distributionCreator) UpdateReality() {
 	}
 	rpid := *crhp.ResponseHeadersPolicy.Id
 
+	oacId := cfdc.tools.Storage.EvalAsString(cfdc.oac)
+
 	origindns := "news.consolidator.info.s3.us-east-1.amazonaws.com"
 	targetOriginId := "a-unique-id" + cfdc.name
 	dcb := types.DefaultCacheBehavior{TargetOriginId: &targetOriginId, ViewerProtocolPolicy: types.ViewerProtocolPolicyRedirectToHttps, CachePolicyId: &cfdc.cpId}
 	e := true
 	empty := ""
 	s3orig := types.S3OriginConfig{OriginAccessIdentity: &empty}
-	origins := []types.Origin{{DomainName: &origindns, Id: &targetOriginId, OriginAccessControlId: &cfdc.oacId, S3OriginConfig: &s3orig}}
+	origins := []types.Origin{{DomainName: &origindns, Id: &targetOriginId, OriginAccessControlId: &oacId, S3OriginConfig: &s3orig}}
 	nOrigins := int32(len(origins))
 
 	forHtml := "*.html"
@@ -251,18 +229,6 @@ func (cfdc *distributionCreator) TearDown() {
 			log.Fatalf("could not delete RHP %s: %v", cfdc.rpId, err)
 		}
 		log.Printf("deleted RHP %s\n", cfdc.rpId)
-	}
-
-	if cfdc.oacId != "" {
-		x, err := cfdc.client.GetOriginAccessControl(context.TODO(), &cloudfront.GetOriginAccessControlInput{Id: &cfdc.oacId})
-		if err != nil {
-			log.Fatalf("could not get OAC %s: %v", cfdc.oacId, err)
-		}
-		_, err = cfdc.client.DeleteOriginAccessControl(context.TODO(), &cloudfront.DeleteOriginAccessControlInput{Id: &cfdc.oacId, IfMatch: x.ETag})
-		if err != nil {
-			log.Fatalf("could not delete OAC %s: %v", cfdc.oacId, err)
-		}
-		log.Printf("deleted OAC %s\n", cfdc.oacId)
 	}
 }
 
