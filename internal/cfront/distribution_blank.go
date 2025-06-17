@@ -13,10 +13,16 @@ func (b *DistributionBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location
 	var oac pluggable.Expr
 	var cbs pluggable.Expr
 	var cp pluggable.Expr
+	var comment pluggable.Expr
+	var src pluggable.Expr
 	for p, v := range props {
 		switch p.Id() {
 		case "Certificate":
 			cert = v
+		case "OriginDNS":
+			src = v
+		case "Comment":
+			comment = v
 		case "Domain":
 			domain = v
 		case "OriginAccessControl":
@@ -30,7 +36,15 @@ func (b *DistributionBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location
 			tools.Reporter.Reportf(loc.Offset, "invalid property for Distribution: %s", p.Id())
 		}
 	}
-	return &distributionCreator{tools: tools, loc: loc, name: named, oac: oac, behaviors: cbs, cachePolicy: cp, domain: domain, viewerCert: cert, teardown: teardown}
+	if comment == nil {
+		tools.Reporter.At(loc.Line)
+		tools.Reporter.Reportf(loc.Offset, "Comment was not defined")
+	}
+	if src == nil {
+		tools.Reporter.At(loc.Line)
+		tools.Reporter.Reportf(loc.Offset, "Comment was not defined")
+	}
+	return &distributionCreator{tools: tools, loc: loc, name: named, comment: comment, origindns: src, oac: oac, behaviors: cbs, cachePolicy: cp, domain: domain, viewerCert: cert, teardown: teardown}
 }
 
 func (b *DistributionBlank) Find(tools *pluggable.Tools, loc *errorsink.Location, named string) any {

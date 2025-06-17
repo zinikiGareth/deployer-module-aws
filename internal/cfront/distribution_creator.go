@@ -18,7 +18,9 @@ type distributionCreator struct {
 
 	loc         *errorsink.Location
 	name        string
+	origindns   pluggable.Expr
 	domain      pluggable.Expr // this should be a list
+	comment     pluggable.Expr
 	viewerCert  pluggable.Expr
 	oac         pluggable.Expr
 	cachePolicy pluggable.Expr
@@ -83,55 +85,20 @@ func (cfdc *distributionCreator) UpdateReality() {
 		log.Printf("distribution %s already existed for %s\n", cfdc.arn, cfdc.name)
 		return
 	}
-	comment := "we should probably have this be a required parameter"
-
-	oacId := cfdc.tools.Storage.EvalAsString(cfdc.oac)
-
-	origindns := "news.consolidator.info.s3.us-east-1.amazonaws.com"
 	targetOriginId := "s3-origin-for-" + cfdc.name
+
 	cpId := cfdc.tools.Storage.EvalAsString(cfdc.cachePolicy)
 	dcb := types.DefaultCacheBehavior{TargetOriginId: &targetOriginId, ViewerProtocolPolicy: types.ViewerProtocolPolicyRedirectToHttps, CachePolicyId: &cpId}
-	e := true
-	empty := ""
-	s3orig := types.S3OriginConfig{OriginAccessIdentity: &empty}
-	origins := []types.Origin{{DomainName: &origindns, Id: &targetOriginId, OriginAccessControlId: &oacId, S3OriginConfig: &s3orig}}
-	nOrigins := int32(len(origins))
+	origgins := cfdc.FigureOrigins(targetOriginId)
+	behaviors := cfdc.FigureCacheBehaviors()
+	config := cfdc.BuildConfig(&dcb, behaviors, origgins)
 
-	domain := cfdc.tools.Storage.EvalAsString(cfdc.domain)
-
-	cbci := cfdc.behaviors.Eval(cfdc.tools.Storage) // TODO: expect a list
-	cbc, ok := cbci.(types.CacheBehavior)
-	if !ok {
-		panic("not a cache behavior?")
-	}
-	cbs := []types.CacheBehavior{cbc}
-	cbl := int32(len(cbs))
-	behaviors := types.CacheBehaviors{Quantity: &cbl, Items: cbs}
-
-	aliases := []string{domain}
-	nAliases := int32(len(aliases))
-	rootObject := "index.html"
-	config := types.DistributionConfig{CallerReference: &cfdc.name, Comment: &comment, DefaultCacheBehavior: &dcb, CacheBehaviors: &behaviors, Enabled: &e, DefaultRootObject: &rootObject, Origins: &types.Origins{Items: origins, Quantity: &nOrigins}, Aliases: &types.Aliases{Items: aliases, Quantity: &nAliases}}
 	if cfdc.viewerCert != nil {
-		vc := cfdc.tools.Storage.Eval(cfdc.viewerCert)
-		log.Printf("have vc %T %v\n", vc, vc)
-		vcs, ok := vc.(string)
-		if !ok {
-			tmp, ok := vc.(fmt.Stringer)
-			if !ok {
-				log.Fatalf("not a string or Stringer but %T", vc)
-			}
-			vcs = tmp.String()
-		}
-		log.Printf("have cert arn %s\n", vcs)
-		minver := types.MinimumProtocolVersionTLSv122021
-		supp := types.SSLSupportMethodSniOnly
-		cfdef := false
-		config.ViewerCertificate = &types.ViewerCertificate{ACMCertificateArn: &vcs, MinimumProtocolVersion: minver, SSLSupportMethod: supp, CloudFrontDefaultCertificate: &cfdef}
+		cfdc.AttachViewerCert(config)
 	}
 	tagkey := "deployer-name"
 	tags := types.Tags{Items: []types.Tag{{Key: &tagkey, Value: &cfdc.name}}}
-	req, err := cfdc.client.CreateDistributionWithTags(context.TODO(), &cloudfront.CreateDistributionWithTagsInput{DistributionConfigWithTags: &types.DistributionConfigWithTags{DistributionConfig: &config, Tags: &tags}})
+	req, err := cfdc.client.CreateDistributionWithTags(context.TODO(), &cloudfront.CreateDistributionWithTagsInput{DistributionConfigWithTags: &types.DistributionConfigWithTags{DistributionConfig: config, Tags: &tags}})
 	if err != nil {
 		log.Fatalf("failed to create distribution %s: %v\n", cfdc.name, err)
 	}
@@ -212,6 +179,57 @@ func (cfdc *distributionCreator) DeleteIt() {
 		}
 		time.Sleep(time.Duration(1) * time.Second)
 	}
+}
+
+func (cfdc *distributionCreator) FigureOrigins(targetOriginId string) *types.Origins {
+	oacId := cfdc.tools.Storage.EvalAsString(cfdc.oac)
+	// "news.consolidator.info.s3.us-east-1.amazonaws.com"
+	origindns := cfdc.tools.Storage.EvalAsString(cfdc.origindns)
+
+	empty := ""
+	s3orig := types.S3OriginConfig{OriginAccessIdentity: &empty}
+	origins := []types.Origin{{DomainName: &origindns, Id: &targetOriginId, OriginAccessControlId: &oacId, S3OriginConfig: &s3orig}}
+	nOrigins := int32(len(origins))
+	return &types.Origins{Items: origins, Quantity: &nOrigins}
+}
+
+func (cfdc *distributionCreator) FigureCacheBehaviors() *types.CacheBehaviors {
+	cbci := cfdc.behaviors.Eval(cfdc.tools.Storage) // TODO: expect a list
+	cbc, ok := cbci.(types.CacheBehavior)
+	if !ok {
+		panic("not a cache behavior?")
+	}
+	cbs := []types.CacheBehavior{cbc}
+	cbl := int32(len(cbs))
+	return &types.CacheBehaviors{Quantity: &cbl, Items: cbs}
+}
+
+func (cfdc *distributionCreator) BuildConfig(dcb *types.DefaultCacheBehavior, behaviors *types.CacheBehaviors, origins *types.Origins) *types.DistributionConfig {
+	comment := cfdc.tools.Storage.EvalAsString(cfdc.comment)
+	e := true
+	domain := cfdc.tools.Storage.EvalAsString(cfdc.domain)
+	aliases := []string{domain}
+	nAliases := int32(len(aliases))
+	rootObject := "index.html"
+	return &types.DistributionConfig{CallerReference: &cfdc.name, Comment: &comment, DefaultCacheBehavior: dcb, CacheBehaviors: behaviors, Enabled: &e, DefaultRootObject: &rootObject, Origins: origins, Aliases: &types.Aliases{Items: aliases, Quantity: &nAliases}}
+}
+
+func (cfdc *distributionCreator) AttachViewerCert(config *types.DistributionConfig) {
+	vc := cfdc.tools.Storage.Eval(cfdc.viewerCert)
+	log.Printf("have vc %T %v\n", vc, vc)
+	vcs, ok := vc.(string)
+	if !ok {
+		tmp, ok := vc.(fmt.Stringer)
+		if !ok {
+			log.Fatalf("not a string or Stringer but %T", vc)
+		}
+		vcs = tmp.String()
+	}
+	log.Printf("have cert arn %s\n", vcs)
+	minver := types.MinimumProtocolVersionTLSv122021
+	supp := types.SSLSupportMethodSniOnly
+	cfdef := false
+	config.ViewerCertificate = &types.ViewerCertificate{ACMCertificateArn: &vcs, MinimumProtocolVersion: minver, SSLSupportMethod: supp, CloudFrontDefaultCertificate: &cfdef}
 }
 
 func (cfdc *distributionCreator) ObtainMethod(name string) pluggable.Method {
