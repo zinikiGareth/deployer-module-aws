@@ -87,24 +87,6 @@ func (cfdc *distributionCreator) BuildModel(pres pluggable.ValuePresenter) {
 				log.Printf("found CachePolicy for %s with id %s\n", cpname, cfdc.cpId)
 			}
 		}
-
-		rhname := "fred"
-		zeb, err := cfdc.client.ListResponseHeadersPolicies(context.TODO(), &cloudfront.ListResponseHeadersPoliciesInput{})
-		if err != nil {
-			log.Fatalf("could not list RHPs")
-		}
-		for _, p := range zeb.ResponseHeadersPolicyList.Items {
-			if p.ResponseHeadersPolicy.Id != nil {
-				rhc, err := cfdc.client.GetResponseHeadersPolicyConfig(context.TODO(), &cloudfront.GetResponseHeadersPolicyConfigInput{Id: p.ResponseHeadersPolicy.Id})
-				if err != nil {
-					log.Fatalf("could not recover RHP %s", *p.ResponseHeadersPolicy.Id)
-				}
-				if rhc.ResponseHeadersPolicyConfig.Name != nil && *rhc.ResponseHeadersPolicyConfig.Name == rhname {
-					cfdc.rpId = *p.ResponseHeadersPolicy.Id
-					log.Printf("found rhpc %s\n", cfdc.rpId)
-				}
-			}
-		}
 	}
 
 	pres.Present(cfdc)
@@ -131,19 +113,6 @@ func (cfdc *distributionCreator) UpdateReality() {
 
 	/* More stuff hacked in that shouldn't be ... */
 	// Again, probably wants to be found somewhere and passed in ...
-	rpname := "fred"
-	ct := "Content-Type"
-	ov := true
-	th := "text/html"
-	rhs := []types.ResponseHeadersPolicyCustomHeader{{Header: &ct, Override: &ov, Value: &th}}
-	rhslen := int32(len(rhs))
-	ch := types.ResponseHeadersPolicyCustomHeadersConfig{Items: rhs, Quantity: &rhslen}
-	rhp := types.ResponseHeadersPolicyConfig{Name: &rpname, CustomHeadersConfig: &ch}
-	crhp, err := cfdc.client.CreateResponseHeadersPolicy(context.TODO(), &cloudfront.CreateResponseHeadersPolicyInput{ResponseHeadersPolicyConfig: &rhp})
-	if err != nil {
-		log.Fatalf("failed to create CRHP for %s (%s): %v\n", cfdc.name, rpname, err)
-	}
-	rpid := *crhp.ResponseHeadersPolicy.Id
 
 	oacId := cfdc.tools.Storage.EvalAsString(cfdc.oac)
 
@@ -217,18 +186,6 @@ func (cfdc *distributionCreator) TearDown() {
 			log.Fatalf("could not delete CP %s: %v", cfdc.cpId, err)
 		}
 		log.Printf("deleted CP %s\n", cfdc.cpId)
-	}
-
-	if cfdc.rpId != "" {
-		x, err := cfdc.client.GetResponseHeadersPolicy(context.TODO(), &cloudfront.GetResponseHeadersPolicyInput{Id: &cfdc.rpId})
-		if err != nil {
-			log.Fatalf("could not get RHP %s: %v", cfdc.rpId, err)
-		}
-		_, err = cfdc.client.DeleteResponseHeadersPolicy(context.TODO(), &cloudfront.DeleteResponseHeadersPolicyInput{Id: &cfdc.rpId, IfMatch: x.ETag})
-		if err != nil {
-			log.Fatalf("could not delete RHP %s: %v", cfdc.rpId, err)
-		}
-		log.Printf("deleted RHP %s\n", cfdc.rpId)
 	}
 }
 
