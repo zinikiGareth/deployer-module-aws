@@ -9,6 +9,6 @@ func ProvideTestRunner(runner deployer.TestRunner) error {
 	return awsmod.ProvideTestRunner(runner)
 }
 
-func RegisterWithDeployer(deployer deployer.Deployer) error {
-	return awsmod.RegisterWithDeployer(deployer)
+func RegisterWithDriver(deployer deployer.Driver) error {
+	return awsmod.RegisterWithDriver(deployer)
 }

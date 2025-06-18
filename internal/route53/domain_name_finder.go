@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	"github.com/aws/aws-sdk-go-v2/service/route53domains"
 	"github.com/aws/smithy-go"
+	"ziniki.org/deployer/coremod/pkg/external"
 	"ziniki.org/deployer/deployer/pkg/errorsink"
 	"ziniki.org/deployer/deployer/pkg/pluggable"
 	"ziniki.org/deployer/modules/aws/internal/env"
@@ -20,7 +21,7 @@ type ExportedDomain interface {
 }
 
 type domainNameFinder struct {
-	tools *pluggable.Tools
+	tools *external.Tools
 
 	loc           *errorsink.Location
 	name          string

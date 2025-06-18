@@ -1,13 +1,14 @@
 package cfront
 
 import (
+	"ziniki.org/deployer/coremod/pkg/external"
 	"ziniki.org/deployer/deployer/pkg/errorsink"
 	"ziniki.org/deployer/deployer/pkg/pluggable"
 )
 
 type CachePolicyBlank struct{}
 
-func (b *CachePolicyBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown pluggable.TearDown) any {
+func (b *CachePolicyBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown external.TearDown) any {
 	var minttl pluggable.Expr
 	for p, v := range props {
 		switch p.Id() {
@@ -21,7 +22,7 @@ func (b *CachePolicyBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location,
 	return &CachePolicyCreator{tools: tools, loc: loc, name: named, minttl: minttl, teardown: teardown}
 }
 
-func (b *CachePolicyBlank) Find(tools *pluggable.Tools, loc *errorsink.Location, named string) any {
+func (b *CachePolicyBlank) Find(tools *external.Tools, loc *errorsink.Location, named string) any {
 	return &CachePolicyFinder{tools: tools, loc: loc, name: named}
 }
 

@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/acm/types"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	r53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
+	"ziniki.org/deployer/coremod/pkg/external"
 	"ziniki.org/deployer/deployer/pkg/errorsink"
 	"ziniki.org/deployer/deployer/pkg/pluggable"
 	"ziniki.org/deployer/modules/aws/internal/env"
@@ -17,12 +18,12 @@ import (
 )
 
 type certificateCreator struct {
-	tools *pluggable.Tools
+	tools *external.Tools
 
 	loc              *errorsink.Location
 	name             string
 	validationMethod types.ValidationMethod
-	teardown         pluggable.TearDown
+	teardown         external.TearDown
 
 	client        *acm.Client
 	route53       *route53.Client

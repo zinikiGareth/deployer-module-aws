@@ -1,13 +1,14 @@
 package cfront
 
 import (
+	"ziniki.org/deployer/coremod/pkg/external"
 	"ziniki.org/deployer/deployer/pkg/errorsink"
 	"ziniki.org/deployer/deployer/pkg/pluggable"
 )
 
 type RHPBlank struct{}
 
-func (b *RHPBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown pluggable.TearDown) any {
+func (b *RHPBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown external.TearDown) any {
 	var header pluggable.Expr
 	var value pluggable.Expr
 	for p, v := range props {
@@ -24,7 +25,7 @@ func (b *RHPBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location, named s
 	return &RHPCreator{tools: tools, loc: loc, name: named, header: header, value: value, teardown: teardown}
 }
 
-func (b *RHPBlank) Find(tools *pluggable.Tools, loc *errorsink.Location, named string) any {
+func (b *RHPBlank) Find(tools *external.Tools, loc *errorsink.Location, named string) any {
 	return &RHPFinder{tools: tools, loc: loc, name: named}
 }
 

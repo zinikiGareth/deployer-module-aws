@@ -1,17 +1,18 @@
 package s3
 
 import (
+	"ziniki.org/deployer/coremod/pkg/external"
 	"ziniki.org/deployer/deployer/pkg/errorsink"
 	"ziniki.org/deployer/deployer/pkg/pluggable"
 )
 
 type BucketBlank struct{}
 
-func (b *BucketBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown pluggable.TearDown) any {
+func (b *BucketBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown external.TearDown) any {
 	return &bucketCreator{tools: tools, loc: loc, name: named, region: "us-east-1", teardown: teardown}
 }
 
-func (b *BucketBlank) Find(tools *pluggable.Tools, loc *errorsink.Location, named string) any {
+func (b *BucketBlank) Find(tools *external.Tools, loc *errorsink.Location, named string) any {
 	return &bucketFinder{tools: tools, loc: loc, name: named}
 }
 

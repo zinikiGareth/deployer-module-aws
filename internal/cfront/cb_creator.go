@@ -6,13 +6,14 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront/types"
+	"ziniki.org/deployer/coremod/pkg/external"
 	"ziniki.org/deployer/deployer/pkg/errorsink"
 	"ziniki.org/deployer/deployer/pkg/pluggable"
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
 type CacheBehaviorCreator struct {
-	tools *pluggable.Tools
+	tools *external.Tools
 
 	loc      *errorsink.Location
 	name     string
@@ -20,7 +21,7 @@ type CacheBehaviorCreator struct {
 	pp       pluggable.Expr
 	rhp      pluggable.Expr
 	toid     pluggable.Expr
-	teardown pluggable.TearDown
+	teardown external.TearDown
 
 	client *cloudfront.Client
 }

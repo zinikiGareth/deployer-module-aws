@@ -19,7 +19,7 @@ func ProvideTestRunner(runner deployer.TestRunner) error {
 	return nil
 }
 
-func RegisterWithDeployer(deployer deployer.Deployer) error {
+func RegisterWithDriver(deployer deployer.Driver) error {
 	tools := deployer.ObtainTools()
 	tools.Register.ProvideDriver("aws.AwsEnv", env.InitAwsEnv())
 

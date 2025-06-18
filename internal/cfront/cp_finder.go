@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"log"
 
+	"ziniki.org/deployer/coremod/pkg/external"
 	"ziniki.org/deployer/deployer/pkg/errorsink"
 	"ziniki.org/deployer/deployer/pkg/pluggable"
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
 type CachePolicyFinder struct {
-	tools *pluggable.Tools
+	tools *external.Tools
 
 	loc  *errorsink.Location
 	name string

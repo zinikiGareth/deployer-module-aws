@@ -1,19 +1,20 @@
 package route53
 
 import (
+	"ziniki.org/deployer/coremod/pkg/external"
 	"ziniki.org/deployer/deployer/pkg/errorsink"
 	"ziniki.org/deployer/deployer/pkg/pluggable"
 )
 
 type DomainNameBlank struct{}
 
-func (b *DomainNameBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown pluggable.TearDown) any {
+func (b *DomainNameBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown external.TearDown) any {
 	tools.Reporter.At(loc.Line)
 	tools.Reporter.Reportf(loc.Offset, "cannot create domain names automatically; use find")
 	return nil
 }
 
-func (b *DomainNameBlank) Find(tools *pluggable.Tools, loc *errorsink.Location, named string) any {
+func (b *DomainNameBlank) Find(tools *external.Tools, loc *errorsink.Location, named string) any {
 	return &domainNameFinder{tools: tools, loc: loc, name: named}
 }
 

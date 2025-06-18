@@ -18,12 +18,12 @@ import (
 )
 
 type bucketCreator struct {
-	tools *pluggable.Tools
+	tools *external.Tools
 
 	loc      *errorsink.Location
 	name     string
 	region   string
-	teardown pluggable.TearDown
+	teardown external.TearDown
 
 	client        *s3.Client
 	alreadyExists bool

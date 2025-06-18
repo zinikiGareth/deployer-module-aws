@@ -1,13 +1,14 @@
 package iam
 
 import (
+	"ziniki.org/deployer/coremod/pkg/external"
 	"ziniki.org/deployer/deployer/pkg/errorsink"
 	"ziniki.org/deployer/deployer/pkg/pluggable"
 )
 
 type PolicyBlank struct{}
 
-func (b *PolicyBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown pluggable.TearDown) any {
+func (b *PolicyBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown external.TearDown) any {
 	var policy pluggable.Expr
 	seenErr := false
 	for p, v := range props {
@@ -26,7 +27,7 @@ func (b *PolicyBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location, name
 	return &policyCreator{tools: tools, loc: loc, name: named, policy: policy, teardown: teardown}
 }
 
-func (b *PolicyBlank) Find(tools *pluggable.Tools, loc *errorsink.Location, named string) any {
+func (b *PolicyBlank) Find(tools *external.Tools, loc *errorsink.Location, named string) any {
 	return &policyFinder{tools: tools, loc: loc, name: named}
 }
 

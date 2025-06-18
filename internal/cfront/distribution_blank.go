@@ -1,13 +1,14 @@
 package cfront
 
 import (
+	"ziniki.org/deployer/coremod/pkg/external"
 	"ziniki.org/deployer/deployer/pkg/errorsink"
 	"ziniki.org/deployer/deployer/pkg/pluggable"
 )
 
 type DistributionBlank struct{}
 
-func (b *DistributionBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown pluggable.TearDown) any {
+func (b *DistributionBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown external.TearDown) any {
 	var cert pluggable.Expr
 	var domain pluggable.Expr
 	var oac pluggable.Expr
@@ -54,7 +55,7 @@ func (b *DistributionBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location
 	return &distributionCreator{tools: tools, loc: loc, name: named, comment: comment, origindns: src, oac: oac, behaviors: cbs, cachePolicy: cp, domain: domain, viewerCert: cert, toid: toid, teardown: teardown}
 }
 
-func (b *DistributionBlank) Find(tools *pluggable.Tools, loc *errorsink.Location, named string) any {
+func (b *DistributionBlank) Find(tools *external.Tools, loc *errorsink.Location, named string) any {
 	return &distributionFinder{tools: tools, loc: loc, name: named}
 }
 

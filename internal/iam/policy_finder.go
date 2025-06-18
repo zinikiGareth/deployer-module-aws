@@ -3,12 +3,13 @@ package iam
 import (
 	"fmt"
 
+	"ziniki.org/deployer/coremod/pkg/external"
 	"ziniki.org/deployer/deployer/pkg/errorsink"
 	"ziniki.org/deployer/deployer/pkg/pluggable"
 )
 
 type policyFinder struct {
-	tools *pluggable.Tools
+	tools *external.Tools
 
 	loc  *errorsink.Location
 	name string

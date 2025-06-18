@@ -1,13 +1,14 @@
 package route53
 
 import (
+	"ziniki.org/deployer/coremod/pkg/external"
 	"ziniki.org/deployer/deployer/pkg/errorsink"
 	"ziniki.org/deployer/deployer/pkg/pluggable"
 )
 
 type CNAMEBlank struct{}
 
-func (b *CNAMEBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown pluggable.TearDown) any {
+func (b *CNAMEBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown external.TearDown) any {
 	var pointsTo pluggable.Expr
 	var zone pluggable.Expr
 	seenErr := false
@@ -33,7 +34,7 @@ func (b *CNAMEBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location, named
 	return &cnameCreator{tools: tools, loc: loc, name: named, pointsTo: pointsTo, zone: zone, teardown: teardown}
 }
 
-func (b *CNAMEBlank) Find(tools *pluggable.Tools, loc *errorsink.Location, named string) any {
+func (b *CNAMEBlank) Find(tools *external.Tools, loc *errorsink.Location, named string) any {
 	panic("not implemented")
 }
 

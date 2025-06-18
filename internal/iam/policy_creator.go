@@ -14,11 +14,11 @@ import (
 )
 
 type policyCreator struct {
-	tools *pluggable.Tools
+	tools *external.Tools
 
 	loc      *errorsink.Location
 	name     string
-	teardown pluggable.TearDown
+	teardown external.TearDown
 	policy   pluggable.Expr
 
 	policyDoc external.PolicyDocument

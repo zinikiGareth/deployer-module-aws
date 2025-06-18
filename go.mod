@@ -2,14 +2,11 @@ module ziniki.org/deployer/modules/aws
 
 go 1.23.4
 
-require ziniki.org/deployer/deployer v0.0.0
 
 require (
-	github.com/aws/aws-sdk-go-v2/service/iam v1.42.1
+	ziniki.org/deployer/deployer v0.0.0
 	ziniki.org/deployer/coremod v0.0.0
-)
-
-require (
+	github.com/aws/aws-sdk-go-v2/service/iam v1.42.1
 	github.com/aws/aws-sdk-go-v2 v1.36.4
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.10 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.29.14
@@ -35,5 +32,4 @@ require (
 )
 
 replace ziniki.org/deployer/deployer => ../deployer/deployer
-
 replace ziniki.org/deployer/coremod => ../deployer/coremod

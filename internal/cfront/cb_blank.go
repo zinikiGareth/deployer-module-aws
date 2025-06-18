@@ -1,13 +1,14 @@
 package cfront
 
 import (
+	"ziniki.org/deployer/coremod/pkg/external"
 	"ziniki.org/deployer/deployer/pkg/errorsink"
 	"ziniki.org/deployer/deployer/pkg/pluggable"
 )
 
 type CacheBehaviorBlank struct{}
 
-func (b *CacheBehaviorBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown pluggable.TearDown) any {
+func (b *CacheBehaviorBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown external.TearDown) any {
 	var pp pluggable.Expr
 	var rhp pluggable.Expr
 	var cp pluggable.Expr
@@ -46,7 +47,7 @@ func (b *CacheBehaviorBlank) Mint(tools *pluggable.Tools, loc *errorsink.Locatio
 	return &CacheBehaviorCreator{tools: tools, loc: loc, name: named, cpId: cp, pp: pp, rhp: rhp, toid: toid, teardown: teardown}
 }
 
-func (b *CacheBehaviorBlank) Find(tools *pluggable.Tools, loc *errorsink.Location, named string) any {
+func (b *CacheBehaviorBlank) Find(tools *external.Tools, loc *errorsink.Location, named string) any {
 	return &CacheBehaviorFinder{tools: tools, loc: loc, name: named}
 }
 

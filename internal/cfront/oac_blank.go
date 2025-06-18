@@ -1,13 +1,14 @@
 package cfront
 
 import (
+	"ziniki.org/deployer/coremod/pkg/external"
 	"ziniki.org/deployer/deployer/pkg/errorsink"
 	"ziniki.org/deployer/deployer/pkg/pluggable"
 )
 
 type OACBlank struct{}
 
-func (b *OACBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown pluggable.TearDown) any {
+func (b *OACBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown external.TearDown) any {
 	var oacTy pluggable.Expr
 	var sb pluggable.Expr
 	var sp pluggable.Expr
@@ -27,7 +28,7 @@ func (b *OACBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location, named s
 	return &OACCreator{tools: tools, loc: loc, name: named, acType: oacTy, signBehavior: sb, signProt: sp, teardown: teardown}
 }
 
-func (b *OACBlank) Find(tools *pluggable.Tools, loc *errorsink.Location, named string) any {
+func (b *OACBlank) Find(tools *external.Tools, loc *errorsink.Location, named string) any {
 	return &OACFinder{tools: tools, loc: loc, name: named}
 }
 
