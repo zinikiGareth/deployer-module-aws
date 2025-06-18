@@ -19,6 +19,7 @@ type CacheBehaviorCreator struct {
 	cpId     pluggable.Expr
 	pp       pluggable.Expr
 	rhp      pluggable.Expr
+	toid     pluggable.Expr
 	teardown pluggable.TearDown
 
 	client *cloudfront.Client
@@ -54,7 +55,7 @@ func (cfdc *CacheBehaviorCreator) BuildModel(pres pluggable.ValuePresenter) {
 
 	pp := cfdc.tools.Storage.Eval(cfdc.pp)
 	rhp := cfdc.tools.Storage.Eval(cfdc.rhp)
-	targetOriginId := "s3-origin-for-" + cfdc.name // TODO: should this be extracted?  It's not actually a cloud object
+	targetOriginId := cfdc.tools.Storage.Eval(cfdc.toid)
 
 	// this is going to need to handle "deferred"
 	cpId := cfdc.cpId.Eval(cfdc.tools.Storage)
@@ -72,7 +73,7 @@ type cbDefer struct {
 	cfdc           *CacheBehaviorCreator
 	pp             any
 	rhp            any
-	targetOriginId string
+	targetOriginId any
 	cpId           any
 }
 

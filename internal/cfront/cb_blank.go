@@ -11,6 +11,7 @@ func (b *CacheBehaviorBlank) Mint(tools *pluggable.Tools, loc *errorsink.Locatio
 	var pp pluggable.Expr
 	var rhp pluggable.Expr
 	var cp pluggable.Expr
+	var toid pluggable.Expr
 	for p, v := range props {
 		switch p.Id() {
 		case "CachePolicy":
@@ -19,6 +20,8 @@ func (b *CacheBehaviorBlank) Mint(tools *pluggable.Tools, loc *errorsink.Locatio
 			pp = v
 		case "ResponseHeadersPolicy":
 			rhp = v
+		case "TargetOriginId":
+			toid = v
 		default:
 			tools.Reporter.At(p.Loc().Line)
 			tools.Reporter.Reportf(p.Loc().Offset, "invalid property for OriginAccessControl: %s", p.Id())
@@ -36,7 +39,11 @@ func (b *CacheBehaviorBlank) Mint(tools *pluggable.Tools, loc *errorsink.Locatio
 		tools.Reporter.At(loc.Line)
 		tools.Reporter.Reportf(loc.Offset, "PathPattern was not defined")
 	}
-	return &CacheBehaviorCreator{tools: tools, loc: loc, name: named, cpId: cp, pp: pp, rhp: rhp, teardown: teardown}
+	if toid == nil {
+		tools.Reporter.At(loc.Line)
+		tools.Reporter.Reportf(loc.Offset, "TargetOriginId was not defined")
+	}
+	return &CacheBehaviorCreator{tools: tools, loc: loc, name: named, cpId: cp, pp: pp, rhp: rhp, toid: toid, teardown: teardown}
 }
 
 func (b *CacheBehaviorBlank) Find(tools *pluggable.Tools, loc *errorsink.Location, named string) any {

@@ -19,6 +19,7 @@ type distributionCreator struct {
 	loc         *errorsink.Location
 	name        string
 	origindns   pluggable.Expr
+	toid        pluggable.Expr
 	domain      pluggable.Expr // this should be a list
 	comment     pluggable.Expr
 	viewerCert  pluggable.Expr
@@ -85,11 +86,10 @@ func (cfdc *distributionCreator) UpdateReality() {
 		log.Printf("distribution %s already existed for %s\n", cfdc.arn, cfdc.name)
 		return
 	}
-	targetOriginId := "s3-origin-for-" + cfdc.name
-
 	cpId := cfdc.tools.Storage.EvalAsString(cfdc.cachePolicy)
-	dcb := types.DefaultCacheBehavior{TargetOriginId: &targetOriginId, ViewerProtocolPolicy: types.ViewerProtocolPolicyRedirectToHttps, CachePolicyId: &cpId}
-	origgins := cfdc.FigureOrigins(targetOriginId)
+	toid := cfdc.tools.Storage.EvalAsString(cfdc.toid)
+	dcb := types.DefaultCacheBehavior{TargetOriginId: &toid, ViewerProtocolPolicy: types.ViewerProtocolPolicyRedirectToHttps, CachePolicyId: &cpId}
+	origgins := cfdc.FigureOrigins(toid)
 	behaviors := cfdc.FigureCacheBehaviors()
 	config := cfdc.BuildConfig(&dcb, behaviors, origgins)
 
@@ -183,23 +183,26 @@ func (cfdc *distributionCreator) DeleteIt() {
 
 func (cfdc *distributionCreator) FigureOrigins(targetOriginId string) *types.Origins {
 	oacId := cfdc.tools.Storage.EvalAsString(cfdc.oac)
-	// "news.consolidator.info.s3.us-east-1.amazonaws.com"
 	origindns := cfdc.tools.Storage.EvalAsString(cfdc.origindns)
 
 	empty := ""
 	s3orig := types.S3OriginConfig{OriginAccessIdentity: &empty}
-	origins := []types.Origin{{DomainName: &origindns, Id: &targetOriginId, OriginAccessControlId: &oacId, S3OriginConfig: &s3orig}}
+	origin := types.Origin{DomainName: &origindns, Id: &targetOriginId, OriginAccessControlId: &oacId, S3OriginConfig: &s3orig}
+	log.Printf("have origin %s %s\n", *origin.Id, *origin.DomainName)
+	origins := []types.Origin{origin}
 	nOrigins := int32(len(origins))
 	return &types.Origins{Items: origins, Quantity: &nOrigins}
 }
 
 func (cfdc *distributionCreator) FigureCacheBehaviors() *types.CacheBehaviors {
 	cbci := cfdc.behaviors.Eval(cfdc.tools.Storage) // TODO: expect a list
-	cbc, ok := cbci.(types.CacheBehavior)
+	cbc, ok := cbci.(cbDefer)
 	if !ok {
-		panic("not a cache behavior?")
+		log.Fatalf("not a cache behavior but %T", cbci)
 	}
-	cbs := []types.CacheBehavior{cbc}
+	resolved := cbc.Resolve()
+	log.Printf("have cb %s\n", *resolved.TargetOriginId)
+	cbs := []types.CacheBehavior{resolved}
 	cbl := int32(len(cbs))
 	return &types.CacheBehaviors{Quantity: &cbl, Items: cbs}
 }

@@ -22,6 +22,7 @@ type bucketCreator struct {
 
 	loc      *errorsink.Location
 	name     string
+	region   string
 	teardown pluggable.TearDown
 
 	client        *s3.Client
@@ -116,6 +117,8 @@ func (b *bucketCreator) ObtainMethod(name string) pluggable.Method {
 	switch name {
 	case "allResources":
 		return &allResourcesMethod{}
+	case "dnsName":
+		return &dnsNameMethod{}
 	}
 	return nil
 }
@@ -149,6 +152,23 @@ func (a *allResourcesMethod) Invoke(s pluggable.RuntimeStorage, on pluggable.Exp
 	return fmt.Sprintf("arn:aws:s3:::%s/*", bucket.name)
 }
 
+// return something like "news.consolidator.info.s3.us-east-1.amazonaws.com"
+type dnsNameMethod struct {
+}
+
+func (a *dnsNameMethod) Invoke(s pluggable.RuntimeStorage, on pluggable.Expr, args []pluggable.Expr) any {
+	e := on.Eval(s)
+	bucket, ok := e.(*bucketCreator)
+	if !ok {
+		panic(fmt.Sprintf("domainName can only be called on a bucket, not a %T", e))
+	}
+	if len(args) != 0 {
+		panic("invalid number of arguments")
+	}
+	return fmt.Sprintf("%s.s3.%s.amazonaws.com", bucket.name, bucket.region)
+}
+
 var _ pluggable.HasMethods = &bucketCreator{}
 var _ pluggable.Method = &allResourcesMethod{}
+var _ pluggable.Method = &dnsNameMethod{}
 var _ external.PolicyAttacher = &bucketCreator{}

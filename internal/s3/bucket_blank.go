@@ -8,7 +8,7 @@ import (
 type BucketBlank struct{}
 
 func (b *BucketBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown pluggable.TearDown) any {
-	return &bucketCreator{tools: tools, loc: loc, name: named, teardown: teardown}
+	return &bucketCreator{tools: tools, loc: loc, name: named, region: "us-east-1", teardown: teardown}
 }
 
 func (b *BucketBlank) Find(tools *pluggable.Tools, loc *errorsink.Location, named string) any {

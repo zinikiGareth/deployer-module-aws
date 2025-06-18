@@ -15,6 +15,7 @@ func (b *DistributionBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location
 	var cp pluggable.Expr
 	var comment pluggable.Expr
 	var src pluggable.Expr
+	var toid pluggable.Expr
 	for p, v := range props {
 		switch p.Id() {
 		case "Certificate":
@@ -31,6 +32,8 @@ func (b *DistributionBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location
 			cbs = v
 		case "CachePolicy":
 			cp = v
+		case "TargetOriginId":
+			toid = v
 		default:
 			tools.Reporter.At(p.Loc().Line)
 			tools.Reporter.Reportf(loc.Offset, "invalid property for Distribution: %s", p.Id())
@@ -42,9 +45,13 @@ func (b *DistributionBlank) Mint(tools *pluggable.Tools, loc *errorsink.Location
 	}
 	if src == nil {
 		tools.Reporter.At(loc.Line)
-		tools.Reporter.Reportf(loc.Offset, "Comment was not defined")
+		tools.Reporter.Reportf(loc.Offset, "OriginDNS was not defined")
 	}
-	return &distributionCreator{tools: tools, loc: loc, name: named, comment: comment, origindns: src, oac: oac, behaviors: cbs, cachePolicy: cp, domain: domain, viewerCert: cert, teardown: teardown}
+	if toid == nil {
+		tools.Reporter.At(loc.Line)
+		tools.Reporter.Reportf(loc.Offset, "TargetOriginId was not defined")
+	}
+	return &distributionCreator{tools: tools, loc: loc, name: named, comment: comment, origindns: src, oac: oac, behaviors: cbs, cachePolicy: cp, domain: domain, viewerCert: cert, toid: toid, teardown: teardown}
 }
 
 func (b *DistributionBlank) Find(tools *pluggable.Tools, loc *errorsink.Location, named string) any {
