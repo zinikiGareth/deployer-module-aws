@@ -5,8 +5,8 @@ import (
 	"log"
 
 	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
-	"ziniki.org/deployer/driver/pkg/pluggable"
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
@@ -25,7 +25,7 @@ func (acm *OACFinder) ShortDescription() string {
 	return "aws.Cloudfront.OAC[" + acm.name + "]"
 }
 
-func (acm *OACFinder) DumpTo(iw pluggable.IndentWriter) {
+func (acm *OACFinder) DumpTo(iw driverbottom.IndentWriter) {
 	iw.Intro("aws.Cloudfront.OAC[")
 	iw.AttrsWhere(acm)
 	iw.TextAttr("named", acm.name)
@@ -33,7 +33,7 @@ func (acm *OACFinder) DumpTo(iw pluggable.IndentWriter) {
 }
 
 // This is called during the "Prepare" phase
-func (cfc *OACFinder) BuildModel(pres pluggable.ValuePresenter) {
+func (cfc *OACFinder) BuildModel(pres driverbottom.ValuePresenter) {
 	eq := cfc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {

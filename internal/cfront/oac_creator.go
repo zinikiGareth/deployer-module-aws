@@ -8,8 +8,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront/types"
 	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
-	"ziniki.org/deployer/driver/pkg/pluggable"
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
@@ -18,9 +18,9 @@ type OACCreator struct {
 
 	loc          *errorsink.Location
 	name         string
-	acType       pluggable.Expr
-	signBehavior pluggable.Expr
-	signProt     pluggable.Expr
+	acType       driverbottom.Expr
+	signBehavior driverbottom.Expr
+	signProt     driverbottom.Expr
 	teardown     external.TearDown
 
 	client        *cloudfront.Client
@@ -36,7 +36,7 @@ func (cfdc *OACCreator) ShortDescription() string {
 	return "aws.CloudFront.OAC[" + cfdc.name + "]"
 }
 
-func (cfdc *OACCreator) DumpTo(iw pluggable.IndentWriter) {
+func (cfdc *OACCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.Intro("aws.CloudFront.OAC[")
 	iw.AttrsWhere(cfdc)
 	iw.TextAttr("named", cfdc.name)
@@ -49,7 +49,7 @@ func (cfdc *OACCreator) DumpTo(iw pluggable.IndentWriter) {
 	iw.EndAttrs()
 }
 
-func (cfdc *OACCreator) BuildModel(pres pluggable.ValuePresenter) {
+func (cfdc *OACCreator) BuildModel(pres driverbottom.ValuePresenter) {
 	eq := cfdc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {
@@ -106,7 +106,7 @@ func (cfdc *OACCreator) TearDown() {
 	}
 }
 
-func (cfdc *OACCreator) ObtainMethod(name string) pluggable.Method {
+func (cfdc *OACCreator) ObtainMethod(name string) driverbottom.Method {
 	switch name {
 	case "id":
 		return &oacIdMethod{}
@@ -117,7 +117,7 @@ func (cfdc *OACCreator) ObtainMethod(name string) pluggable.Method {
 type oacIdMethod struct {
 }
 
-func (a *oacIdMethod) Invoke(s pluggable.RuntimeStorage, on pluggable.Expr, args []pluggable.Expr) any {
+func (a *oacIdMethod) Invoke(s driverbottom.RuntimeStorage, on driverbottom.Expr, args []driverbottom.Expr) any {
 	e := on.Eval(s)
 	cfdc, ok := e.(*OACCreator)
 	if !ok {
@@ -144,4 +144,4 @@ func (d *deferReadingOACId) String() string {
 	return d.cfdc.oacId
 }
 
-var _ pluggable.HasMethods = &OACCreator{}
+var _ driverbottom.HasMethods = &OACCreator{}

@@ -5,8 +5,8 @@ import (
 	"log"
 
 	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
-	"ziniki.org/deployer/driver/pkg/pluggable"
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
@@ -25,7 +25,7 @@ func (acm *certificateFinder) ShortDescription() string {
 	return "aws.CertificateManager.Certificate[" + acm.name + "]"
 }
 
-func (acm *certificateFinder) DumpTo(iw pluggable.IndentWriter) {
+func (acm *certificateFinder) DumpTo(iw driverbottom.IndentWriter) {
 	iw.Intro("aws.CertificateManager.Certificate[")
 	iw.AttrsWhere(acm)
 	iw.TextAttr("named", acm.name)
@@ -33,7 +33,7 @@ func (acm *certificateFinder) DumpTo(iw pluggable.IndentWriter) {
 }
 
 // This is called during the "Prepare" phase
-func (acm *certificateFinder) BuildModel(pres pluggable.ValuePresenter) {
+func (acm *certificateFinder) BuildModel(pres driverbottom.ValuePresenter) {
 	eq := acm.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {

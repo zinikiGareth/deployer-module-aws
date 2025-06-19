@@ -7,8 +7,8 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
-	"ziniki.org/deployer/driver/pkg/pluggable"
 	"ziniki.org/deployer/modules/aws/internal/env"
 	"ziniki.org/deployer/modules/aws/internal/policyjson"
 )
@@ -19,7 +19,7 @@ type policyCreator struct {
 	loc      *errorsink.Location
 	name     string
 	teardown external.TearDown
-	policy   pluggable.Expr
+	policy   driverbottom.Expr
 
 	policyDoc external.PolicyDocument
 
@@ -35,14 +35,14 @@ func (p *policyCreator) ShortDescription() string {
 	return "aws.IAM.Policy[" + p.name + "]"
 }
 
-func (p *policyCreator) DumpTo(iw pluggable.IndentWriter) {
+func (p *policyCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.Intro("aws.IAM.Policy[")
 	iw.AttrsWhere(p)
 	iw.TextAttr("named", p.name)
 	iw.EndAttrs()
 }
 
-func (p *policyCreator) BuildModel(pres pluggable.ValuePresenter) {
+func (p *policyCreator) BuildModel(pres driverbottom.ValuePresenter) {
 	log.Printf("Need to find and/or build a policy model for %s\n", p.name)
 
 	// We need to do three things here:

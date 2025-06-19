@@ -5,8 +5,8 @@ import (
 	"log"
 
 	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
-	"ziniki.org/deployer/driver/pkg/pluggable"
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
@@ -25,7 +25,7 @@ func (acm *RHPFinder) ShortDescription() string {
 	return "aws.Cloudfront.RHP[" + acm.name + "]"
 }
 
-func (acm *RHPFinder) DumpTo(iw pluggable.IndentWriter) {
+func (acm *RHPFinder) DumpTo(iw driverbottom.IndentWriter) {
 	iw.Intro("aws.Cloudfront.RHP[")
 	iw.AttrsWhere(acm)
 	iw.TextAttr("named", acm.name)
@@ -33,7 +33,7 @@ func (acm *RHPFinder) DumpTo(iw pluggable.IndentWriter) {
 }
 
 // This is called during the "Prepare" phase
-func (cfc *RHPFinder) BuildModel(pres pluggable.ValuePresenter) {
+func (cfc *RHPFinder) BuildModel(pres driverbottom.ValuePresenter) {
 	eq := cfc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {

@@ -11,8 +11,8 @@ import (
 	"github.com/aws/smithy-go"
 	"ziniki.org/deployer/coremod/pkg/external"
 	"ziniki.org/deployer/coremod/pkg/files"
+	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
-	"ziniki.org/deployer/driver/pkg/pluggable"
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
@@ -35,7 +35,7 @@ func (b *bucketFinder) ShortDescription() string {
 	return "aws.s3.Bucket[" + b.name + "]"
 }
 
-func (b *bucketFinder) DumpTo(iw pluggable.IndentWriter) {
+func (b *bucketFinder) DumpTo(iw driverbottom.IndentWriter) {
 	iw.Intro("aws.s3.Bucket[")
 	iw.AttrsWhere(b)
 	iw.TextAttr("named", b.name)
@@ -43,7 +43,7 @@ func (b *bucketFinder) DumpTo(iw pluggable.IndentWriter) {
 }
 
 // This is called during the "Prepare" phase
-func (b *bucketFinder) BuildModel(pres pluggable.ValuePresenter) {
+func (b *bucketFinder) BuildModel(pres driverbottom.ValuePresenter) {
 	eq := b.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {

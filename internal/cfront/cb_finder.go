@@ -5,8 +5,8 @@ import (
 	"log"
 
 	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
-	"ziniki.org/deployer/driver/pkg/pluggable"
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
@@ -25,7 +25,7 @@ func (acm *CacheBehaviorFinder) ShortDescription() string {
 	return "aws.Cloudfront.CacheBehavior[" + acm.name + "]"
 }
 
-func (acm *CacheBehaviorFinder) DumpTo(iw pluggable.IndentWriter) {
+func (acm *CacheBehaviorFinder) DumpTo(iw driverbottom.IndentWriter) {
 	iw.Intro("aws.Cloudfront.CacheBehavior[")
 	iw.AttrsWhere(acm)
 	iw.TextAttr("named", acm.name)
@@ -33,7 +33,7 @@ func (acm *CacheBehaviorFinder) DumpTo(iw pluggable.IndentWriter) {
 }
 
 // This is called during the "Prepare" phase
-func (cfc *CacheBehaviorFinder) BuildModel(pres pluggable.ValuePresenter) {
+func (cfc *CacheBehaviorFinder) BuildModel(pres driverbottom.ValuePresenter) {
 	eq := cfc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {

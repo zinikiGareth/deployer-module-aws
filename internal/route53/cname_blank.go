@@ -2,16 +2,16 @@ package route53
 
 import (
 	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
-	"ziniki.org/deployer/driver/pkg/pluggable"
 )
 
 type CNAMEBlank struct{}
 
-func (b *CNAMEBlank) Mint(ct *pluggable.CoreTools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
+func (b *CNAMEBlank) Mint(ct *driverbottom.CoreTools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr) any {
 	tools := ct.RetrieveOther("coremod").(*external.Tools)
-	var pointsTo pluggable.Expr
-	var zone pluggable.Expr
+	var pointsTo driverbottom.Expr
+	var zone driverbottom.Expr
 	seenErr := false
 	for p, v := range props {
 		switch p.Id() {
@@ -35,7 +35,7 @@ func (b *CNAMEBlank) Mint(ct *pluggable.CoreTools, loc *errorsink.Location, name
 	return &cnameCreator{tools: tools, loc: loc, name: named, pointsTo: pointsTo, zone: zone}
 }
 
-func (b *CNAMEBlank) Find(ct *pluggable.CoreTools, loc *errorsink.Location, named string) any {
+func (b *CNAMEBlank) Find(ct *driverbottom.CoreTools, loc *errorsink.Location, named string) any {
 	panic("not implemented")
 }
 
@@ -47,6 +47,6 @@ func (b *CNAMEBlank) ShortDescription() string {
 	return "test.S3.Bucket[]"
 }
 
-func (b *CNAMEBlank) DumpTo(iw pluggable.IndentWriter) {
+func (b *CNAMEBlank) DumpTo(iw driverbottom.IndentWriter) {
 	panic("not implemented")
 }

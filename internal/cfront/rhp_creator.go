@@ -8,8 +8,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront/types"
 	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
-	"ziniki.org/deployer/driver/pkg/pluggable"
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
@@ -18,8 +18,8 @@ type RHPCreator struct {
 
 	loc      *errorsink.Location
 	name     string
-	header   pluggable.Expr
-	value    pluggable.Expr
+	header   driverbottom.Expr
+	value    driverbottom.Expr
 	teardown external.TearDown
 
 	client        *cloudfront.Client
@@ -35,7 +35,7 @@ func (cfdc *RHPCreator) ShortDescription() string {
 	return "aws.CloudFront.RHP[" + cfdc.name + "]"
 }
 
-func (cfdc *RHPCreator) DumpTo(iw pluggable.IndentWriter) {
+func (cfdc *RHPCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.Intro("aws.CloudFront.RHP[")
 	iw.AttrsWhere(cfdc)
 	iw.TextAttr("named", cfdc.name)
@@ -47,7 +47,7 @@ func (cfdc *RHPCreator) DumpTo(iw pluggable.IndentWriter) {
 	iw.EndAttrs()
 }
 
-func (cfdc *RHPCreator) BuildModel(pres pluggable.ValuePresenter) {
+func (cfdc *RHPCreator) BuildModel(pres driverbottom.ValuePresenter) {
 	eq := cfdc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {
@@ -113,7 +113,7 @@ func (cfdc *RHPCreator) TearDown() {
 	}
 }
 
-func (cfdc *RHPCreator) ObtainMethod(name string) pluggable.Method {
+func (cfdc *RHPCreator) ObtainMethod(name string) driverbottom.Method {
 	switch name {
 	case "id":
 		return &RHPIdMethod{}
@@ -124,7 +124,7 @@ func (cfdc *RHPCreator) ObtainMethod(name string) pluggable.Method {
 type RHPIdMethod struct {
 }
 
-func (a *RHPIdMethod) Invoke(s pluggable.RuntimeStorage, on pluggable.Expr, args []pluggable.Expr) any {
+func (a *RHPIdMethod) Invoke(s driverbottom.RuntimeStorage, on driverbottom.Expr, args []driverbottom.Expr) any {
 	e := on.Eval(s)
 	cfdc, ok := e.(*RHPCreator)
 	if !ok {
@@ -151,4 +151,4 @@ func (d *deferReadingRHPId) String() string {
 	return d.cfdc.rpId
 }
 
-var _ pluggable.HasMethods = &RHPCreator{}
+var _ driverbottom.HasMethods = &RHPCreator{}

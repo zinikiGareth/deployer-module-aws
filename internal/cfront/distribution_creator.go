@@ -9,8 +9,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront/types"
 	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
-	"ziniki.org/deployer/driver/pkg/pluggable"
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
@@ -19,14 +19,14 @@ type distributionCreator struct {
 
 	loc         *errorsink.Location
 	name        string
-	origindns   pluggable.Expr
-	toid        pluggable.Expr
-	domain      pluggable.Expr // this should be a list
-	comment     pluggable.Expr
-	viewerCert  pluggable.Expr
-	oac         pluggable.Expr
-	cachePolicy pluggable.Expr
-	behaviors   pluggable.Expr // I think this should ultimately be a list
+	origindns   driverbottom.Expr
+	toid        driverbottom.Expr
+	domain      driverbottom.Expr // this should be a list
+	comment     driverbottom.Expr
+	viewerCert  driverbottom.Expr
+	oac         driverbottom.Expr
+	cachePolicy driverbottom.Expr
+	behaviors   driverbottom.Expr // I think this should ultimately be a list
 	teardown    external.TearDown
 
 	client        *cloudfront.Client
@@ -44,14 +44,14 @@ func (cfdc *distributionCreator) ShortDescription() string {
 	return "aws.CloudFront.Distribution[" + cfdc.name + "]"
 }
 
-func (cfdc *distributionCreator) DumpTo(iw pluggable.IndentWriter) {
+func (cfdc *distributionCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.Intro("aws.CloudFront.Distribution[")
 	iw.AttrsWhere(cfdc)
 	iw.TextAttr("named", cfdc.name)
 	iw.EndAttrs()
 }
 
-func (cfdc *distributionCreator) BuildModel(pres pluggable.ValuePresenter) {
+func (cfdc *distributionCreator) BuildModel(pres driverbottom.ValuePresenter) {
 	eq := cfdc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {
@@ -236,7 +236,7 @@ func (cfdc *distributionCreator) AttachViewerCert(config *types.DistributionConf
 	config.ViewerCertificate = &types.ViewerCertificate{ACMCertificateArn: &vcs, MinimumProtocolVersion: minver, SSLSupportMethod: supp, CloudFrontDefaultCertificate: &cfdef}
 }
 
-func (cfdc *distributionCreator) ObtainMethod(name string) pluggable.Method {
+func (cfdc *distributionCreator) ObtainMethod(name string) driverbottom.Method {
 	switch name {
 	case "arn":
 		return &arnMethod{}
@@ -249,7 +249,7 @@ func (cfdc *distributionCreator) ObtainMethod(name string) pluggable.Method {
 type arnMethod struct {
 }
 
-func (a *arnMethod) Invoke(s pluggable.RuntimeStorage, on pluggable.Expr, args []pluggable.Expr) any {
+func (a *arnMethod) Invoke(s driverbottom.RuntimeStorage, on driverbottom.Expr, args []driverbottom.Expr) any {
 	e := on.Eval(s)
 	cfdc, ok := e.(*distributionCreator)
 	if !ok {
@@ -279,7 +279,7 @@ func (d *DeferReadingArn) String() string {
 type domainNameMethod struct {
 }
 
-func (a *domainNameMethod) Invoke(s pluggable.RuntimeStorage, on pluggable.Expr, args []pluggable.Expr) any {
+func (a *domainNameMethod) Invoke(s driverbottom.RuntimeStorage, on driverbottom.Expr, args []driverbottom.Expr) any {
 	e := on.Eval(s)
 	cfdc, ok := e.(*distributionCreator)
 	if !ok {
@@ -306,4 +306,4 @@ func (d *DeferReadingDomainName) String() string {
 	return d.cfdc.domainName
 }
 
-var _ pluggable.HasMethods = &distributionCreator{}
+var _ driverbottom.HasMethods = &distributionCreator{}

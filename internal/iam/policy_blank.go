@@ -2,15 +2,15 @@ package iam
 
 import (
 	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
-	"ziniki.org/deployer/driver/pkg/pluggable"
 )
 
 type PolicyBlank struct{}
 
-func (b *PolicyBlank) Mint(ct *pluggable.CoreTools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
+func (b *PolicyBlank) Mint(ct *driverbottom.CoreTools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr) any {
 	tools := ct.RetrieveOther("coremod").(*external.Tools)
-	var policy pluggable.Expr
+	var policy driverbottom.Expr
 	seenErr := false
 	for p, v := range props {
 		switch p.Id() {
@@ -28,7 +28,7 @@ func (b *PolicyBlank) Mint(ct *pluggable.CoreTools, loc *errorsink.Location, nam
 	return &policyCreator{tools: tools, loc: loc, name: named, policy: policy}
 }
 
-func (b *PolicyBlank) Find(ct *pluggable.CoreTools, loc *errorsink.Location, named string) any {
+func (b *PolicyBlank) Find(ct *driverbottom.CoreTools, loc *errorsink.Location, named string) any {
 	return &policyFinder{tools: ct.RetrieveOther("coremod").(*external.Tools), loc: loc, name: named}
 }
 
@@ -40,6 +40,6 @@ func (b *PolicyBlank) ShortDescription() string {
 	return "test.IAM.Policy[]"
 }
 
-func (b *PolicyBlank) DumpTo(iw pluggable.IndentWriter) {
+func (b *PolicyBlank) DumpTo(iw driverbottom.IndentWriter) {
 	panic("not implemented")
 }

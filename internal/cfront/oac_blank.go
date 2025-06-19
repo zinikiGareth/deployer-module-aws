@@ -2,17 +2,17 @@ package cfront
 
 import (
 	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
-	"ziniki.org/deployer/driver/pkg/pluggable"
 )
 
 type OACBlank struct{}
 
-func (b *OACBlank) Mint(ct *pluggable.CoreTools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
+func (b *OACBlank) Mint(ct *driverbottom.CoreTools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr) any {
 	tools := ct.RetrieveOther("coremod").(*external.Tools)
-	var oacTy pluggable.Expr
-	var sb pluggable.Expr
-	var sp pluggable.Expr
+	var oacTy driverbottom.Expr
+	var sb driverbottom.Expr
+	var sp driverbottom.Expr
 	for p, v := range props {
 		switch p.Id() {
 		case "OriginAccessControlOriginType":
@@ -29,7 +29,7 @@ func (b *OACBlank) Mint(ct *pluggable.CoreTools, loc *errorsink.Location, named 
 	return &OACCreator{tools: tools, loc: loc, name: named, acType: oacTy, signBehavior: sb, signProt: sp}
 }
 
-func (b *OACBlank) Find(ct *pluggable.CoreTools, loc *errorsink.Location, named string) any {
+func (b *OACBlank) Find(ct *driverbottom.CoreTools, loc *errorsink.Location, named string) any {
 	return &OACFinder{tools: ct.RetrieveOther("coremod").(*external.Tools), loc: loc, name: named}
 }
 
@@ -41,6 +41,6 @@ func (b *OACBlank) ShortDescription() string {
 	return "aws.CloudFront.OAC[]"
 }
 
-func (b *OACBlank) DumpTo(iw pluggable.IndentWriter) {
+func (b *OACBlank) DumpTo(iw driverbottom.IndentWriter) {
 	panic("not implemented")
 }

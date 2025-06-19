@@ -11,8 +11,8 @@ import (
 	"github.com/aws/smithy-go"
 	"ziniki.org/deployer/coremod/pkg/external"
 	"ziniki.org/deployer/coremod/pkg/files"
+	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
-	"ziniki.org/deployer/driver/pkg/pluggable"
 	"ziniki.org/deployer/modules/aws/internal/env"
 	"ziniki.org/deployer/modules/aws/internal/policyjson"
 )
@@ -38,7 +38,7 @@ func (b *bucketCreator) ShortDescription() string {
 	return "aws.s3.Bucket[" + b.name + "]"
 }
 
-func (b *bucketCreator) DumpTo(iw pluggable.IndentWriter) {
+func (b *bucketCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.Intro("aws.s3.Bucket[")
 	iw.AttrsWhere(b)
 	iw.TextAttr("named", b.name)
@@ -46,7 +46,7 @@ func (b *bucketCreator) DumpTo(iw pluggable.IndentWriter) {
 }
 
 // This is called during the "Prepare" phase
-func (b *bucketCreator) BuildModel(pres pluggable.ValuePresenter) {
+func (b *bucketCreator) BuildModel(pres driverbottom.ValuePresenter) {
 	eq := b.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {
@@ -113,7 +113,7 @@ func (b *bucketCreator) ObtainDest() files.FileDest {
 	return NewBucketTransfer(b.client, b.name)
 }
 
-func (b *bucketCreator) ObtainMethod(name string) pluggable.Method {
+func (b *bucketCreator) ObtainMethod(name string) driverbottom.Method {
 	switch name {
 	case "allResources":
 		return &allResourcesMethod{}
@@ -140,7 +140,7 @@ func (b *bucketCreator) String() string {
 type allResourcesMethod struct {
 }
 
-func (a *allResourcesMethod) Invoke(s pluggable.RuntimeStorage, on pluggable.Expr, args []pluggable.Expr) any {
+func (a *allResourcesMethod) Invoke(s driverbottom.RuntimeStorage, on driverbottom.Expr, args []driverbottom.Expr) any {
 	e := on.Eval(s)
 	bucket, ok := e.(*bucketCreator)
 	if !ok {
@@ -156,7 +156,7 @@ func (a *allResourcesMethod) Invoke(s pluggable.RuntimeStorage, on pluggable.Exp
 type dnsNameMethod struct {
 }
 
-func (a *dnsNameMethod) Invoke(s pluggable.RuntimeStorage, on pluggable.Expr, args []pluggable.Expr) any {
+func (a *dnsNameMethod) Invoke(s driverbottom.RuntimeStorage, on driverbottom.Expr, args []driverbottom.Expr) any {
 	e := on.Eval(s)
 	bucket, ok := e.(*bucketCreator)
 	if !ok {
@@ -168,7 +168,7 @@ func (a *dnsNameMethod) Invoke(s pluggable.RuntimeStorage, on pluggable.Expr, ar
 	return fmt.Sprintf("%s.s3.%s.amazonaws.com", bucket.name, bucket.region)
 }
 
-var _ pluggable.HasMethods = &bucketCreator{}
-var _ pluggable.Method = &allResourcesMethod{}
-var _ pluggable.Method = &dnsNameMethod{}
+var _ driverbottom.HasMethods = &bucketCreator{}
+var _ driverbottom.Method = &allResourcesMethod{}
+var _ driverbottom.Method = &dnsNameMethod{}
 var _ external.PolicyAttacher = &bucketCreator{}

@@ -2,22 +2,22 @@ package cfront
 
 import (
 	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
-	"ziniki.org/deployer/driver/pkg/pluggable"
 )
 
 type DistributionBlank struct{}
 
-func (b *DistributionBlank) Mint(ct *pluggable.CoreTools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
+func (b *DistributionBlank) Mint(ct *driverbottom.CoreTools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr) any {
 	tools := ct.RetrieveOther("coremod").(*external.Tools)
-	var cert pluggable.Expr
-	var domain pluggable.Expr
-	var oac pluggable.Expr
-	var cbs pluggable.Expr
-	var cp pluggable.Expr
-	var comment pluggable.Expr
-	var src pluggable.Expr
-	var toid pluggable.Expr
+	var cert driverbottom.Expr
+	var domain driverbottom.Expr
+	var oac driverbottom.Expr
+	var cbs driverbottom.Expr
+	var cp driverbottom.Expr
+	var comment driverbottom.Expr
+	var src driverbottom.Expr
+	var toid driverbottom.Expr
 	for p, v := range props {
 		switch p.Id() {
 		case "Certificate":
@@ -56,7 +56,7 @@ func (b *DistributionBlank) Mint(ct *pluggable.CoreTools, loc *errorsink.Locatio
 	return &distributionCreator{tools: tools, loc: loc, name: named, comment: comment, origindns: src, oac: oac, behaviors: cbs, cachePolicy: cp, domain: domain, viewerCert: cert, toid: toid}
 }
 
-func (b *DistributionBlank) Find(ct *pluggable.CoreTools, loc *errorsink.Location, named string) any {
+func (b *DistributionBlank) Find(ct *driverbottom.CoreTools, loc *errorsink.Location, named string) any {
 	return &distributionFinder{tools: ct.RetrieveOther("coremod").(*external.Tools), loc: loc, name: named}
 }
 
@@ -68,6 +68,6 @@ func (b *DistributionBlank) ShortDescription() string {
 	return "aws.CloudFront.Distribution[]"
 }
 
-func (b *DistributionBlank) DumpTo(iw pluggable.IndentWriter) {
+func (b *DistributionBlank) DumpTo(iw driverbottom.IndentWriter) {
 	panic("not implemented")
 }

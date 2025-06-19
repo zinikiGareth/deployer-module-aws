@@ -2,17 +2,17 @@ package acm
 
 import (
 	"ziniki.org/deployer/coremod/pkg/external"
-	"ziniki.org/deployer/deployer/pkg/errorsink"
-	"ziniki.org/deployer/deployer/pkg/pluggable"
+	"ziniki.org/deployer/driver/pkg/driverbottom"
+	"ziniki.org/deployer/driver/pkg/errorsink"
 )
 
 type CertificateBlank struct{}
 
-func (b *CertificateBlank) Mint(ct *pluggable.CoreTools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
+func (b *CertificateBlank) Mint(ct *driverbottom.CoreTools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr) any {
 	return &certificateCreator{tools: ct.RetrieveOther("coremod").(*external.Tools), loc: loc, name: named, props: props}
 }
 
-func (b *CertificateBlank) Find(ct *pluggable.CoreTools, loc *errorsink.Location, named string) any {
+func (b *CertificateBlank) Find(ct *driverbottom.CoreTools, loc *errorsink.Location, named string) any {
 	return &certificateFinder{tools: ct.RetrieveOther("coremod").(*external.Tools), loc: loc, name: named}
 }
 
@@ -24,6 +24,6 @@ func (b *CertificateBlank) ShortDescription() string {
 	return "aws.CertificateManager.Certificate[]"
 }
 
-func (b *CertificateBlank) DumpTo(iw pluggable.IndentWriter) {
+func (b *CertificateBlank) DumpTo(iw driverbottom.IndentWriter) {
 	panic("not implemented")
 }

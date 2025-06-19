@@ -8,8 +8,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront/types"
 	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
-	"ziniki.org/deployer/driver/pkg/pluggable"
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
@@ -18,7 +18,7 @@ type CachePolicyCreator struct {
 
 	loc      *errorsink.Location
 	name     string
-	minttl   pluggable.Expr
+	minttl   driverbottom.Expr
 	teardown external.TearDown
 
 	client        *cloudfront.Client
@@ -34,7 +34,7 @@ func (cfdc *CachePolicyCreator) ShortDescription() string {
 	return "aws.CloudFront.CachePolicy[" + cfdc.name + "]"
 }
 
-func (cfdc *CachePolicyCreator) DumpTo(iw pluggable.IndentWriter) {
+func (cfdc *CachePolicyCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.Intro("aws.CloudFront.CachePolicy[")
 	iw.AttrsWhere(cfdc)
 	iw.TextAttr("named", cfdc.name)
@@ -45,7 +45,7 @@ func (cfdc *CachePolicyCreator) DumpTo(iw pluggable.IndentWriter) {
 	iw.EndAttrs()
 }
 
-func (cfdc *CachePolicyCreator) BuildModel(pres pluggable.ValuePresenter) {
+func (cfdc *CachePolicyCreator) BuildModel(pres driverbottom.ValuePresenter) {
 	eq := cfdc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {
@@ -105,7 +105,7 @@ func (cfdc *CachePolicyCreator) TearDown() {
 	}
 }
 
-func (cfdc *CachePolicyCreator) ObtainMethod(name string) pluggable.Method {
+func (cfdc *CachePolicyCreator) ObtainMethod(name string) driverbottom.Method {
 	switch name {
 	case "id":
 		return &CachePolicyIdMethod{}
@@ -116,7 +116,7 @@ func (cfdc *CachePolicyCreator) ObtainMethod(name string) pluggable.Method {
 type CachePolicyIdMethod struct {
 }
 
-func (a *CachePolicyIdMethod) Invoke(s pluggable.RuntimeStorage, on pluggable.Expr, args []pluggable.Expr) any {
+func (a *CachePolicyIdMethod) Invoke(s driverbottom.RuntimeStorage, on driverbottom.Expr, args []driverbottom.Expr) any {
 	e := on.Eval(s)
 	cfdc, ok := e.(*CachePolicyCreator)
 	if !ok {
@@ -143,4 +143,4 @@ func (d *deferReadingCachePolicyId) String() string {
 	return d.cfdc.CachePolicyId
 }
 
-var _ pluggable.HasMethods = &CachePolicyCreator{}
+var _ driverbottom.HasMethods = &CachePolicyCreator{}

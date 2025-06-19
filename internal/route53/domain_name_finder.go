@@ -11,8 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/route53domains"
 	"github.com/aws/smithy-go"
 	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
-	"ziniki.org/deployer/driver/pkg/pluggable"
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
@@ -39,7 +39,7 @@ func (dnf *domainNameFinder) ShortDescription() string {
 	return "aws.route53.DomainName[" + dnf.name + "]"
 }
 
-func (dnf *domainNameFinder) DumpTo(iw pluggable.IndentWriter) {
+func (dnf *domainNameFinder) DumpTo(iw driverbottom.IndentWriter) {
 	iw.Intro("aws.s3.DomainName[")
 	iw.AttrsWhere(dnf)
 	iw.TextAttr("named", dnf.name)
@@ -47,7 +47,7 @@ func (dnf *domainNameFinder) DumpTo(iw pluggable.IndentWriter) {
 }
 
 // This is called during the "Prepare" phase
-func (dnf *domainNameFinder) BuildModel(pres pluggable.ValuePresenter) {
+func (dnf *domainNameFinder) BuildModel(pres driverbottom.ValuePresenter) {
 	eq := dnf.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {
@@ -100,7 +100,7 @@ func (dnf *domainNameFinder) HostedZoneId() string {
 	return dnf.hzid
 }
 
-func (dnf *domainNameFinder) ObtainMethod(name string) pluggable.Method {
+func (dnf *domainNameFinder) ObtainMethod(name string) driverbottom.Method {
 	switch name {
 	case "zoneId":
 		return &zoneIdMethod{}
@@ -111,7 +111,7 @@ func (dnf *domainNameFinder) ObtainMethod(name string) pluggable.Method {
 type zoneIdMethod struct {
 }
 
-func (a *zoneIdMethod) Invoke(s pluggable.RuntimeStorage, on pluggable.Expr, args []pluggable.Expr) any {
+func (a *zoneIdMethod) Invoke(s driverbottom.RuntimeStorage, on driverbottom.Expr, args []driverbottom.Expr) any {
 	e := on.Eval(s)
 	cfdc, ok := e.(*domainNameFinder)
 	if !ok {
@@ -123,4 +123,4 @@ func (a *zoneIdMethod) Invoke(s pluggable.RuntimeStorage, on pluggable.Expr, arg
 	return cfdc.hzid
 }
 
-var _ pluggable.HasMethods = &domainNameFinder{}
+var _ driverbottom.HasMethods = &domainNameFinder{}

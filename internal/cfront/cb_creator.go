@@ -7,8 +7,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront/types"
 	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
-	"ziniki.org/deployer/driver/pkg/pluggable"
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
@@ -17,10 +17,10 @@ type CacheBehaviorCreator struct {
 
 	loc      *errorsink.Location
 	name     string
-	cpId     pluggable.Expr
-	pp       pluggable.Expr
-	rhp      pluggable.Expr
-	toid     pluggable.Expr
+	cpId     driverbottom.Expr
+	pp       driverbottom.Expr
+	rhp      driverbottom.Expr
+	toid     driverbottom.Expr
 	teardown external.TearDown
 
 	client *cloudfront.Client
@@ -34,7 +34,7 @@ func (cfdc *CacheBehaviorCreator) ShortDescription() string {
 	return "aws.CloudFront.CacheBehavior[" + cfdc.name + "]"
 }
 
-func (cfdc *CacheBehaviorCreator) DumpTo(iw pluggable.IndentWriter) {
+func (cfdc *CacheBehaviorCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.Intro("aws.CloudFront.CacheBehavior[")
 	iw.AttrsWhere(cfdc)
 	iw.TextAttr("named", cfdc.name)
@@ -46,7 +46,7 @@ func (cfdc *CacheBehaviorCreator) DumpTo(iw pluggable.IndentWriter) {
 	iw.EndAttrs()
 }
 
-func (cfdc *CacheBehaviorCreator) BuildModel(pres pluggable.ValuePresenter) {
+func (cfdc *CacheBehaviorCreator) BuildModel(pres driverbottom.ValuePresenter) {
 	eq := cfdc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {

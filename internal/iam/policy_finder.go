@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
-	"ziniki.org/deployer/driver/pkg/pluggable"
 )
 
 type policyFinder struct {
@@ -27,14 +27,14 @@ func (b *policyFinder) ShortDescription() string {
 	return "aws.IAM.Policy[" + b.name + "]"
 }
 
-func (b *policyFinder) DumpTo(iw pluggable.IndentWriter) {
+func (b *policyFinder) DumpTo(iw driverbottom.IndentWriter) {
 	iw.Intro("aws.IAM.Policy[")
 	iw.AttrsWhere(b)
 	iw.TextAttr("named", b.name)
 	iw.EndAttrs()
 }
 
-func (b *policyFinder) BuildModel(pres pluggable.ValuePresenter) {
+func (b *policyFinder) BuildModel(pres driverbottom.ValuePresenter) {
 	/*
 		eq := b.tools.Recall.ObtainDriver("aws.AwsEnv")
 		awsEnv, ok := eq.(*env.AwsEnv)

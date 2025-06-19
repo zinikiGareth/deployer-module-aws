@@ -11,8 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	r53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
 	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
-	"ziniki.org/deployer/driver/pkg/pluggable"
 	"ziniki.org/deployer/modules/aws/internal/env"
 	myroute53 "ziniki.org/deployer/modules/aws/internal/route53"
 )
@@ -30,7 +30,7 @@ type certificateCreator struct {
 	alreadyExists bool
 	hzid          string
 	arn           string
-	props         map[pluggable.Identifier]pluggable.Expr
+	props         map[driverbottom.Identifier]driverbottom.Expr
 	// cloud *BucketCloud
 }
 
@@ -42,7 +42,7 @@ func (acm *certificateCreator) ShortDescription() string {
 	return "aws.CertificateManager.Certificate[" + acm.name + "]"
 }
 
-func (acm *certificateCreator) DumpTo(iw pluggable.IndentWriter) {
+func (acm *certificateCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.Intro("aws.CertificateManager.Certificate[")
 	iw.AttrsWhere(acm)
 	iw.TextAttr("named", acm.name)
@@ -50,7 +50,7 @@ func (acm *certificateCreator) DumpTo(iw pluggable.IndentWriter) {
 }
 
 // This is called during the "Prepare" phase
-func (acmc *certificateCreator) BuildModel(pres pluggable.ValuePresenter) {
+func (acmc *certificateCreator) BuildModel(pres driverbottom.ValuePresenter) {
 	domainExpr := find(acmc.props, "Domain")
 	if domainExpr == nil {
 		log.Fatalf("must specify a domain instance to create a certificate")
@@ -217,7 +217,7 @@ func (acmc *certificateCreator) tryToValidateCert(arn string) bool {
 	}
 }
 
-func (acm *certificateCreator) ObtainMethod(name string) pluggable.Method {
+func (acm *certificateCreator) ObtainMethod(name string) driverbottom.Method {
 	switch name {
 	case "arn":
 		return &arnMethod{}
@@ -232,7 +232,7 @@ func (acm *certificateCreator) String() string {
 type arnMethod struct {
 }
 
-func (a *arnMethod) Invoke(s pluggable.RuntimeStorage, on pluggable.Expr, args []pluggable.Expr) any {
+func (a *arnMethod) Invoke(s driverbottom.RuntimeStorage, on driverbottom.Expr, args []driverbottom.Expr) any {
 	e := on.Eval(s)
 	cc, ok := e.(*certificateCreator)
 	if !ok {
@@ -259,7 +259,7 @@ func (d *DeferReadingArn) String() string {
 	return d.cc.arn
 }
 
-func find(props map[pluggable.Identifier]pluggable.Expr, key string) pluggable.Expr {
+func find(props map[driverbottom.Identifier]driverbottom.Expr, key string) driverbottom.Expr {
 	for id, ex := range props {
 		if id.Id() == key {
 			return ex
@@ -276,4 +276,4 @@ func DeleteCertificate(client *acm.Client, arn string) {
 	log.Printf("I think the certificate was deleted because no error was reported")
 }
 
-var _ pluggable.HasMethods = &certificateCreator{}
+var _ driverbottom.HasMethods = &certificateCreator{}

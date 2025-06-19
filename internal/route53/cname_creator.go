@@ -9,8 +9,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	r53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
 	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
-	"ziniki.org/deployer/driver/pkg/pluggable"
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
@@ -19,8 +19,8 @@ type cnameCreator struct {
 
 	loc      *errorsink.Location
 	name     string
-	pointsTo pluggable.Expr
-	zone     pluggable.Expr
+	pointsTo driverbottom.Expr
+	zone     driverbottom.Expr
 	teardown external.TearDown
 
 	client        *route53.Client
@@ -37,14 +37,14 @@ func (p *cnameCreator) ShortDescription() string {
 	return "aws.IAM.Policy[" + p.name + "]"
 }
 
-func (p *cnameCreator) DumpTo(iw pluggable.IndentWriter) {
+func (p *cnameCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.Intro("aws.IAM.Policy[")
 	iw.AttrsWhere(p)
 	iw.TextAttr("named", p.name)
 	iw.EndAttrs()
 }
 
-func (cc *cnameCreator) BuildModel(pres pluggable.ValuePresenter) {
+func (cc *cnameCreator) BuildModel(pres driverbottom.ValuePresenter) {
 	eq := cc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {

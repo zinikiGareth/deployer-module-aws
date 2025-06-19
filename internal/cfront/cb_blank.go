@@ -2,18 +2,18 @@ package cfront
 
 import (
 	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
-	"ziniki.org/deployer/driver/pkg/pluggable"
 )
 
 type CacheBehaviorBlank struct{}
 
-func (b *CacheBehaviorBlank) Mint(ct *pluggable.CoreTools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
+func (b *CacheBehaviorBlank) Mint(ct *driverbottom.CoreTools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr) any {
 	tools := ct.RetrieveOther("coremod").(*external.Tools)
-	var pp pluggable.Expr
-	var rhp pluggable.Expr
-	var cp pluggable.Expr
-	var toid pluggable.Expr
+	var pp driverbottom.Expr
+	var rhp driverbottom.Expr
+	var cp driverbottom.Expr
+	var toid driverbottom.Expr
 	for p, v := range props {
 		switch p.Id() {
 		case "CachePolicy":
@@ -48,7 +48,7 @@ func (b *CacheBehaviorBlank) Mint(ct *pluggable.CoreTools, loc *errorsink.Locati
 	return &CacheBehaviorCreator{tools: tools, loc: loc, name: named, cpId: cp, pp: pp, rhp: rhp, toid: toid}
 }
 
-func (b *CacheBehaviorBlank) Find(ct *pluggable.CoreTools, loc *errorsink.Location, named string) any {
+func (b *CacheBehaviorBlank) Find(ct *driverbottom.CoreTools, loc *errorsink.Location, named string) any {
 	return &CacheBehaviorFinder{tools: ct.RetrieveOther("coremod").(*external.Tools), loc: loc, name: named}
 }
 
@@ -60,6 +60,6 @@ func (b *CacheBehaviorBlank) ShortDescription() string {
 	return "aws.CloudFront.CacheBehavior[]"
 }
 
-func (b *CacheBehaviorBlank) DumpTo(iw pluggable.IndentWriter) {
+func (b *CacheBehaviorBlank) DumpTo(iw driverbottom.IndentWriter) {
 	panic("not implemented")
 }
