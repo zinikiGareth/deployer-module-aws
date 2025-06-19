@@ -1,14 +1,14 @@
 package main
 
 import (
-	"ziniki.org/deployer/driver/pkg/deployer"
+	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/modules/aws/pkg/awsmod"
 )
 
-func ProvideTestRunner(runner deployer.TestRunner) error {
+func ProvideTestRunner(runner driverbottom.TestRunner) error {
 	return awsmod.ProvideTestRunner(runner)
 }
 
-func RegisterWithDriver(deployer deployer.Driver) error {
+func RegisterWithDriver(deployer driverbottom.Driver) error {
 	return awsmod.RegisterWithDriver(deployer)
 }

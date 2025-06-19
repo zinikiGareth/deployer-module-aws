@@ -1,7 +1,6 @@
 package awsmod
 
 import (
-	"ziniki.org/deployer/driver/pkg/deployer"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/drivertop"
 	"ziniki.org/deployer/modules/aws/internal/acm"
@@ -14,12 +13,12 @@ import (
 
 // var testRunner deployer.TestRunner
 
-func ProvideTestRunner(runner deployer.TestRunner) error {
+func ProvideTestRunner(runner driverbottom.TestRunner) error {
 	// testRunner = runner
 	return nil
 }
 
-func RegisterWithDriver(deployer deployer.Driver) error {
+func RegisterWithDriver(deployer driverbottom.Driver) error {
 	tools := deployer.ObtainCoreTools()
 	tools.Register.ProvideDriver("aws.AwsEnv", env.InitAwsEnv())
 
