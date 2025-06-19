@@ -4,7 +4,7 @@ go 1.23.4
 
 
 require (
-	ziniki.org/deployer/deployer v0.0.0
+	ziniki.org/deployer/driver v0.0.0
 	ziniki.org/deployer/coremod v0.0.0
 	github.com/aws/aws-sdk-go-v2/service/iam v1.42.1
 	github.com/aws/aws-sdk-go-v2 v1.36.4
@@ -31,5 +31,5 @@ require (
 	github.com/aws/smithy-go v1.22.2
 )
 
-replace ziniki.org/deployer/deployer => ../deployer/deployer
+replace ziniki.org/deployer/driver => ../deployer/driver
 replace ziniki.org/deployer/coremod => ../deployer/coremod

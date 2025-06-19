@@ -7,7 +7,7 @@ import (
 
 	"ziniki.org/deployer/coremod/pkg/coremod"
 	"ziniki.org/deployer/coremod/pkg/external"
-	"ziniki.org/deployer/deployer/pkg/errorsink"
+	"ziniki.org/deployer/driver/pkg/errorsink"
 	"ziniki.org/deployer/modules/aws/internal/policyjson"
 )
 

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"ziniki.org/deployer/deployer/pkg/deployer"
+	"ziniki.org/deployer/driver/pkg/deployer"
 	"ziniki.org/deployer/modules/aws/pkg/awsmod"
 )
 

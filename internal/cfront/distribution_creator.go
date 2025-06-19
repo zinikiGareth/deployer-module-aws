@@ -9,8 +9,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront/types"
 	"ziniki.org/deployer/coremod/pkg/external"
-	"ziniki.org/deployer/deployer/pkg/errorsink"
-	"ziniki.org/deployer/deployer/pkg/pluggable"
+	"ziniki.org/deployer/driver/pkg/errorsink"
+	"ziniki.org/deployer/driver/pkg/pluggable"
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 

@@ -1,9 +1,9 @@
 package awsmod
 
 import (
-	"ziniki.org/deployer/deployer/pkg/creator"
-	"ziniki.org/deployer/deployer/pkg/deployer"
-	"ziniki.org/deployer/deployer/pkg/pluggable"
+	"ziniki.org/deployer/driver/pkg/creator"
+	"ziniki.org/deployer/driver/pkg/deployer"
+	"ziniki.org/deployer/driver/pkg/pluggable"
 	"ziniki.org/deployer/modules/aws/internal/acm"
 	"ziniki.org/deployer/modules/aws/internal/cfront"
 	"ziniki.org/deployer/modules/aws/internal/env"

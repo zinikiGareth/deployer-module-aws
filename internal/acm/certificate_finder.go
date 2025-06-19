@@ -5,8 +5,8 @@ import (
 	"log"
 
 	"ziniki.org/deployer/coremod/pkg/external"
-	"ziniki.org/deployer/deployer/pkg/errorsink"
-	"ziniki.org/deployer/deployer/pkg/pluggable"
+	"ziniki.org/deployer/driver/pkg/errorsink"
+	"ziniki.org/deployer/driver/pkg/pluggable"
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
