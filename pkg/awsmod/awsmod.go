@@ -1,9 +1,9 @@
 package awsmod
 
 import (
-	"ziniki.org/deployer/driver/pkg/creator"
 	"ziniki.org/deployer/driver/pkg/deployer"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
+	"ziniki.org/deployer/driver/pkg/drivertop"
 	"ziniki.org/deployer/modules/aws/internal/acm"
 	"ziniki.org/deployer/modules/aws/internal/cfront"
 	"ziniki.org/deployer/modules/aws/internal/env"
@@ -35,19 +35,19 @@ func RegisterWithDriver(deployer deployer.Driver) error {
 	tools.Register.Register("blank", "aws.IAM.Policy", &iam.PolicyBlank{})
 
 	// Permissions by name
-	tools.Repository.IntroduceSymbol(driverbottom.SymbolName("aws.action.S3.GetObject"), creator.MakeString("s3:GetObject"))
-	tools.Repository.IntroduceSymbol(driverbottom.SymbolName("aws.action.S3.PutObject"), creator.MakeString("s3:PutObject"))
+	tools.Repository.IntroduceSymbol(driverbottom.SymbolName("aws.action.S3.GetObject"), drivertop.MakeString("s3:GetObject"))
+	tools.Repository.IntroduceSymbol(driverbottom.SymbolName("aws.action.S3.PutObject"), drivertop.MakeString("s3:PutObject"))
 
 	// Principals
-	tools.Repository.IntroduceSymbol(driverbottom.SymbolName("aws.principal.AWS"), creator.MakeString("AWS"))
-	tools.Repository.IntroduceSymbol(driverbottom.SymbolName("aws.principal.Service"), creator.MakeString("Service"))
+	tools.Repository.IntroduceSymbol(driverbottom.SymbolName("aws.principal.AWS"), drivertop.MakeString("AWS"))
+	tools.Repository.IntroduceSymbol(driverbottom.SymbolName("aws.principal.Service"), drivertop.MakeString("Service"))
 
 	// Service Principals
-	tools.Repository.IntroduceSymbol(driverbottom.SymbolName("aws.principal.CloudFront"), creator.MakeString("cloudfront.amazonaws.com"))
+	tools.Repository.IntroduceSymbol(driverbottom.SymbolName("aws.principal.CloudFront"), drivertop.MakeString("cloudfront.amazonaws.com"))
 
 	// other strings
-	tools.Repository.IntroduceSymbol(driverbottom.SymbolName("aws.cond.StringEquals"), creator.MakeString("StringEquals"))
-	tools.Repository.IntroduceSymbol(driverbottom.SymbolName("aws.SourceArn"), creator.MakeString("aws:SourceArn"))
+	tools.Repository.IntroduceSymbol(driverbottom.SymbolName("aws.cond.StringEquals"), drivertop.MakeString("StringEquals"))
+	tools.Repository.IntroduceSymbol(driverbottom.SymbolName("aws.SourceArn"), drivertop.MakeString("aws:SourceArn"))
 
 	return nil
 }
