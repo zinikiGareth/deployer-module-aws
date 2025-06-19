@@ -6,7 +6,7 @@ import (
 	"log"
 
 	"github.com/aws/aws-sdk-go-v2/service/iam"
-	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
 	"ziniki.org/deployer/modules/aws/internal/env"
@@ -14,14 +14,14 @@ import (
 )
 
 type policyCreator struct {
-	tools *external.Tools
+	tools *corebottom.Tools
 
 	loc      *errorsink.Location
 	name     string
-	teardown external.TearDown
+	teardown corebottom.TearDown
 	policy   driverbottom.Expr
 
-	policyDoc external.PolicyDocument
+	policyDoc corebottom.PolicyDocument
 
 	client        *iam.Client
 	alreadyExists bool
@@ -64,7 +64,7 @@ func (p *policyCreator) BuildModel(pres driverbottom.ValuePresenter) {
 		p.tools.Reporter.Reportf(loc.Offset, "policy was nil")
 		return
 	}
-	pi, ok := pv.(external.PolicyDocument)
+	pi, ok := pv.(corebottom.PolicyDocument)
 	if !ok {
 		p.tools.Reporter.At(loc.Line)
 		p.tools.Reporter.Reportf(loc.Offset, "expression was not a policy but %T %v", pv, pv)

@@ -1,7 +1,7 @@
 package cfront
 
 import (
-	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
 )
@@ -9,7 +9,7 @@ import (
 type CacheBehaviorBlank struct{}
 
 func (b *CacheBehaviorBlank) Mint(ct *driverbottom.CoreTools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr) any {
-	tools := ct.RetrieveOther("coremod").(*external.Tools)
+	tools := ct.RetrieveOther("coremod").(*corebottom.Tools)
 	var pp driverbottom.Expr
 	var rhp driverbottom.Expr
 	var cp driverbottom.Expr
@@ -49,7 +49,7 @@ func (b *CacheBehaviorBlank) Mint(ct *driverbottom.CoreTools, loc *errorsink.Loc
 }
 
 func (b *CacheBehaviorBlank) Find(ct *driverbottom.CoreTools, loc *errorsink.Location, named string) any {
-	return &CacheBehaviorFinder{tools: ct.RetrieveOther("coremod").(*external.Tools), loc: loc, name: named}
+	return &CacheBehaviorFinder{tools: ct.RetrieveOther("coremod").(*corebottom.Tools), loc: loc, name: named}
 }
 
 func (b *CacheBehaviorBlank) Loc() *errorsink.Location {

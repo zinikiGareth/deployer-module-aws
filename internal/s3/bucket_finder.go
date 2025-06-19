@@ -9,15 +9,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/smithy-go"
-	"ziniki.org/deployer/coremod/pkg/external"
-	"ziniki.org/deployer/coremod/pkg/files"
+	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
 type bucketFinder struct {
-	tools *external.Tools
+	tools *corebottom.Tools
 
 	loc  *errorsink.Location
 	name string
@@ -76,7 +75,7 @@ func (b *bucketFinder) BuildModel(pres driverbottom.ValuePresenter) {
 	pres.Present(b)
 }
 
-func (b *bucketFinder) ObtainDest() files.FileDest {
+func (b *bucketFinder) ObtainDest() corebottom.FileDest {
 	return NewBucketTransfer(b.client, b.name)
 }
 

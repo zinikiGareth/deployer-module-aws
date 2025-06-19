@@ -8,14 +8,14 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront/types"
-	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
 type distributionCreator struct {
-	tools *external.Tools
+	tools *corebottom.Tools
 
 	loc         *errorsink.Location
 	name        string
@@ -27,7 +27,7 @@ type distributionCreator struct {
 	oac         driverbottom.Expr
 	cachePolicy driverbottom.Expr
 	behaviors   driverbottom.Expr // I think this should ultimately be a list
-	teardown    external.TearDown
+	teardown    corebottom.TearDown
 
 	client        *cloudfront.Client
 	distroId      string

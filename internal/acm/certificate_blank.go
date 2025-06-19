@@ -1,7 +1,7 @@
 package acm
 
 import (
-	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
 )
@@ -9,11 +9,11 @@ import (
 type CertificateBlank struct{}
 
 func (b *CertificateBlank) Mint(ct *driverbottom.CoreTools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr) any {
-	return &certificateCreator{tools: ct.RetrieveOther("coremod").(*external.Tools), loc: loc, name: named, props: props}
+	return &certificateCreator{tools: ct.RetrieveOther("coremod").(*corebottom.Tools), loc: loc, name: named, props: props}
 }
 
 func (b *CertificateBlank) Find(ct *driverbottom.CoreTools, loc *errorsink.Location, named string) any {
-	return &certificateFinder{tools: ct.RetrieveOther("coremod").(*external.Tools), loc: loc, name: named}
+	return &certificateFinder{tools: ct.RetrieveOther("coremod").(*corebottom.Tools), loc: loc, name: named}
 }
 
 func (b *CertificateBlank) Loc() *errorsink.Location {

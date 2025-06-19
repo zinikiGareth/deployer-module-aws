@@ -1,7 +1,7 @@
 package cfront
 
 import (
-	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
 )
@@ -9,7 +9,7 @@ import (
 type RHPBlank struct{}
 
 func (b *RHPBlank) Mint(ct *driverbottom.CoreTools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr) any {
-	tools := ct.RetrieveOther("coremod").(*external.Tools)
+	tools := ct.RetrieveOther("coremod").(*corebottom.Tools)
 	var header driverbottom.Expr
 	var value driverbottom.Expr
 	for p, v := range props {
@@ -27,7 +27,7 @@ func (b *RHPBlank) Mint(ct *driverbottom.CoreTools, loc *errorsink.Location, nam
 }
 
 func (b *RHPBlank) Find(ct *driverbottom.CoreTools, loc *errorsink.Location, named string) any {
-	return &RHPFinder{tools: ct.RetrieveOther("coremod").(*external.Tools), loc: loc, name: named}
+	return &RHPFinder{tools: ct.RetrieveOther("coremod").(*corebottom.Tools), loc: loc, name: named}
 }
 
 func (b *RHPBlank) Loc() *errorsink.Location {

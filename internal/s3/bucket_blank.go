@@ -1,7 +1,7 @@
 package s3
 
 import (
-	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
 )
@@ -9,12 +9,12 @@ import (
 type BucketBlank struct{}
 
 func (b *BucketBlank) Mint(ct *driverbottom.CoreTools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr) any {
-	tools := ct.RetrieveOther("coremod").(*external.Tools)
+	tools := ct.RetrieveOther("coremod").(*corebottom.Tools)
 	return &bucketCreator{tools: tools, loc: loc, name: named, region: "us-east-1"}
 }
 
 func (b *BucketBlank) Find(ct *driverbottom.CoreTools, loc *errorsink.Location, named string) any {
-	return &bucketFinder{tools: ct.RetrieveOther("coremod").(*external.Tools), loc: loc, name: named}
+	return &bucketFinder{tools: ct.RetrieveOther("coremod").(*corebottom.Tools), loc: loc, name: named}
 }
 
 func (b *BucketBlank) Loc() *errorsink.Location {

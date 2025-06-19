@@ -9,8 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/smithy-go"
-	"ziniki.org/deployer/coremod/pkg/external"
-	"ziniki.org/deployer/coremod/pkg/files"
+	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
 	"ziniki.org/deployer/modules/aws/internal/env"
@@ -18,12 +17,12 @@ import (
 )
 
 type bucketCreator struct {
-	tools *external.Tools
+	tools *corebottom.Tools
 
 	loc      *errorsink.Location
 	name     string
 	region   string
-	teardown external.TearDown
+	teardown corebottom.TearDown
 
 	client        *s3.Client
 	alreadyExists bool
@@ -109,7 +108,7 @@ func (b *bucketCreator) TearDown() {
 	}
 }
 
-func (b *bucketCreator) ObtainDest() files.FileDest {
+func (b *bucketCreator) ObtainDest() corebottom.FileDest {
 	return NewBucketTransfer(b.client, b.name)
 }
 
@@ -123,7 +122,7 @@ func (b *bucketCreator) ObtainMethod(name string) driverbottom.Method {
 	return nil
 }
 
-func (b *bucketCreator) Attach(doc external.PolicyDocument) {
+func (b *bucketCreator) Attach(doc corebottom.PolicyDocument) {
 	// TODO: I assume we either have to merge or do duplicate detection
 	policyJson, err := policyjson.BuildFrom(b.name, doc)
 	if err != nil {
@@ -171,4 +170,4 @@ func (a *dnsNameMethod) Invoke(s driverbottom.RuntimeStorage, on driverbottom.Ex
 var _ driverbottom.HasMethods = &bucketCreator{}
 var _ driverbottom.Method = &allResourcesMethod{}
 var _ driverbottom.Method = &dnsNameMethod{}
-var _ external.PolicyAttacher = &bucketCreator{}
+var _ corebottom.PolicyAttacher = &bucketCreator{}

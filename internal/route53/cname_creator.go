@@ -8,20 +8,20 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	r53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
-	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
 type cnameCreator struct {
-	tools *external.Tools
+	tools *corebottom.Tools
 
 	loc      *errorsink.Location
 	name     string
 	pointsTo driverbottom.Expr
 	zone     driverbottom.Expr
-	teardown external.TearDown
+	teardown corebottom.TearDown
 
 	client        *route53.Client
 	alreadyExists bool

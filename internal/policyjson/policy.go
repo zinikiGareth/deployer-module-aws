@@ -3,7 +3,7 @@ package policyjson
 import (
 	"fmt"
 
-	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/coremod/pkg/corebottom"
 )
 
 type policyJson struct {
@@ -11,7 +11,7 @@ type policyJson struct {
 	Statement []stmtJson
 }
 
-func makePolicyJson(name string, policy external.PolicyDocument) *policyJson {
+func makePolicyJson(name string, policy corebottom.PolicyDocument) *policyJson {
 	ret := &policyJson{}
 	ret.Version = "2012-10-17"
 	ret.Statement = []stmtJson{}
@@ -30,7 +30,7 @@ type stmtJson struct {
 	Condition any `json:",omitempty"`
 }
 
-func makeStmtJson(policyName string, k int, item external.PolicyEffect) stmtJson {
+func makeStmtJson(policyName string, k int, item corebottom.PolicyEffect) stmtJson {
 	ret := stmtJson{Sid: fmt.Sprintf("%sSID%d", policyName, k), Effect: item.Effect()}
 	as := item.Actions()
 	if len(as) == 0 {
@@ -76,7 +76,7 @@ func makeStmtJson(policyName string, k int, item external.PolicyEffect) stmtJson
 	return ret
 }
 
-func makePrincipal(p external.PolicyPrincipal) map[string]string {
+func makePrincipal(p corebottom.PolicyPrincipal) map[string]string {
 	ret := map[string]string{}
 	ret[p.Key()] = p.Value()
 	return ret

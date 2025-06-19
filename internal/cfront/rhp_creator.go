@@ -7,20 +7,20 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront/types"
-	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
 type RHPCreator struct {
-	tools *external.Tools
+	tools *corebottom.Tools
 
 	loc      *errorsink.Location
 	name     string
 	header   driverbottom.Expr
 	value    driverbottom.Expr
-	teardown external.TearDown
+	teardown corebottom.TearDown
 
 	client        *cloudfront.Client
 	rpId          string

@@ -1,7 +1,7 @@
 package cfront
 
 import (
-	"ziniki.org/deployer/coremod/pkg/external"
+	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
 )
@@ -9,7 +9,7 @@ import (
 type OACBlank struct{}
 
 func (b *OACBlank) Mint(ct *driverbottom.CoreTools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr) any {
-	tools := ct.RetrieveOther("coremod").(*external.Tools)
+	tools := ct.RetrieveOther("coremod").(*corebottom.Tools)
 	var oacTy driverbottom.Expr
 	var sb driverbottom.Expr
 	var sp driverbottom.Expr
@@ -30,7 +30,7 @@ func (b *OACBlank) Mint(ct *driverbottom.CoreTools, loc *errorsink.Location, nam
 }
 
 func (b *OACBlank) Find(ct *driverbottom.CoreTools, loc *errorsink.Location, named string) any {
-	return &OACFinder{tools: ct.RetrieveOther("coremod").(*external.Tools), loc: loc, name: named}
+	return &OACFinder{tools: ct.RetrieveOther("coremod").(*corebottom.Tools), loc: loc, name: named}
 }
 
 func (b *OACBlank) Loc() *errorsink.Location {
