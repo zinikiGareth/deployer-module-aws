@@ -8,7 +8,7 @@ import (
 
 type PolicyBlank struct{}
 
-func (b *PolicyBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown external.TearDown) any {
+func (b *PolicyBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
 	var policy pluggable.Expr
 	seenErr := false
 	for p, v := range props {
@@ -24,7 +24,7 @@ func (b *PolicyBlank) Mint(tools *external.Tools, loc *errorsink.Location, named
 		tools.Reporter.At(loc.Line)
 		tools.Reporter.Reportf(loc.Offset, "no Policy property was specified for %s", named)
 	}
-	return &policyCreator{tools: tools, loc: loc, name: named, policy: policy, teardown: teardown}
+	return &policyCreator{tools: tools, loc: loc, name: named, policy: policy}
 }
 
 func (b *PolicyBlank) Find(tools *external.Tools, loc *errorsink.Location, named string) any {

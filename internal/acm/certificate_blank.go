@@ -8,8 +8,8 @@ import (
 
 type CertificateBlank struct{}
 
-func (b *CertificateBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown external.TearDown) any {
-	return &certificateCreator{tools: tools, loc: loc, name: named, props: props, teardown: teardown}
+func (b *CertificateBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
+	return &certificateCreator{tools: tools, loc: loc, name: named, props: props}
 }
 
 func (b *CertificateBlank) Find(tools *external.Tools, loc *errorsink.Location, named string) any {

@@ -8,7 +8,7 @@ import (
 
 type CNAMEBlank struct{}
 
-func (b *CNAMEBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown external.TearDown) any {
+func (b *CNAMEBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
 	var pointsTo pluggable.Expr
 	var zone pluggable.Expr
 	seenErr := false
@@ -31,7 +31,7 @@ func (b *CNAMEBlank) Mint(tools *external.Tools, loc *errorsink.Location, named 
 		tools.Reporter.At(loc.Line)
 		tools.Reporter.Reportf(loc.Offset, "no PointsTo property was specified for %s", named)
 	}
-	return &cnameCreator{tools: tools, loc: loc, name: named, pointsTo: pointsTo, zone: zone, teardown: teardown}
+	return &cnameCreator{tools: tools, loc: loc, name: named, pointsTo: pointsTo, zone: zone}
 }
 
 func (b *CNAMEBlank) Find(tools *external.Tools, loc *errorsink.Location, named string) any {

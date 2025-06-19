@@ -8,7 +8,7 @@ import (
 
 type OACBlank struct{}
 
-func (b *OACBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown external.TearDown) any {
+func (b *OACBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
 	var oacTy pluggable.Expr
 	var sb pluggable.Expr
 	var sp pluggable.Expr
@@ -25,7 +25,7 @@ func (b *OACBlank) Mint(tools *external.Tools, loc *errorsink.Location, named st
 			tools.Reporter.Reportf(loc.Offset, "invalid property for OriginAccessControl: %s", p.Id())
 		}
 	}
-	return &OACCreator{tools: tools, loc: loc, name: named, acType: oacTy, signBehavior: sb, signProt: sp, teardown: teardown}
+	return &OACCreator{tools: tools, loc: loc, name: named, acType: oacTy, signBehavior: sb, signProt: sp}
 }
 
 func (b *OACBlank) Find(tools *external.Tools, loc *errorsink.Location, named string) any {

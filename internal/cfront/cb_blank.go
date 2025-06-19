@@ -8,7 +8,7 @@ import (
 
 type CacheBehaviorBlank struct{}
 
-func (b *CacheBehaviorBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown external.TearDown) any {
+func (b *CacheBehaviorBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
 	var pp pluggable.Expr
 	var rhp pluggable.Expr
 	var cp pluggable.Expr
@@ -44,7 +44,7 @@ func (b *CacheBehaviorBlank) Mint(tools *external.Tools, loc *errorsink.Location
 		tools.Reporter.At(loc.Line)
 		tools.Reporter.Reportf(loc.Offset, "TargetOriginId was not defined")
 	}
-	return &CacheBehaviorCreator{tools: tools, loc: loc, name: named, cpId: cp, pp: pp, rhp: rhp, toid: toid, teardown: teardown}
+	return &CacheBehaviorCreator{tools: tools, loc: loc, name: named, cpId: cp, pp: pp, rhp: rhp, toid: toid}
 }
 
 func (b *CacheBehaviorBlank) Find(tools *external.Tools, loc *errorsink.Location, named string) any {

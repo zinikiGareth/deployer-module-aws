@@ -8,7 +8,7 @@ import (
 
 type CachePolicyBlank struct{}
 
-func (b *CachePolicyBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown external.TearDown) any {
+func (b *CachePolicyBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
 	var minttl pluggable.Expr
 	for p, v := range props {
 		switch p.Id() {
@@ -19,7 +19,7 @@ func (b *CachePolicyBlank) Mint(tools *external.Tools, loc *errorsink.Location, 
 			tools.Reporter.Reportf(loc.Offset, "invalid property for OriginAccessControl: %s", p.Id())
 		}
 	}
-	return &CachePolicyCreator{tools: tools, loc: loc, name: named, minttl: minttl, teardown: teardown}
+	return &CachePolicyCreator{tools: tools, loc: loc, name: named, minttl: minttl}
 }
 
 func (b *CachePolicyBlank) Find(tools *external.Tools, loc *errorsink.Location, named string) any {

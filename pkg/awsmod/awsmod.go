@@ -20,7 +20,7 @@ func ProvideTestRunner(runner deployer.TestRunner) error {
 }
 
 func RegisterWithDriver(deployer deployer.Driver) error {
-	tools := deployer.ObtainTools()
+	tools := deployer.ObtainCoreTools()
 	tools.Register.ProvideDriver("aws.AwsEnv", env.InitAwsEnv())
 
 	tools.Register.Register("blank", "aws.Route53.DomainName", &route53.DomainNameBlank{})

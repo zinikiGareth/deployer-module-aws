@@ -8,7 +8,7 @@ import (
 
 type RHPBlank struct{}
 
-func (b *RHPBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr, teardown external.TearDown) any {
+func (b *RHPBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
 	var header pluggable.Expr
 	var value pluggable.Expr
 	for p, v := range props {
@@ -22,7 +22,7 @@ func (b *RHPBlank) Mint(tools *external.Tools, loc *errorsink.Location, named st
 			tools.Reporter.Reportf(loc.Offset, "invalid property for ResponseHeaderPolicy: %s", p.Id())
 		}
 	}
-	return &RHPCreator{tools: tools, loc: loc, name: named, header: header, value: value, teardown: teardown}
+	return &RHPCreator{tools: tools, loc: loc, name: named, header: header, value: value}
 }
 
 func (b *RHPBlank) Find(tools *external.Tools, loc *errorsink.Location, named string) any {
