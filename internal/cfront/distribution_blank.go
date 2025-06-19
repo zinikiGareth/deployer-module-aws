@@ -8,7 +8,8 @@ import (
 
 type DistributionBlank struct{}
 
-func (b *DistributionBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
+func (b *DistributionBlank) Mint(ct *pluggable.CoreTools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
+	tools := ct.RetrieveOther("coremod").(*external.Tools)
 	var cert pluggable.Expr
 	var domain pluggable.Expr
 	var oac pluggable.Expr
@@ -55,8 +56,8 @@ func (b *DistributionBlank) Mint(tools *external.Tools, loc *errorsink.Location,
 	return &distributionCreator{tools: tools, loc: loc, name: named, comment: comment, origindns: src, oac: oac, behaviors: cbs, cachePolicy: cp, domain: domain, viewerCert: cert, toid: toid}
 }
 
-func (b *DistributionBlank) Find(tools *external.Tools, loc *errorsink.Location, named string) any {
-	return &distributionFinder{tools: tools, loc: loc, name: named}
+func (b *DistributionBlank) Find(ct *pluggable.CoreTools, loc *errorsink.Location, named string) any {
+	return &distributionFinder{tools: ct.RetrieveOther("coremod").(*external.Tools), loc: loc, name: named}
 }
 
 func (b *DistributionBlank) Loc() *errorsink.Location {

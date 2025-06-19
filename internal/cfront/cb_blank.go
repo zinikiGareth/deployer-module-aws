@@ -8,7 +8,8 @@ import (
 
 type CacheBehaviorBlank struct{}
 
-func (b *CacheBehaviorBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
+func (b *CacheBehaviorBlank) Mint(ct *pluggable.CoreTools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
+	tools := ct.RetrieveOther("coremod").(*external.Tools)
 	var pp pluggable.Expr
 	var rhp pluggable.Expr
 	var cp pluggable.Expr
@@ -47,8 +48,8 @@ func (b *CacheBehaviorBlank) Mint(tools *external.Tools, loc *errorsink.Location
 	return &CacheBehaviorCreator{tools: tools, loc: loc, name: named, cpId: cp, pp: pp, rhp: rhp, toid: toid}
 }
 
-func (b *CacheBehaviorBlank) Find(tools *external.Tools, loc *errorsink.Location, named string) any {
-	return &CacheBehaviorFinder{tools: tools, loc: loc, name: named}
+func (b *CacheBehaviorBlank) Find(ct *pluggable.CoreTools, loc *errorsink.Location, named string) any {
+	return &CacheBehaviorFinder{tools: ct.RetrieveOther("coremod").(*external.Tools), loc: loc, name: named}
 }
 
 func (b *CacheBehaviorBlank) Loc() *errorsink.Location {

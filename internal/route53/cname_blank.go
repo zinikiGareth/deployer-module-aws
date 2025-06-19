@@ -8,7 +8,8 @@ import (
 
 type CNAMEBlank struct{}
 
-func (b *CNAMEBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
+func (b *CNAMEBlank) Mint(ct *pluggable.CoreTools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
+	tools := ct.RetrieveOther("coremod").(*external.Tools)
 	var pointsTo pluggable.Expr
 	var zone pluggable.Expr
 	seenErr := false
@@ -34,7 +35,7 @@ func (b *CNAMEBlank) Mint(tools *external.Tools, loc *errorsink.Location, named 
 	return &cnameCreator{tools: tools, loc: loc, name: named, pointsTo: pointsTo, zone: zone}
 }
 
-func (b *CNAMEBlank) Find(tools *external.Tools, loc *errorsink.Location, named string) any {
+func (b *CNAMEBlank) Find(ct *pluggable.CoreTools, loc *errorsink.Location, named string) any {
 	panic("not implemented")
 }
 

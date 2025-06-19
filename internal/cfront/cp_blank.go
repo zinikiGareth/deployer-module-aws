@@ -8,7 +8,8 @@ import (
 
 type CachePolicyBlank struct{}
 
-func (b *CachePolicyBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
+func (b *CachePolicyBlank) Mint(ct *pluggable.CoreTools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
+	tools := ct.RetrieveOther("coremod").(*external.Tools)
 	var minttl pluggable.Expr
 	for p, v := range props {
 		switch p.Id() {
@@ -22,8 +23,8 @@ func (b *CachePolicyBlank) Mint(tools *external.Tools, loc *errorsink.Location, 
 	return &CachePolicyCreator{tools: tools, loc: loc, name: named, minttl: minttl}
 }
 
-func (b *CachePolicyBlank) Find(tools *external.Tools, loc *errorsink.Location, named string) any {
-	return &CachePolicyFinder{tools: tools, loc: loc, name: named}
+func (b *CachePolicyBlank) Find(ct *pluggable.CoreTools, loc *errorsink.Location, named string) any {
+	return &CachePolicyFinder{tools: ct.RetrieveOther("coremod").(*external.Tools), loc: loc, name: named}
 }
 
 func (b *CachePolicyBlank) Loc() *errorsink.Location {

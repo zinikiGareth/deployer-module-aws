@@ -8,7 +8,8 @@ import (
 
 type PolicyBlank struct{}
 
-func (b *PolicyBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
+func (b *PolicyBlank) Mint(ct *pluggable.CoreTools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
+	tools := ct.RetrieveOther("coremod").(*external.Tools)
 	var policy pluggable.Expr
 	seenErr := false
 	for p, v := range props {
@@ -27,8 +28,8 @@ func (b *PolicyBlank) Mint(tools *external.Tools, loc *errorsink.Location, named
 	return &policyCreator{tools: tools, loc: loc, name: named, policy: policy}
 }
 
-func (b *PolicyBlank) Find(tools *external.Tools, loc *errorsink.Location, named string) any {
-	return &policyFinder{tools: tools, loc: loc, name: named}
+func (b *PolicyBlank) Find(ct *pluggable.CoreTools, loc *errorsink.Location, named string) any {
+	return &policyFinder{tools: ct.RetrieveOther("coremod").(*external.Tools), loc: loc, name: named}
 }
 
 func (b *PolicyBlank) Loc() *errorsink.Location {

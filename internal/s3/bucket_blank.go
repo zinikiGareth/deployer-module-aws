@@ -8,12 +8,13 @@ import (
 
 type BucketBlank struct{}
 
-func (b *BucketBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
+func (b *BucketBlank) Mint(ct *pluggable.CoreTools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
+	tools := ct.RetrieveOther("coremod").(*external.Tools)
 	return &bucketCreator{tools: tools, loc: loc, name: named, region: "us-east-1"}
 }
 
-func (b *BucketBlank) Find(tools *external.Tools, loc *errorsink.Location, named string) any {
-	return &bucketFinder{tools: tools, loc: loc, name: named}
+func (b *BucketBlank) Find(ct *pluggable.CoreTools, loc *errorsink.Location, named string) any {
+	return &bucketFinder{tools: ct.RetrieveOther("coremod").(*external.Tools), loc: loc, name: named}
 }
 
 func (b *BucketBlank) Loc() *errorsink.Location {

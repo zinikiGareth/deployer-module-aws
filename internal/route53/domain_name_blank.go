@@ -8,14 +8,15 @@ import (
 
 type DomainNameBlank struct{}
 
-func (b *DomainNameBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
+func (b *DomainNameBlank) Mint(ct *pluggable.CoreTools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
+	tools := ct.RetrieveOther("coremod").(*external.Tools)
 	tools.Reporter.At(loc.Line)
 	tools.Reporter.Reportf(loc.Offset, "cannot create domain names automatically; use find")
 	return nil
 }
 
-func (b *DomainNameBlank) Find(tools *external.Tools, loc *errorsink.Location, named string) any {
-	return &domainNameFinder{tools: tools, loc: loc, name: named}
+func (b *DomainNameBlank) Find(ct *pluggable.CoreTools, loc *errorsink.Location, named string) any {
+	return &domainNameFinder{tools: ct.RetrieveOther("coremod").(*external.Tools), loc: loc, name: named}
 }
 
 func (b *DomainNameBlank) Loc() *errorsink.Location {

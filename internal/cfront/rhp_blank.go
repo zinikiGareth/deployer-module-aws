@@ -8,7 +8,8 @@ import (
 
 type RHPBlank struct{}
 
-func (b *RHPBlank) Mint(tools *external.Tools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
+func (b *RHPBlank) Mint(ct *pluggable.CoreTools, loc *errorsink.Location, named string, props map[pluggable.Identifier]pluggable.Expr) any {
+	tools := ct.RetrieveOther("coremod").(*external.Tools)
 	var header pluggable.Expr
 	var value pluggable.Expr
 	for p, v := range props {
@@ -25,8 +26,8 @@ func (b *RHPBlank) Mint(tools *external.Tools, loc *errorsink.Location, named st
 	return &RHPCreator{tools: tools, loc: loc, name: named, header: header, value: value}
 }
 
-func (b *RHPBlank) Find(tools *external.Tools, loc *errorsink.Location, named string) any {
-	return &RHPFinder{tools: tools, loc: loc, name: named}
+func (b *RHPBlank) Find(ct *pluggable.CoreTools, loc *errorsink.Location, named string) any {
+	return &RHPFinder{tools: ct.RetrieveOther("coremod").(*external.Tools), loc: loc, name: named}
 }
 
 func (b *RHPBlank) Loc() *errorsink.Location {
