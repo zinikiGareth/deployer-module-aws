@@ -8,15 +8,14 @@ import (
 
 type DomainNameBlank struct{}
 
-func (b *DomainNameBlank) Mint(ct *driverbottom.CoreTools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr) any {
-	tools := ct.RetrieveOther("coremod").(*corebottom.Tools)
+func (b *DomainNameBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
 	tools.Reporter.At(loc.Line)
 	tools.Reporter.Reportf(loc.Offset, "cannot create domain names automatically; use find")
 	return nil
 }
 
-func (b *DomainNameBlank) Find(ct *driverbottom.CoreTools, loc *errorsink.Location, named string) any {
-	return &domainNameFinder{tools: ct.RetrieveOther("coremod").(*corebottom.Tools), loc: loc, name: named}
+func (b *DomainNameBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, named string) any {
+	return &domainNameFinder{tools: tools, loc: loc, name: named}
 }
 
 func (b *DomainNameBlank) Loc() *errorsink.Location {
@@ -30,3 +29,5 @@ func (b *DomainNameBlank) ShortDescription() string {
 func (b *DomainNameBlank) DumpTo(iw driverbottom.IndentWriter) {
 	panic("not implemented")
 }
+
+var _ corebottom.Blank = &DomainNameBlank{}

@@ -8,8 +8,7 @@ import (
 
 type DistributionBlank struct{}
 
-func (b *DistributionBlank) Mint(ct *driverbottom.CoreTools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr) any {
-	tools := ct.RetrieveOther("coremod").(*corebottom.Tools)
+func (b *DistributionBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
 	var cert driverbottom.Expr
 	var domain driverbottom.Expr
 	var oac driverbottom.Expr
@@ -53,11 +52,11 @@ func (b *DistributionBlank) Mint(ct *driverbottom.CoreTools, loc *errorsink.Loca
 		tools.Reporter.At(loc.Line)
 		tools.Reporter.Reportf(loc.Offset, "TargetOriginId was not defined")
 	}
-	return &distributionCreator{tools: tools, loc: loc, name: named, comment: comment, origindns: src, oac: oac, behaviors: cbs, cachePolicy: cp, domain: domain, viewerCert: cert, toid: toid}
+	return &distributionCreator{tools: tools, teardown: teardown, loc: loc, name: named, comment: comment, origindns: src, oac: oac, behaviors: cbs, cachePolicy: cp, domain: domain, viewerCert: cert, toid: toid}
 }
 
-func (b *DistributionBlank) Find(ct *driverbottom.CoreTools, loc *errorsink.Location, named string) any {
-	return &distributionFinder{tools: ct.RetrieveOther("coremod").(*corebottom.Tools), loc: loc, name: named}
+func (b *DistributionBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, named string) any {
+	return &distributionFinder{tools: tools, loc: loc, name: named}
 }
 
 func (b *DistributionBlank) Loc() *errorsink.Location {
@@ -71,3 +70,5 @@ func (b *DistributionBlank) ShortDescription() string {
 func (b *DistributionBlank) DumpTo(iw driverbottom.IndentWriter) {
 	panic("not implemented")
 }
+
+var _ corebottom.Blank = &DistributionBlank{}

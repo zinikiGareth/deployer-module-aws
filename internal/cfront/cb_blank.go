@@ -8,8 +8,7 @@ import (
 
 type CacheBehaviorBlank struct{}
 
-func (b *CacheBehaviorBlank) Mint(ct *driverbottom.CoreTools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr) any {
-	tools := ct.RetrieveOther("coremod").(*corebottom.Tools)
+func (b *CacheBehaviorBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
 	var pp driverbottom.Expr
 	var rhp driverbottom.Expr
 	var cp driverbottom.Expr
@@ -45,11 +44,11 @@ func (b *CacheBehaviorBlank) Mint(ct *driverbottom.CoreTools, loc *errorsink.Loc
 		tools.Reporter.At(loc.Line)
 		tools.Reporter.Reportf(loc.Offset, "TargetOriginId was not defined")
 	}
-	return &CacheBehaviorCreator{tools: tools, loc: loc, name: named, cpId: cp, pp: pp, rhp: rhp, toid: toid}
+	return &CacheBehaviorCreator{tools: tools, teardown: teardown, loc: loc, name: named, cpId: cp, pp: pp, rhp: rhp, toid: toid}
 }
 
-func (b *CacheBehaviorBlank) Find(ct *driverbottom.CoreTools, loc *errorsink.Location, named string) any {
-	return &CacheBehaviorFinder{tools: ct.RetrieveOther("coremod").(*corebottom.Tools), loc: loc, name: named}
+func (b *CacheBehaviorBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, named string) any {
+	return &CacheBehaviorFinder{tools: tools, loc: loc, name: named}
 }
 
 func (b *CacheBehaviorBlank) Loc() *errorsink.Location {
@@ -63,3 +62,5 @@ func (b *CacheBehaviorBlank) ShortDescription() string {
 func (b *CacheBehaviorBlank) DumpTo(iw driverbottom.IndentWriter) {
 	panic("not implemented")
 }
+
+var _ corebottom.Blank = &CacheBehaviorBlank{}

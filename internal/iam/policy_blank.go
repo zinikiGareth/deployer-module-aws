@@ -8,8 +8,7 @@ import (
 
 type PolicyBlank struct{}
 
-func (b *PolicyBlank) Mint(ct *driverbottom.CoreTools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr) any {
-	tools := ct.RetrieveOther("coremod").(*corebottom.Tools)
+func (b *PolicyBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
 	var policy driverbottom.Expr
 	seenErr := false
 	for p, v := range props {
@@ -25,11 +24,11 @@ func (b *PolicyBlank) Mint(ct *driverbottom.CoreTools, loc *errorsink.Location, 
 		tools.Reporter.At(loc.Line)
 		tools.Reporter.Reportf(loc.Offset, "no Policy property was specified for %s", named)
 	}
-	return &policyCreator{tools: tools, loc: loc, name: named, policy: policy}
+	return &policyCreator{tools: tools, teardown: teardown, loc: loc, name: named, policy: policy}
 }
 
-func (b *PolicyBlank) Find(ct *driverbottom.CoreTools, loc *errorsink.Location, named string) any {
-	return &policyFinder{tools: ct.RetrieveOther("coremod").(*corebottom.Tools), loc: loc, name: named}
+func (b *PolicyBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, named string) any {
+	return &policyFinder{tools: tools, loc: loc, name: named}
 }
 
 func (b *PolicyBlank) Loc() *errorsink.Location {
@@ -43,3 +42,5 @@ func (b *PolicyBlank) ShortDescription() string {
 func (b *PolicyBlank) DumpTo(iw driverbottom.IndentWriter) {
 	panic("not implemented")
 }
+
+var _ corebottom.Blank = &PolicyBlank{}

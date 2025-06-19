@@ -8,8 +8,7 @@ import (
 
 type CachePolicyBlank struct{}
 
-func (b *CachePolicyBlank) Mint(ct *driverbottom.CoreTools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr) any {
-	tools := ct.RetrieveOther("coremod").(*corebottom.Tools)
+func (b *CachePolicyBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
 	var minttl driverbottom.Expr
 	for p, v := range props {
 		switch p.Id() {
@@ -20,11 +19,11 @@ func (b *CachePolicyBlank) Mint(ct *driverbottom.CoreTools, loc *errorsink.Locat
 			tools.Reporter.Reportf(loc.Offset, "invalid property for OriginAccessControl: %s", p.Id())
 		}
 	}
-	return &CachePolicyCreator{tools: tools, loc: loc, name: named, minttl: minttl}
+	return &CachePolicyCreator{tools: tools, teardown: teardown, loc: loc, name: named, minttl: minttl}
 }
 
-func (b *CachePolicyBlank) Find(ct *driverbottom.CoreTools, loc *errorsink.Location, named string) any {
-	return &CachePolicyFinder{tools: ct.RetrieveOther("coremod").(*corebottom.Tools), loc: loc, name: named}
+func (b *CachePolicyBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, named string) any {
+	return &CachePolicyFinder{tools: tools, loc: loc, name: named}
 }
 
 func (b *CachePolicyBlank) Loc() *errorsink.Location {
@@ -38,3 +37,5 @@ func (b *CachePolicyBlank) ShortDescription() string {
 func (b *CachePolicyBlank) DumpTo(iw driverbottom.IndentWriter) {
 	panic("not implemented")
 }
+
+var _ corebottom.Blank = &CachePolicyBlank{}

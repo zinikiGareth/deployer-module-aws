@@ -8,8 +8,7 @@ import (
 
 type CNAMEBlank struct{}
 
-func (b *CNAMEBlank) Mint(ct *driverbottom.CoreTools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr) any {
-	tools := ct.RetrieveOther("coremod").(*corebottom.Tools)
+func (b *CNAMEBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
 	var pointsTo driverbottom.Expr
 	var zone driverbottom.Expr
 	seenErr := false
@@ -32,10 +31,10 @@ func (b *CNAMEBlank) Mint(ct *driverbottom.CoreTools, loc *errorsink.Location, n
 		tools.Reporter.At(loc.Line)
 		tools.Reporter.Reportf(loc.Offset, "no PointsTo property was specified for %s", named)
 	}
-	return &cnameCreator{tools: tools, loc: loc, name: named, pointsTo: pointsTo, zone: zone}
+	return &cnameCreator{tools: tools, teardown: teardown, loc: loc, name: named, pointsTo: pointsTo, zone: zone}
 }
 
-func (b *CNAMEBlank) Find(ct *driverbottom.CoreTools, loc *errorsink.Location, named string) any {
+func (b *CNAMEBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, named string) any {
 	panic("not implemented")
 }
 
@@ -50,3 +49,5 @@ func (b *CNAMEBlank) ShortDescription() string {
 func (b *CNAMEBlank) DumpTo(iw driverbottom.IndentWriter) {
 	panic("not implemented")
 }
+
+var _ corebottom.Blank = &CNAMEBlank{}

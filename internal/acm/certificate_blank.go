@@ -8,12 +8,12 @@ import (
 
 type CertificateBlank struct{}
 
-func (b *CertificateBlank) Mint(ct *driverbottom.CoreTools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr) any {
-	return &certificateCreator{tools: ct.RetrieveOther("coremod").(*corebottom.Tools), loc: loc, name: named, props: props}
+func (b *CertificateBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
+	return &certificateCreator{tools: tools, teardown: teardown, loc: loc, name: named, props: props}
 }
 
-func (b *CertificateBlank) Find(ct *driverbottom.CoreTools, loc *errorsink.Location, named string) any {
-	return &certificateFinder{tools: ct.RetrieveOther("coremod").(*corebottom.Tools), loc: loc, name: named}
+func (b *CertificateBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, named string) any {
+	return &certificateFinder{tools: tools, loc: loc, name: named}
 }
 
 func (b *CertificateBlank) Loc() *errorsink.Location {
@@ -27,3 +27,5 @@ func (b *CertificateBlank) ShortDescription() string {
 func (b *CertificateBlank) DumpTo(iw driverbottom.IndentWriter) {
 	panic("not implemented")
 }
+
+var _ corebottom.Blank = &CertificateBlank{}
