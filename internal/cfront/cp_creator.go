@@ -10,6 +10,7 @@ import (
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
+	"ziniki.org/deployer/driver/pkg/utils"
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
@@ -128,19 +129,13 @@ func (a *CachePolicyIdMethod) Invoke(s driverbottom.RuntimeStorage, on driverbot
 	if cfdc.alreadyExists {
 		return cfdc.CachePolicyId
 	} else {
-		return &deferReadingCachePolicyId{cfdc: cfdc}
+		return utils.DeferString(func() string {
+			if cfdc.CachePolicyId == "" {
+				panic("id is still not set")
+			}
+			return cfdc.CachePolicyId
+		})
 	}
-}
-
-type deferReadingCachePolicyId struct {
-	cfdc *CachePolicyCreator
-}
-
-func (d *deferReadingCachePolicyId) String() string {
-	if d.cfdc.CachePolicyId == "" {
-		panic("id is still not set")
-	}
-	return d.cfdc.CachePolicyId
 }
 
 var _ driverbottom.HasMethods = &CachePolicyCreator{}

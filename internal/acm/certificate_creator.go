@@ -245,7 +245,7 @@ func (a *arnMethod) Invoke(s driverbottom.RuntimeStorage, on driverbottom.Expr, 
 	if cc.alreadyExists {
 		return cc.arn
 	} else {
-		return utils.DeferReading(func() string {
+		return utils.DeferString(func() string {
 			return cc.arn
 		})
 	}

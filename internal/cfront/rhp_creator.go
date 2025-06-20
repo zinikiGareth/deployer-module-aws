@@ -10,6 +10,7 @@ import (
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
+	"ziniki.org/deployer/driver/pkg/utils"
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
@@ -136,19 +137,13 @@ func (a *RHPIdMethod) Invoke(s driverbottom.RuntimeStorage, on driverbottom.Expr
 	if cfdc.alreadyExists {
 		return cfdc.rpId
 	} else {
-		return &deferReadingRHPId{cfdc: cfdc}
+		return utils.DeferString(func() string {
+			if cfdc.rpId == "" {
+				panic("id is still not set")
+			}
+			return cfdc.rpId
+		})
 	}
-}
-
-type deferReadingRHPId struct {
-	cfdc *RHPCreator
-}
-
-func (d *deferReadingRHPId) String() string {
-	if d.cfdc.rpId == "" {
-		panic("id is still not set")
-	}
-	return d.cfdc.rpId
 }
 
 var _ driverbottom.HasMethods = &RHPCreator{}

@@ -11,6 +11,7 @@ import (
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
+	"ziniki.org/deployer/driver/pkg/utils"
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
@@ -197,11 +198,11 @@ func (cfdc *distributionCreator) FigureOrigins(targetOriginId string) *types.Ori
 
 func (cfdc *distributionCreator) FigureCacheBehaviors() *types.CacheBehaviors {
 	cbci := cfdc.behaviors.Eval(cfdc.tools.Storage) // TODO: expect a list
-	cbc, ok := cbci.(cbDefer)
+	cbc, ok := cbci.(cbModel)
 	if !ok {
 		log.Fatalf("not a cache behavior but %T", cbci)
 	}
-	resolved := cbc.Resolve()
+	resolved := cbc.Complete()
 	log.Printf("have cb %s\n", *resolved.TargetOriginId)
 	cbs := []types.CacheBehavior{resolved}
 	cbl := int32(len(cbs))
@@ -261,19 +262,13 @@ func (a *arnMethod) Invoke(s driverbottom.RuntimeStorage, on driverbottom.Expr, 
 	if cfdc.alreadyExists {
 		return cfdc.arn
 	} else {
-		return &DeferReadingArn{cfdc: cfdc}
+		return utils.DeferString(func() string {
+			if cfdc.arn == "" {
+				panic("arn is still not set")
+			}
+			return cfdc.arn
+		})
 	}
-}
-
-type DeferReadingArn struct {
-	cfdc *distributionCreator
-}
-
-func (d *DeferReadingArn) String() string {
-	if d.cfdc.arn == "" {
-		panic("arn is still not set")
-	}
-	return d.cfdc.arn
 }
 
 type domainNameMethod struct {
@@ -291,19 +286,13 @@ func (a *domainNameMethod) Invoke(s driverbottom.RuntimeStorage, on driverbottom
 	if cfdc.alreadyExists {
 		return cfdc.domainName
 	} else {
-		return &DeferReadingDomainName{cfdc: cfdc}
+		return utils.DeferString(func() string {
+			if cfdc.domainName == "" {
+				panic("domainName is still not set")
+			}
+			return cfdc.domainName
+		})
 	}
-}
-
-type DeferReadingDomainName struct {
-	cfdc *distributionCreator
-}
-
-func (d *DeferReadingDomainName) String() string {
-	if d.cfdc.domainName == "" {
-		panic("domainName is still not set")
-	}
-	return d.cfdc.domainName
 }
 
 var _ driverbottom.HasMethods = &distributionCreator{}

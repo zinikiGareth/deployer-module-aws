@@ -10,6 +10,7 @@ import (
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
+	"ziniki.org/deployer/driver/pkg/utils"
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
@@ -129,19 +130,13 @@ func (a *oacIdMethod) Invoke(s driverbottom.RuntimeStorage, on driverbottom.Expr
 	if cfdc.alreadyExists {
 		return cfdc.oacId
 	} else {
-		return &deferReadingOACId{cfdc: cfdc}
+		return utils.DeferString(func() string {
+			if cfdc.oacId == "" {
+				panic("id is still not set")
+			}
+			return cfdc.oacId
+		})
 	}
-}
-
-type deferReadingOACId struct {
-	cfdc *OACCreator
-}
-
-func (d *deferReadingOACId) String() string {
-	if d.cfdc.oacId == "" {
-		panic("id is still not set")
-	}
-	return d.cfdc.oacId
 }
 
 var _ driverbottom.HasMethods = &OACCreator{}

@@ -2,13 +2,13 @@ package cfront
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront/types"
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
+	"ziniki.org/deployer/driver/pkg/utils"
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
@@ -59,9 +59,9 @@ func (cfdc *CacheBehaviorCreator) BuildModel(pres driverbottom.ValuePresenter) {
 	targetOriginId := cfdc.tools.Storage.Eval(cfdc.toid)
 
 	// this is going to need to handle "deferred"
-	cpId := cfdc.cpId.Eval(cfdc.tools.Storage)
+	cpId := cfdc.tools.Storage.EvalAsStringer(cfdc.cpId)
 
-	pres.Present(cbDefer{cfdc: cfdc, pp: pp, rhp: rhp, targetOriginId: targetOriginId, cpId: cpId})
+	pres.Present(cbModel{pp: pp, rhp: rhp, targetOriginId: targetOriginId, cpId: cpId})
 }
 
 func (cfdc *CacheBehaviorCreator) UpdateReality() {
@@ -70,31 +70,17 @@ func (cfdc *CacheBehaviorCreator) UpdateReality() {
 func (cfdc *CacheBehaviorCreator) TearDown() {
 }
 
-type cbDefer struct {
-	cfdc           *CacheBehaviorCreator
+type cbModel struct {
 	pp             any
 	rhp            any
 	targetOriginId any
-	cpId           any
+	cpId           fmt.Stringer
 }
 
-func (d *cbDefer) Resolve() types.CacheBehavior {
-	toi := asString(d.targetOriginId)
-	pp := asString(d.pp)
-	rhp := asString(d.rhp)
-	cpId := asString(d.cpId)
+func (d *cbModel) Complete() types.CacheBehavior {
+	toi := utils.AsString(d.targetOriginId)
+	pp := utils.AsString(d.pp)
+	rhp := utils.AsString(d.rhp)
+	cpId := d.cpId.String()
 	return types.CacheBehavior{TargetOriginId: &toi, PathPattern: &pp, ViewerProtocolPolicy: types.ViewerProtocolPolicyRedirectToHttps, CachePolicyId: &cpId, ResponseHeadersPolicyId: &rhp}
-}
-
-func asString(obj any) string {
-	k, isString := obj.(string)
-	if isString {
-		return k
-	}
-	l, isStringer := obj.(fmt.Stringer)
-	if isStringer {
-		return l.String()
-	}
-	log.Fatalf("Cannot convert to string: %T", obj)
-	return ""
 }
