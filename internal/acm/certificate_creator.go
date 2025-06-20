@@ -13,6 +13,7 @@ import (
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
+	"ziniki.org/deployer/driver/pkg/utils"
 	"ziniki.org/deployer/modules/aws/internal/env"
 	myroute53 "ziniki.org/deployer/modules/aws/internal/route53"
 )
@@ -244,19 +245,10 @@ func (a *arnMethod) Invoke(s driverbottom.RuntimeStorage, on driverbottom.Expr, 
 	if cc.alreadyExists {
 		return cc.arn
 	} else {
-		return &DeferReadingArn{cc: cc}
+		return utils.DeferReading(func() string {
+			return cc.arn
+		})
 	}
-}
-
-type DeferReadingArn struct {
-	cc *certificateCreator
-}
-
-func (d *DeferReadingArn) String() string {
-	if d.cc.arn == "" {
-		panic("arn is still not set")
-	}
-	return d.cc.arn
 }
 
 func find(props map[driverbottom.Identifier]driverbottom.Expr, key string) driverbottom.Expr {
