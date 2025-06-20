@@ -87,8 +87,8 @@ func (cfdc *distributionCreator) UpdateReality() {
 		log.Printf("distribution %s already existed for %s\n", cfdc.arn, cfdc.name)
 		return
 	}
-	cpId := cfdc.tools.Storage.EvalAsString(cfdc.cachePolicy)
-	toid := cfdc.tools.Storage.EvalAsString(cfdc.toid)
+	cpId := cfdc.tools.Storage.EvalAsStringer(cfdc.cachePolicy).String()
+	toid := cfdc.tools.Storage.EvalAsStringer(cfdc.toid).String()
 	dcb := types.DefaultCacheBehavior{TargetOriginId: &toid, ViewerProtocolPolicy: types.ViewerProtocolPolicyRedirectToHttps, CachePolicyId: &cpId}
 	origgins := cfdc.FigureOrigins(toid)
 	behaviors := cfdc.FigureCacheBehaviors()
@@ -183,8 +183,8 @@ func (cfdc *distributionCreator) DeleteIt() {
 }
 
 func (cfdc *distributionCreator) FigureOrigins(targetOriginId string) *types.Origins {
-	oacId := cfdc.tools.Storage.EvalAsString(cfdc.oac)
-	origindns := cfdc.tools.Storage.EvalAsString(cfdc.origindns)
+	oacId := cfdc.tools.Storage.EvalAsStringer(cfdc.oac).String()
+	origindns := cfdc.tools.Storage.EvalAsStringer(cfdc.origindns).String()
 
 	empty := ""
 	s3orig := types.S3OriginConfig{OriginAccessIdentity: &empty}
@@ -209,9 +209,9 @@ func (cfdc *distributionCreator) FigureCacheBehaviors() *types.CacheBehaviors {
 }
 
 func (cfdc *distributionCreator) BuildConfig(dcb *types.DefaultCacheBehavior, behaviors *types.CacheBehaviors, origins *types.Origins) *types.DistributionConfig {
-	comment := cfdc.tools.Storage.EvalAsString(cfdc.comment)
+	comment := cfdc.tools.Storage.EvalAsStringer(cfdc.comment).String()
 	e := true
-	domain := cfdc.tools.Storage.EvalAsString(cfdc.domain)
+	domain := cfdc.tools.Storage.EvalAsStringer(cfdc.domain).String()
 	aliases := []string{domain}
 	nAliases := int32(len(aliases))
 	rootObject := "index.html"
