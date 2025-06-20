@@ -74,12 +74,8 @@ func (cfdc *CachePolicyCreator) UpdateReality() {
 		log.Printf("CachePolicy %s already existed for %s\n", cfdc.CachePolicyId, cfdc.name)
 		return
 	}
-	mt := cfdc.tools.Storage.Eval(cfdc.minttl)
-	minttlVal, ok := mt.(float64)
-	if !ok {
-		log.Fatalf("not float64 but %T", mt)
-	}
-	var minttl int64 = int64(minttlVal)
+	mt := cfdc.tools.Storage.EvalAsNumber(cfdc.minttl)
+	minttl := int64(mt.F64())
 	cpc := types.CachePolicyConfig{Name: &cfdc.name, MinTTL: &minttl}
 	oac, err := cfdc.client.CreateCachePolicy(context.TODO(), &cloudfront.CreateCachePolicyInput{CachePolicyConfig: &cpc})
 	if err != nil {
