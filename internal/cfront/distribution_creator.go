@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront/types"
@@ -123,6 +122,7 @@ func (cfdc *distributionCreator) TearDown() {
 }
 
 func (cfdc *distributionCreator) DisableIt() {
+tryAgain:
 	distro, err := cfdc.client.GetDistribution(context.TODO(), &cloudfront.GetDistributionInput{Id: &cfdc.distroId})
 	if err != nil {
 		log.Fatalf("failed to recover distribution for %s: %v", cfdc.distroId, err)
@@ -138,16 +138,22 @@ func (cfdc *distributionCreator) DisableIt() {
 		}
 	}
 
-	for {
+	utils.ExponentialBackoff(func() bool {
 		distro, err := cfdc.client.GetDistribution(context.TODO(), &cloudfront.GetDistributionInput{Id: &cfdc.distroId})
 		if err != nil {
 			log.Fatalf("failed to recover distribution for %s: %v", cfdc.distroId, err)
 		}
 		log.Printf("disabling distro %s ... %v %s\n", cfdc.distroId, *distro.Distribution.DistributionConfig.Enabled, *distro.Distribution.Status)
-		if !*distro.Distribution.DistributionConfig.Enabled && *distro.Distribution.Status != "InProgress" {
-			return
-		}
-		time.Sleep(time.Duration(1) * time.Second)
+		return *distro.Distribution.Status != "InProgress"
+	})
+
+	// This can fail from time to time.  If so, try all over again
+	distro, err = cfdc.client.GetDistribution(context.TODO(), &cloudfront.GetDistributionInput{Id: &cfdc.distroId})
+	if err != nil {
+		log.Fatalf("failed to recover distribution for %s: %v", cfdc.distroId, err)
+	}
+	if *distro.Distribution.DistributionConfig.Enabled {
+		goto tryAgain
 	}
 }
 
@@ -169,18 +175,15 @@ func (cfdc *distributionCreator) DeleteIt() {
 		}
 	}
 
-	for {
+	utils.ExponentialBackoff(func() bool {
 		distro, err := cfdc.client.GetDistribution(context.TODO(), &cloudfront.GetDistributionInput{Id: &cfdc.distroId})
 		if err != nil {
 			// We can't get it because it isn't there
-			return
+			return true
 		}
 		fmt.Printf("deleting distro ... %s\n", *distro.Distribution.Status)
-		if *distro.Distribution.Status != "InProgress" {
-			return
-		}
-		time.Sleep(time.Duration(1) * time.Second)
-	}
+		return *distro.Distribution.Status != "InProgress"
+	})
 }
 
 func (cfdc *distributionCreator) FigureOrigins(targetOriginId string) *types.Origins {

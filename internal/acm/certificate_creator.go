@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/acm"
 	"github.com/aws/aws-sdk-go-v2/service/acm/types"
@@ -104,16 +103,10 @@ func (acmc *certificateCreator) UpdateReality() {
 	// Check if we still need to validate it ...
 
 	// acmc.describeCertificate(*req.CertificateArn)
-	var waitFor time.Duration = 1
-	for {
-		log.Printf("sleeping for %ds\n", waitFor)
-		time.Sleep(waitFor * time.Second)
-		if acmc.tryToValidateCert(acmc.arn) {
-			break
-		}
-		waitFor = min(2*waitFor, 60)
-		fmt.Printf("still pending validation; wait another %ds\n", waitFor)
-	}
+
+	utils.ExponentialBackoff(func() bool {
+		return acmc.tryToValidateCert(acmc.arn)
+	})
 }
 
 func (acm *certificateCreator) TearDown() {
