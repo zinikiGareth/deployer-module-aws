@@ -82,9 +82,14 @@ func (cfdc *RHPCreator) UpdateReality() {
 		log.Printf("RHP %s already existed for %s\n", cfdc.rpId, cfdc.name)
 		return
 	}
-	h := cfdc.tools.Storage.EvalAsStringer(cfdc.header).String()
+	ht, ok1 := cfdc.tools.Storage.EvalAsStringer(cfdc.header)
 	ov := true
-	v := cfdc.tools.Storage.EvalAsStringer(cfdc.value).String()
+	vt, ok2 := cfdc.tools.Storage.EvalAsStringer(cfdc.value)
+	if !ok1 || !ok2 {
+		panic("not ok")
+	}
+	h := ht.String()
+	v := vt.String()
 	rhs := []types.ResponseHeadersPolicyCustomHeader{{Header: &h, Override: &ov, Value: &v}}
 	rhslen := int32(len(rhs))
 	ch := types.ResponseHeadersPolicyCustomHeadersConfig{Items: rhs, Quantity: &rhslen}

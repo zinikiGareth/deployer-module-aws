@@ -59,7 +59,10 @@ func (cfdc *CacheBehaviorCreator) BuildModel(pres driverbottom.ValuePresenter) {
 	targetOriginId := cfdc.tools.Storage.Eval(cfdc.toid)
 
 	// this is going to need to handle "deferred"
-	cpId := cfdc.tools.Storage.EvalAsStringer(cfdc.cpId)
+	cpId, ok := cfdc.tools.Storage.EvalAsStringer(cfdc.cpId)
+	if !ok {
+		panic("not a string")
+	}
 
 	pres.Present(cbModel{pp: pp, rhp: rhp, targetOriginId: targetOriginId, cpId: cpId})
 }

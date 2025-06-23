@@ -54,7 +54,11 @@ func (cc *cnameCreator) BuildModel(pres driverbottom.ValuePresenter) {
 	// cc.domainsClient = awsEnv.Route53DomainsClient()
 	cc.client = awsEnv.Route53Client()
 
-	cc.zoneId = cc.tools.Storage.EvalAsStringer(cc.zone).String()
+	fred, ok := cc.tools.Storage.EvalAsStringer(cc.zone)
+	if !ok {
+		panic("hello, world")
+	}
+	cc.zoneId = fred.String()
 	pt := cc.pointsTo.Eval(cc.tools.Storage)
 	cc.otherDomain = pt
 

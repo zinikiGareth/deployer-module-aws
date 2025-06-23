@@ -22,7 +22,7 @@ type certificateCreator struct {
 
 	loc              *errorsink.Location
 	name             string
-	validationMethod types.ValidationMethod
+	validationMethod fmt.Stringer
 	teardown         corebottom.TearDown
 
 	client        *acm.Client
@@ -31,6 +31,8 @@ type certificateCreator struct {
 	hzid          string
 	arn           string
 	props         map[driverbottom.Identifier]driverbottom.Expr
+
+	sans []string
 	// cloud *BucketCloud
 }
 
@@ -51,22 +53,40 @@ func (acm *certificateCreator) DumpTo(iw driverbottom.IndentWriter) {
 
 // This is called during the "Prepare" phase
 func (acmc *certificateCreator) BuildModel(pres driverbottom.ValuePresenter) {
-	domainExpr := find(acmc.props, "Domain")
-	if domainExpr == nil {
-		log.Fatalf("must specify a domain instance to create a certificate")
+	for k, p := range acmc.props {
+		v := acmc.tools.Storage.Eval(p)
+		switch k.Id() {
+		case "Domain":
+			domain, ok := v.(myroute53.ExportedDomain)
+			if !ok {
+				log.Fatalf("Domain did not point to a domain instance")
+			}
+			acmc.hzid = domain.HostedZoneId()
+		case "SubjectAlternativeNames":
+			san, ok := utils.AsStringList(v)
+			if !ok {
+				justString, ok := v.(string)
+				if !ok {
+					log.Fatalf("SubjectAlternativeNames must be a list of strings")
+					return
+				} else {
+					san = []string{justString}
+				}
+			}
+			acmc.sans = san
+		case "ValidationMethod":
+			meth, ok := utils.AsStringer(v)
+			if !ok {
+				log.Fatalf("ValidationMethod must be a string")
+				return
+			}
+			acmc.validationMethod = meth
+		default:
+			log.Fatalf("certificate coin does not support a parameter %s\n", k.Id())
+		}
 	}
-	domainObj := domainExpr.Eval(acmc.tools.Storage)
-	// log.Printf("have domain obj: %T %p %v\n", domainObj, domainObj, domainObj)
-	domain, ok := domainObj.(myroute53.ExportedDomain)
-	if !ok {
-		log.Fatalf("Domain did not point to a domain instance")
-	}
-	acmc.hzid = domain.HostedZoneId()
-	if acmc.validationMethod == "" {
-		acmc.validationMethod = types.ValidationMethodDns
-	}
-	eq := acmc.tools.Recall.ObtainDriver("aws.AwsEnv")
-	awsEnv, ok := eq.(*env.AwsEnv)
+	ae := acmc.tools.Recall.ObtainDriver("aws.AwsEnv")
+	awsEnv, ok := ae.(*env.AwsEnv)
 	if !ok {
 		panic("could not cast env to AwsEnv")
 	}
@@ -93,7 +113,16 @@ func (acmc *certificateCreator) UpdateReality() {
 		return
 	}
 
-	req, err := acmc.client.RequestCertificate(context.TODO(), &acm.RequestCertificateInput{DomainName: &acmc.name, ValidationMethod: acmc.validationMethod})
+	vm := types.ValidationMethod(acmc.validationMethod.String())
+	if vm == "" {
+		vm = types.ValidationMethodDns
+	}
+
+	input := acm.RequestCertificateInput{DomainName: &acmc.name, ValidationMethod: vm}
+	if len(acmc.sans) > 0 {
+		input.SubjectAlternativeNames = acmc.sans
+	}
+	req, err := acmc.client.RequestCertificate(context.TODO(), &input)
 	if err != nil {
 		log.Printf("failed to request cert %s: %v\n", acmc.name, err)
 	}
@@ -153,11 +182,12 @@ func (acmc *certificateCreator) DescribeCertificate(arn string) {
 		fmt.Printf("cert domain: %s\n", *cert.Certificate.DomainName)
 	}
 	fmt.Printf("status: %s\n", cert.Certificate.Status)
-	if cert.Certificate.Status == types.CertificateStatusFailed {
+	switch cert.Certificate.Status {
+	case types.CertificateStatusFailed:
 		fmt.Printf("failed: %s\n", cert.Certificate.FailureReason)
-	} else if cert.Certificate.Status == types.CertificateStatusIssued {
+	case types.CertificateStatusIssued:
 		fmt.Printf("until: %s\n", *cert.Certificate.NotAfter)
-	} else if cert.Certificate.Status == types.CertificateStatusPendingValidation {
+	case types.CertificateStatusPendingValidation:
 		fmt.Printf("pending validation\n")
 	}
 }
@@ -168,13 +198,14 @@ func (acmc *certificateCreator) tryToValidateCert(arn string) bool {
 		log.Fatalf("Failed to describe certificate %s: %v\n", arn, err)
 	}
 
-	if cert.Certificate.Status == types.CertificateStatusFailed {
+	switch cert.Certificate.Status {
+	case types.CertificateStatusFailed:
 		fmt.Printf("failed: %s\n", cert.Certificate.FailureReason)
 		return true
-	} else if cert.Certificate.Status == types.CertificateStatusIssued {
+	case types.CertificateStatusIssued:
 		fmt.Printf("certificate issued until: %s\n", *cert.Certificate.NotAfter)
 		return true
-	} else if cert.Certificate.Status == types.CertificateStatusPendingValidation {
+	case types.CertificateStatusPendingValidation:
 		dns := make(map[string]string, 0)
 		for _, x := range cert.Certificate.DomainValidationOptions {
 			if x.ResourceRecord != nil && x.ResourceRecord.Name != nil && x.ResourceRecord.Value != nil {
@@ -206,7 +237,7 @@ func (acmc *certificateCreator) tryToValidateCert(arn string) bool {
 		}
 
 		return false
-	} else {
+	default:
 		panic("what is this? " + cert.Certificate.Status)
 	}
 }
@@ -242,15 +273,6 @@ func (a *arnMethod) Invoke(s driverbottom.RuntimeStorage, on driverbottom.Expr, 
 			return cc.arn
 		})
 	}
-}
-
-func find(props map[driverbottom.Identifier]driverbottom.Expr, key string) driverbottom.Expr {
-	for id, ex := range props {
-		if id.Id() == key {
-			return ex
-		}
-	}
-	return nil
 }
 
 func DeleteCertificate(client *acm.Client, arn string) {

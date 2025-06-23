@@ -21,12 +21,12 @@ type distributionCreator struct {
 	name        string
 	origindns   driverbottom.Expr
 	toid        driverbottom.Expr
-	domain      driverbottom.Expr // this should be a list
+	domains     driverbottom.List
 	comment     driverbottom.Expr
 	viewerCert  driverbottom.Expr
 	oac         driverbottom.Expr
 	cachePolicy driverbottom.Expr
-	behaviors   driverbottom.Expr // I think this should ultimately be a list
+	behaviors   driverbottom.List
 	teardown    corebottom.TearDown
 
 	client        *cloudfront.Client
@@ -87,10 +87,15 @@ func (cfdc *distributionCreator) UpdateReality() {
 		log.Printf("distribution %s already existed for %s\n", cfdc.arn, cfdc.name)
 		return
 	}
-	cpId := cfdc.tools.Storage.EvalAsStringer(cfdc.cachePolicy).String()
-	toid := cfdc.tools.Storage.EvalAsStringer(cfdc.toid).String()
-	dcb := types.DefaultCacheBehavior{TargetOriginId: &toid, ViewerProtocolPolicy: types.ViewerProtocolPolicyRedirectToHttps, CachePolicyId: &cpId}
-	origgins := cfdc.FigureOrigins(toid)
+	cpId, ok1 := cfdc.tools.Storage.EvalAsStringer(cfdc.cachePolicy)
+	toid, ok2 := cfdc.tools.Storage.EvalAsStringer(cfdc.toid)
+	if !ok1 || !ok2 {
+		panic("!ok")
+	}
+	toidS := toid.String()
+	cpIdS := cpId.String()
+	dcb := types.DefaultCacheBehavior{TargetOriginId: &toidS, ViewerProtocolPolicy: types.ViewerProtocolPolicyRedirectToHttps, CachePolicyId: &cpIdS}
+	origgins := cfdc.FigureOrigins(toidS)
 	behaviors := cfdc.FigureCacheBehaviors()
 	config := cfdc.BuildConfig(&dcb, behaviors, origgins)
 
@@ -187,12 +192,17 @@ func (cfdc *distributionCreator) DeleteIt() {
 }
 
 func (cfdc *distributionCreator) FigureOrigins(targetOriginId string) *types.Origins {
-	oacId := cfdc.tools.Storage.EvalAsStringer(cfdc.oac).String()
-	origindns := cfdc.tools.Storage.EvalAsStringer(cfdc.origindns).String()
+	oacId, ok1 := cfdc.tools.Storage.EvalAsStringer(cfdc.oac)
+	origindns, ok2 := cfdc.tools.Storage.EvalAsStringer(cfdc.origindns)
+	if !ok1 || !ok2 {
+		panic("!ok")
+	}
+	oacIdS := oacId.String()
+	origindnsS := origindns.String()
 
 	empty := ""
 	s3orig := types.S3OriginConfig{OriginAccessIdentity: &empty}
-	origin := types.Origin{DomainName: &origindns, Id: &targetOriginId, OriginAccessControlId: &oacId, S3OriginConfig: &s3orig}
+	origin := types.Origin{DomainName: &origindnsS, Id: &targetOriginId, OriginAccessControlId: &oacIdS, S3OriginConfig: &s3orig}
 	log.Printf("have origin %s %s\n", *origin.Id, *origin.DomainName)
 	origins := []types.Origin{origin}
 	nOrigins := int32(len(origins))
@@ -201,25 +211,44 @@ func (cfdc *distributionCreator) FigureOrigins(targetOriginId string) *types.Ori
 
 func (cfdc *distributionCreator) FigureCacheBehaviors() *types.CacheBehaviors {
 	cbci := cfdc.behaviors.Eval(cfdc.tools.Storage) // TODO: expect a list
-	cbc, ok := cbci.(cbModel)
+	cbcl, ok := cbci.([]any)
 	if !ok {
-		log.Fatalf("not a cache behavior but %T", cbci)
+		log.Fatalf("not a list but %T", cbci)
 	}
-	resolved := cbc.Complete()
-	log.Printf("have cb %s\n", *resolved.TargetOriginId)
-	cbs := []types.CacheBehavior{resolved}
+	cbs := []types.CacheBehavior{}
+	for _, m := range cbcl {
+		cbc, ok := m.(cbModel)
+		if !ok {
+			log.Fatalf("not a cache behavior but %T", cbci)
+		}
+		resolved := cbc.Complete()
+		log.Printf("have cb %s\n", *resolved.TargetOriginId)
+		cbs = append(cbs, resolved)
+	}
+
 	cbl := int32(len(cbs))
 	return &types.CacheBehaviors{Quantity: &cbl, Items: cbs}
 }
 
 func (cfdc *distributionCreator) BuildConfig(dcb *types.DefaultCacheBehavior, behaviors *types.CacheBehaviors, origins *types.Origins) *types.DistributionConfig {
-	comment := cfdc.tools.Storage.EvalAsStringer(cfdc.comment).String()
+	comment, ok := cfdc.tools.Storage.EvalAsStringer(cfdc.comment)
+	if !ok {
+		log.Fatalf("!ok, %T", comment)
+	}
+	commentS := comment.String()
 	e := true
-	domain := cfdc.tools.Storage.EvalAsStringer(cfdc.domain).String()
-	aliases := []string{domain}
+	dme := cfdc.tools.Storage.Eval(cfdc.domains)
+	domains, ok := dme.([]any)
+	if !ok {
+		log.Fatalf("!ok, %T", dme)
+	}
+	aliases, ok := utils.AsStringList(domains)
+	if !ok {
+		log.Fatalf("needs to be list of strings")
+	}
 	nAliases := int32(len(aliases))
 	rootObject := "index.html"
-	return &types.DistributionConfig{CallerReference: &cfdc.name, Comment: &comment, DefaultCacheBehavior: dcb, CacheBehaviors: behaviors, Enabled: &e, DefaultRootObject: &rootObject, Origins: origins, Aliases: &types.Aliases{Items: aliases, Quantity: &nAliases}}
+	return &types.DistributionConfig{CallerReference: &cfdc.name, Comment: &commentS, DefaultCacheBehavior: dcb, CacheBehaviors: behaviors, Enabled: &e, DefaultRootObject: &rootObject, Origins: origins, Aliases: &types.Aliases{Items: aliases, Quantity: &nAliases}}
 }
 
 func (cfdc *distributionCreator) AttachViewerCert(config *types.DistributionConfig) {

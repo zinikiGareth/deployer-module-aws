@@ -78,9 +78,15 @@ func (cfdc *OACCreator) UpdateReality() {
 		log.Printf("OAC %s already existed for %s\n", cfdc.oacId, cfdc.name)
 		return
 	}
-	ty := types.OriginAccessControlOriginTypes(cfdc.tools.Storage.EvalAsStringer(cfdc.acType).String())
-	sb := types.OriginAccessControlSigningBehaviors(cfdc.tools.Storage.EvalAsStringer(cfdc.signBehavior).String())
-	sp := types.OriginAccessControlSigningProtocols(cfdc.tools.Storage.EvalAsStringer(cfdc.signProt).String())
+	acs, ok1 := cfdc.tools.Storage.EvalAsStringer(cfdc.acType)
+	sbs, ok2 := cfdc.tools.Storage.EvalAsStringer(cfdc.signBehavior)
+	sps, ok3 := cfdc.tools.Storage.EvalAsStringer(cfdc.signProt)
+	if !ok1 || !ok2 || !ok3 {
+		panic("not ok")
+	}
+	ty := types.OriginAccessControlOriginTypes(acs.String())
+	sb := types.OriginAccessControlSigningBehaviors(sbs.String())
+	sp := types.OriginAccessControlSigningProtocols(sps.String())
 	oaccfg := types.OriginAccessControlConfig{Name: &cfdc.name, OriginAccessControlOriginType: ty, SigningBehavior: sb, SigningProtocol: sp}
 	oac, err := cfdc.client.CreateOriginAccessControl(context.TODO(), &cloudfront.CreateOriginAccessControlInput{OriginAccessControlConfig: &oaccfg})
 	if err != nil {
