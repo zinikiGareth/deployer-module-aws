@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	r53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
 	"ziniki.org/deployer/coremod/pkg/corebottom"
@@ -129,18 +128,4 @@ func (cc *cnameCreator) TearDown() {
 
 func (p *cnameCreator) String() string {
 	return fmt.Sprintf("EnsurePolicy[%s:%s]", "" /* eb.env.Region */, p.name)
-}
-
-type asAWS struct {
-	Name string
-	Id   string
-	ARN  string
-}
-
-func CreatePolicy(client *iam.Client, name string, text string) *asAWS {
-	pol, err := client.CreatePolicy(context.TODO(), &iam.CreatePolicyInput{PolicyName: &name, PolicyDocument: &text})
-	if err != nil {
-		log.Fatalf("failed to create policy: %v", err)
-	}
-	return &asAWS{Name: *pol.Policy.PolicyName, Id: *pol.Policy.PolicyId, ARN: *pol.Policy.Arn}
 }
