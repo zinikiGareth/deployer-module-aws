@@ -43,6 +43,9 @@ func (p *cnameCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.EndAttrs()
 }
 
+func (cc *cnameCreator) DetermineInitialState(pres driverbottom.ValuePresenter) {
+}
+
 func (cc *cnameCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) {
 	eq := cc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
@@ -129,3 +132,5 @@ func (cc *cnameCreator) TearDown() {
 func (p *cnameCreator) String() string {
 	return fmt.Sprintf("EnsurePolicy[%s:%s]", "" /* eb.env.Region */, p.name)
 }
+
+var _ corebottom.Ensurable = &cnameCreator{}

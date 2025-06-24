@@ -46,7 +46,9 @@ func (dnf *domainNameFinder) DumpTo(iw driverbottom.IndentWriter) {
 	iw.EndAttrs()
 }
 
-// This is called during the "Prepare" phase
+func (dnf *domainNameFinder) DetermineInitialState(pres driverbottom.ValuePresenter) {
+}
+
 func (dnf *domainNameFinder) DetermineDesiredState(pres driverbottom.ValuePresenter) {
 	eq := dnf.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
@@ -123,4 +125,5 @@ func (a *zoneIdMethod) Invoke(s driverbottom.RuntimeStorage, on driverbottom.Exp
 	return cfdc.hzid
 }
 
+var _ corebottom.Findable = &domainNameFinder{}
 var _ driverbottom.HasMethods = &domainNameFinder{}

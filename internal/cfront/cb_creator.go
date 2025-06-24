@@ -46,6 +46,9 @@ func (cfdc *CacheBehaviorCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.EndAttrs()
 }
 
+func (cfdc *CacheBehaviorCreator) DetermineInitialState(pres driverbottom.ValuePresenter) {
+}
+
 func (cfdc *CacheBehaviorCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) {
 	eq := cfdc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
@@ -87,3 +90,5 @@ func (d *cbModel) Complete() types.CacheBehavior {
 	cpId := d.cpId.String()
 	return types.CacheBehavior{TargetOriginId: &toi, PathPattern: &pp, ViewerProtocolPolicy: types.ViewerProtocolPolicyRedirectToHttps, CachePolicyId: &cpId, ResponseHeadersPolicyId: &rhp}
 }
+
+var _ corebottom.Ensurable = &CacheBehaviorCreator{}

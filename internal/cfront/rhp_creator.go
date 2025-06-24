@@ -48,6 +48,9 @@ func (cfdc *RHPCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.EndAttrs()
 }
 
+func (cfdc *RHPCreator) DetermineInitialState(pres driverbottom.ValuePresenter) {
+}
+
 func (cfdc *RHPCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) {
 	eq := cfdc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
@@ -151,4 +154,5 @@ func (a *RHPIdMethod) Invoke(s driverbottom.RuntimeStorage, on driverbottom.Expr
 	}
 }
 
+var _ corebottom.Ensurable = &RHPCreator{}
 var _ driverbottom.HasMethods = &RHPCreator{}

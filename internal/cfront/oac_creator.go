@@ -50,6 +50,9 @@ func (cfdc *OACCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.EndAttrs()
 }
 
+func (cfdc *OACCreator) DetermineInitialState(pres driverbottom.ValuePresenter) {
+}
+
 func (cfdc *OACCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) {
 	eq := cfdc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
@@ -145,4 +148,5 @@ func (a *oacIdMethod) Invoke(s driverbottom.RuntimeStorage, on driverbottom.Expr
 	}
 }
 
+var _ corebottom.Ensurable = &OACCreator{}
 var _ driverbottom.HasMethods = &OACCreator{}

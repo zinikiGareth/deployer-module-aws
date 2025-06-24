@@ -51,6 +51,9 @@ func (b *bucketCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.EndAttrs()
 }
 
+func (b *bucketCreator) DetermineInitialState(pres driverbottom.ValuePresenter) {
+}
+
 func (b *bucketCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) {
 	eq := b.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
@@ -134,3 +137,5 @@ func (b *bucketCreator) TearDown() {
 func (b *bucketCreator) String() string {
 	return fmt.Sprintf("EnsureBucket[%s:%s]", "" /* eb.env.Region */, b.name)
 }
+
+var _ corebottom.Ensurable = &bucketCreator{}

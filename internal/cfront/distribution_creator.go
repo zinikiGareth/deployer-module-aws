@@ -51,6 +51,9 @@ func (cfdc *distributionCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.EndAttrs()
 }
 
+func (cfdc *distributionCreator) DetermineInitialState(pres driverbottom.ValuePresenter) {
+}
+
 func (cfdc *distributionCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) {
 	eq := cfdc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
@@ -327,4 +330,5 @@ func (a *domainNameMethod) Invoke(s driverbottom.RuntimeStorage, on driverbottom
 	}
 }
 
+var _ corebottom.Ensurable = &distributionCreator{}
 var _ driverbottom.HasMethods = &distributionCreator{}

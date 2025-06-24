@@ -51,7 +51,9 @@ func (acm *certificateCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.EndAttrs()
 }
 
-// This is called during the "Prepare" phase
+func (acmc *certificateCreator) DetermineInitialState(pres driverbottom.ValuePresenter) {
+}
+
 func (acmc *certificateCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) {
 	for k, p := range acmc.props {
 		v := acmc.tools.Storage.Eval(p)
@@ -283,4 +285,5 @@ func DeleteCertificate(client *acm.Client, arn string) {
 	log.Printf("I think the certificate was deleted because no error was reported")
 }
 
+var _ corebottom.Ensurable = &certificateCreator{}
 var _ driverbottom.HasMethods = &certificateCreator{}

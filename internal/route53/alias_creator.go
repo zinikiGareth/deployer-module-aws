@@ -45,6 +45,9 @@ func (p *aliasCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.EndAttrs()
 }
 
+func (cc *aliasCreator) DetermineInitialState(pres driverbottom.ValuePresenter) {
+}
+
 func (cc *aliasCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) {
 	eq := cc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
@@ -138,3 +141,5 @@ func (cc *aliasCreator) TearDown() {
 func (p *aliasCreator) String() string {
 	return fmt.Sprintf("EnsureAlias[%s:%s]", "" /* eb.env.Region */, p.name)
 }
+
+var _ corebottom.Ensurable = &aliasCreator{}
