@@ -200,16 +200,16 @@ func (acmc *certificateCreator) tryToValidateCert(arn string) bool {
 
 	switch cert.Certificate.Status {
 	case types.CertificateStatusFailed:
-		fmt.Printf("failed: %s\n", cert.Certificate.FailureReason)
+		log.Printf("failed: %s\n", cert.Certificate.FailureReason)
 		return true
 	case types.CertificateStatusIssued:
-		fmt.Printf("certificate issued until: %s\n", *cert.Certificate.NotAfter)
+		log.Printf("certificate issued until: %s\n", *cert.Certificate.NotAfter)
 		return true
 	case types.CertificateStatusPendingValidation:
 		dns := make(map[string]string, 0)
 		for _, x := range cert.Certificate.DomainValidationOptions {
 			if x.ResourceRecord != nil && x.ResourceRecord.Name != nil && x.ResourceRecord.Value != nil {
-				fmt.Printf("need %s => %s\n", *x.ResourceRecord.Name, *x.ResourceRecord.Value)
+				log.Printf("need %s => %s\n", *x.ResourceRecord.Name, *x.ResourceRecord.Value)
 				dns[*x.ResourceRecord.Name] = *x.ResourceRecord.Value
 			}
 		}
@@ -219,13 +219,13 @@ func (acmc *certificateCreator) tryToValidateCert(arn string) bool {
 		}
 		for _, r := range rrs.ResourceRecordSets {
 			if r.Type == "CNAME" {
-				fmt.Printf("already have %s %v\n", *r.Name, *r.ResourceRecords[0].Value)
+				log.Printf("already have %s %v\n", *r.Name, *r.ResourceRecords[0].Value)
 				dns[*r.Name] = ""
 			}
 		}
 		for k, v := range dns {
 			if v != "" {
-				fmt.Printf("creating %s to %s\n", k, v)
+				log.Printf("creating %s to %s\n", k, v)
 				var ttl int64 = 300
 				changes := r53types.ResourceRecordSet{Name: &k, Type: "CNAME", TTL: &ttl, ResourceRecords: []r53types.ResourceRecord{{Value: &v}}}
 				cb := r53types.ChangeBatch{Changes: []r53types.Change{{Action: "CREATE", ResourceRecordSet: &changes}}}

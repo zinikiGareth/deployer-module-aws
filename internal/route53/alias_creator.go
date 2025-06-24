@@ -77,9 +77,12 @@ func (cc *aliasCreator) BuildModel(pres driverbottom.ValuePresenter) {
 	}
 
 	for _, r := range rrs.ResourceRecordSets {
-		if r.Type == "alias" && *r.Name == cc.name+"." {
+		if r.AliasTarget == nil {
+			continue
+		}
+		if r.Type == "A" && *r.Name == cc.name+"." {
 			// TODO: we should also handle the case where it has changed
-			log.Printf("already have %s %v\n", *r.Name, *r.ResourceRecords[0].Value)
+			log.Printf("already have A %s %v\n", *r.Name, *r.AliasTarget.DNSName)
 			cc.alreadyExists = true
 		}
 	}
@@ -115,7 +118,7 @@ func (cc *aliasCreator) TearDown() {
 		log.Printf("alias %s already deleted\n", cc.name)
 		return
 	}
-	log.Printf("need to remove a alias record for %s\n", cc.name)
+	log.Printf("need to remove an alias record for %s\n", cc.name)
 	od, ok := cc.otherDomain.(string)
 	if !ok {
 		str, ok := cc.otherDomain.(fmt.Stringer)

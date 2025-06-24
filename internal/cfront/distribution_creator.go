@@ -167,7 +167,7 @@ func (cfdc *distributionCreator) DeleteIt() {
 	if err != nil {
 		log.Fatalf("failed to recover distribution for %s: %v", cfdc.distroId, err)
 	}
-	fmt.Printf("have a distro %s %v\n", *distro.Distribution.Status, *distro.Distribution.DistributionConfig.Enabled)
+	log.Printf("have a distro %s %v\n", *distro.Distribution.Status, *distro.Distribution.DistributionConfig.Enabled)
 
 	if *distro.Distribution.DistributionConfig.Enabled {
 		log.Fatalf("the distribution is still enabled")
