@@ -46,7 +46,7 @@ func (cfdc *CachePolicyCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.EndAttrs()
 }
 
-func (cfdc *CachePolicyCreator) BuildModel(pres driverbottom.ValuePresenter) {
+func (cfdc *CachePolicyCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) {
 	eq := cfdc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {

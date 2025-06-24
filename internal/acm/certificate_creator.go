@@ -52,7 +52,7 @@ func (acm *certificateCreator) DumpTo(iw driverbottom.IndentWriter) {
 }
 
 // This is called during the "Prepare" phase
-func (acmc *certificateCreator) BuildModel(pres driverbottom.ValuePresenter) {
+func (acmc *certificateCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) {
 	for k, p := range acmc.props {
 		v := acmc.tools.Storage.Eval(p)
 		switch k.Id() {

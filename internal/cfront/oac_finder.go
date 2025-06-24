@@ -33,7 +33,7 @@ func (acm *OACFinder) DumpTo(iw driverbottom.IndentWriter) {
 }
 
 // This is called during the "Prepare" phase
-func (cfc *OACFinder) BuildModel(pres driverbottom.ValuePresenter) {
+func (cfc *OACFinder) DetermineDesiredState(pres driverbottom.ValuePresenter) {
 	eq := cfc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {

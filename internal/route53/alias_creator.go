@@ -45,7 +45,7 @@ func (p *aliasCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.EndAttrs()
 }
 
-func (cc *aliasCreator) BuildModel(pres driverbottom.ValuePresenter) {
+func (cc *aliasCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) {
 	eq := cc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {

@@ -50,7 +50,7 @@ func (cfdc *OACCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.EndAttrs()
 }
 
-func (cfdc *OACCreator) BuildModel(pres driverbottom.ValuePresenter) {
+func (cfdc *OACCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) {
 	eq := cfdc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {

@@ -47,7 +47,7 @@ func (dnf *domainNameFinder) DumpTo(iw driverbottom.IndentWriter) {
 }
 
 // This is called during the "Prepare" phase
-func (dnf *domainNameFinder) BuildModel(pres driverbottom.ValuePresenter) {
+func (dnf *domainNameFinder) DetermineDesiredState(pres driverbottom.ValuePresenter) {
 	eq := dnf.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {

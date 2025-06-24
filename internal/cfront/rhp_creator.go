@@ -48,7 +48,7 @@ func (cfdc *RHPCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.EndAttrs()
 }
 
-func (cfdc *RHPCreator) BuildModel(pres driverbottom.ValuePresenter) {
+func (cfdc *RHPCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) {
 	eq := cfdc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {

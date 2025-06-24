@@ -33,7 +33,7 @@ func (acm *distributionFinder) DumpTo(iw driverbottom.IndentWriter) {
 }
 
 // This is called during the "Prepare" phase
-func (cfc *distributionFinder) BuildModel(pres driverbottom.ValuePresenter) {
+func (cfc *distributionFinder) DetermineDesiredState(pres driverbottom.ValuePresenter) {
 	eq := cfc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {

@@ -46,7 +46,7 @@ func (cfdc *CacheBehaviorCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.EndAttrs()
 }
 
-func (cfdc *CacheBehaviorCreator) BuildModel(pres driverbottom.ValuePresenter) {
+func (cfdc *CacheBehaviorCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) {
 	eq := cfdc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {

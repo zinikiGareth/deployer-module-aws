@@ -42,7 +42,7 @@ func (b *bucketFinder) DumpTo(iw driverbottom.IndentWriter) {
 }
 
 // This is called during the "Prepare" phase
-func (b *bucketFinder) BuildModel(pres driverbottom.ValuePresenter) {
+func (b *bucketFinder) DetermineDesiredState(pres driverbottom.ValuePresenter) {
 	eq := b.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {

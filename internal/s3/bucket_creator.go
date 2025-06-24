@@ -51,7 +51,7 @@ func (b *bucketCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.EndAttrs()
 }
 
-func (b *bucketCreator) BuildModel(pres driverbottom.ValuePresenter) {
+func (b *bucketCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) {
 	eq := b.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {

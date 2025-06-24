@@ -33,7 +33,7 @@ func (acm *certificateFinder) DumpTo(iw driverbottom.IndentWriter) {
 }
 
 // This is called during the "Prepare" phase
-func (acm *certificateFinder) BuildModel(pres driverbottom.ValuePresenter) {
+func (acm *certificateFinder) DetermineDesiredState(pres driverbottom.ValuePresenter) {
 	eq := acm.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {
