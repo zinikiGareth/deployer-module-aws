@@ -8,7 +8,7 @@ import (
 
 type CNAMEBlank struct{}
 
-func (b *CNAMEBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
+func (b *CNAMEBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
 	var pointsTo driverbottom.Expr
 	var zone driverbottom.Expr
 	seenErr := false
@@ -34,7 +34,7 @@ func (b *CNAMEBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, name
 	return &cnameCreator{tools: tools, teardown: teardown, loc: loc, name: named, pointsTo: pointsTo, zone: zone}
 }
 
-func (b *CNAMEBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, named string) any {
+func (b *CNAMEBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) any {
 	panic("not implemented")
 }
 

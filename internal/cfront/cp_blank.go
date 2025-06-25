@@ -8,7 +8,7 @@ import (
 
 type CachePolicyBlank struct{}
 
-func (b *CachePolicyBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
+func (b *CachePolicyBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
 	var minttl driverbottom.Expr
 	for p, v := range props {
 		switch p.Id() {
@@ -22,7 +22,7 @@ func (b *CachePolicyBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location
 	return &CachePolicyCreator{tools: tools, teardown: teardown, loc: loc, name: named, minttl: minttl}
 }
 
-func (b *CachePolicyBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, named string) any {
+func (b *CachePolicyBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) any {
 	return &CachePolicyFinder{tools: tools, loc: loc, name: named}
 }
 

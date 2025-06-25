@@ -9,7 +9,7 @@ import (
 
 type DistributionBlank struct{}
 
-func (b *DistributionBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
+func (b *DistributionBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
 	var cert driverbottom.Expr
 	var domain driverbottom.List
 	var oac driverbottom.Expr
@@ -66,7 +66,7 @@ func (b *DistributionBlank) Mint(tools *corebottom.Tools, loc *errorsink.Locatio
 	return &distributionCreator{tools: tools, teardown: teardown, loc: loc, name: named, comment: comment, origindns: src, oac: oac, behaviors: cbs, cachePolicy: cp, domains: domain, viewerCert: cert, toid: toid}
 }
 
-func (b *DistributionBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, named string) any {
+func (b *DistributionBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) any {
 	return &distributionFinder{tools: tools, loc: loc, name: named}
 }
 

@@ -8,7 +8,7 @@ import (
 
 type RHPBlank struct{}
 
-func (b *RHPBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
+func (b *RHPBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
 	var header driverbottom.Expr
 	var value driverbottom.Expr
 	for p, v := range props {
@@ -25,7 +25,7 @@ func (b *RHPBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, named 
 	return &RHPCreator{tools: tools, teardown: teardown, loc: loc, name: named, header: header, value: value}
 }
 
-func (b *RHPBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, named string) any {
+func (b *RHPBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) any {
 	return &RHPFinder{tools: tools, loc: loc, name: named}
 }
 

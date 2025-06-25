@@ -8,7 +8,7 @@ import (
 
 type PolicyBlank struct{}
 
-func (b *PolicyBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
+func (b *PolicyBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
 	var policy driverbottom.Expr
 	seenErr := false
 	for p, v := range props {
@@ -27,7 +27,7 @@ func (b *PolicyBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, nam
 	return &policyCreator{tools: tools, teardown: teardown, loc: loc, name: named, policy: policy}
 }
 
-func (b *PolicyBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, named string) any {
+func (b *PolicyBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) any {
 	return &policyFinder{tools: tools, loc: loc, name: named}
 }
 

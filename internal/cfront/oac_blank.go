@@ -8,7 +8,7 @@ import (
 
 type OACBlank struct{}
 
-func (b *OACBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
+func (b *OACBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
 	var oacTy driverbottom.Expr
 	var sb driverbottom.Expr
 	var sp driverbottom.Expr
@@ -28,7 +28,7 @@ func (b *OACBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, named 
 	return &OACCreator{tools: tools, teardown: teardown, loc: loc, name: named, acType: oacTy, signBehavior: sb, signProt: sp}
 }
 
-func (b *OACBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, named string) any {
+func (b *OACBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) any {
 	return &OACFinder{tools: tools, loc: loc, name: named}
 }
 

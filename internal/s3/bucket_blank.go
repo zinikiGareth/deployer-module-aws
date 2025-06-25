@@ -8,11 +8,11 @@ import (
 
 type BucketBlank struct{}
 
-func (b *BucketBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
+func (b *BucketBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
 	return &bucketCreator{tools: tools, teardown: teardown, loc: loc, name: named, props: props}
 }
 
-func (b *BucketBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, named string) any {
+func (b *BucketBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) any {
 	return &bucketFinder{tools: tools, loc: loc, name: named}
 }
 

@@ -8,7 +8,7 @@ import (
 
 type ALIASBlank struct{}
 
-func (b *ALIASBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
+func (b *ALIASBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
 	var pointsTo driverbottom.Expr
 	var updZone driverbottom.Expr
 	var aliasZone driverbottom.Expr
@@ -41,7 +41,7 @@ func (b *ALIASBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, name
 	return &aliasCreator{tools: tools, teardown: teardown, loc: loc, name: named, pointsTo: pointsTo, updateZone: updZone, aliasZone: aliasZone}
 }
 
-func (b *ALIASBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, named string) any {
+func (b *ALIASBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) any {
 	panic("not implemented")
 }
 

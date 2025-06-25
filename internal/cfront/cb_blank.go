@@ -8,7 +8,7 @@ import (
 
 type CacheBehaviorBlank struct{}
 
-func (b *CacheBehaviorBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
+func (b *CacheBehaviorBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
 	var pp driverbottom.Expr
 	var rhp driverbottom.Expr
 	var cp driverbottom.Expr
@@ -47,7 +47,7 @@ func (b *CacheBehaviorBlank) Mint(tools *corebottom.Tools, loc *errorsink.Locati
 	return &CacheBehaviorCreator{tools: tools, teardown: teardown, loc: loc, name: named, cpId: cp, pp: pp, rhp: rhp, toid: toid}
 }
 
-func (b *CacheBehaviorBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, named string) any {
+func (b *CacheBehaviorBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) any {
 	return &CacheBehaviorFinder{tools: tools, loc: loc, name: named}
 }
 
