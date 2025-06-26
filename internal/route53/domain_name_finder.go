@@ -47,9 +47,6 @@ func (dnf *domainNameFinder) DumpTo(iw driverbottom.IndentWriter) {
 }
 
 func (dnf *domainNameFinder) DetermineInitialState(pres driverbottom.ValuePresenter) {
-}
-
-func (dnf *domainNameFinder) DetermineDesiredState(pres driverbottom.ValuePresenter) {
 	eq := dnf.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {
@@ -91,9 +88,6 @@ func (dnf *domainNameFinder) DetermineDesiredState(pres driverbottom.ValuePresen
 	pres.Present(dnf)
 }
 
-func (dnf *domainNameFinder) UpdateReality() {
-}
-
 func (dnf *domainNameFinder) String() string {
 	return fmt.Sprintf("FindDomainName[%s]", dnf.name)
 }
@@ -125,5 +119,5 @@ func (a *zoneIdMethod) Invoke(s driverbottom.RuntimeStorage, on driverbottom.Exp
 	return cfdc.hzid
 }
 
-var _ corebottom.Findable = &domainNameFinder{}
+var _ corebottom.FindCoin = &domainNameFinder{}
 var _ driverbottom.HasMethods = &domainNameFinder{}
