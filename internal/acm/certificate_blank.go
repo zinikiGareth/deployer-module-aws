@@ -9,11 +9,11 @@ import (
 type CertificateBlank struct{}
 
 func (b *CertificateBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
-	return &certificateCreator{tools: tools, teardown: teardown, loc: loc, name: named, props: props}
+	return &certificateCreator{tools: tools, teardown: teardown, loc: loc, coin: id, name: named, props: props}
 }
 
 func (b *CertificateBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) any {
-	return &certificateFinder{tools: tools, loc: loc, name: named}
+	return &certificateCreator{tools: tools, loc: loc, name: named}
 }
 
 func (b *CertificateBlank) Loc() *errorsink.Location {
