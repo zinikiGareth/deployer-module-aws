@@ -47,21 +47,17 @@ func (b *DistributionBlank) Mint(tools *corebottom.Tools, loc *errorsink.Locatio
 		case "TargetOriginId":
 			toid = v
 		default:
-			tools.Reporter.At(p.Loc().Line)
-			tools.Reporter.Reportf(loc.Offset, "invalid property for Distribution: %s", p.Id())
+			tools.Reporter.ReportAtf(loc, "invalid property for Distribution: %s", p.Id())
 		}
 	}
 	if comment == nil {
-		tools.Reporter.At(loc.Line)
-		tools.Reporter.Reportf(loc.Offset, "Comment was not defined")
+		tools.Reporter.ReportAtf(loc, "Comment was not defined")
 	}
 	if src == nil {
-		tools.Reporter.At(loc.Line)
-		tools.Reporter.Reportf(loc.Offset, "OriginDNS was not defined")
+		tools.Reporter.ReportAtf(loc, "OriginDNS was not defined")
 	}
 	if toid == nil {
-		tools.Reporter.At(loc.Line)
-		tools.Reporter.Reportf(loc.Offset, "TargetOriginId was not defined")
+		tools.Reporter.ReportAtf(loc, "TargetOriginId was not defined")
 	}
 	return &distributionCreator{tools: tools, teardown: teardown, loc: loc, name: named, comment: comment, origindns: src, oac: oac, behaviors: cbs, cachePolicy: cp, domains: domain, viewerCert: cert, toid: toid}
 }

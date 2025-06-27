@@ -73,8 +73,7 @@ func (b *bucketCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) 
 		case "Region":
 			region, ok = v.(fmt.Stringer)
 			if !ok {
-				b.tools.Reporter.At(e.Loc().Line)
-				b.tools.Reporter.Reportf(e.Loc().Offset, "must be a string value")
+				b.tools.Reporter.ReportAtf(e.Loc(), "must be a string value")
 				return
 			}
 		}

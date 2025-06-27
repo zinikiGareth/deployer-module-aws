@@ -60,8 +60,8 @@ func (dnf *domainNameFinder) DetermineInitialState(pres driverbottom.ValuePresen
 		var api smithy.APIError
 		if e.As(err, &api) {
 			if api.ErrorCode() == "NotFound" || strings.Contains(api.ErrorMessage(), "not found in account") {
-				dnf.tools.Reporter.At(dnf.loc.Line)
-				dnf.tools.Reporter.Reportf(dnf.loc.Offset, "domain does not belong to this account: %s\n", dnf.name)
+				dnf.tools.Reporter.ReportAtf(dnf.loc, "domain does not belong to this account: %s\n", dnf.name)
+				return
 			} else {
 				log.Fatal(err)
 			}

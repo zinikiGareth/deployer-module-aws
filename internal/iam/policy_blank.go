@@ -16,13 +16,11 @@ func (b *PolicyBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id 
 		case "Policy":
 			policy = v
 		default:
-			tools.Reporter.At(p.Loc().Line)
-			tools.Reporter.Reportf(loc.Offset, "invalid property for IAM policy: %s", p.Id())
+			tools.Reporter.ReportAtf(loc, "invalid property for IAM policy: %s", p.Id())
 		}
 	}
 	if !seenErr && policy == nil {
-		tools.Reporter.At(loc.Line)
-		tools.Reporter.Reportf(loc.Offset, "no Policy property was specified for %s", named)
+		tools.Reporter.ReportAtf(loc, "no Policy property was specified for %s", named)
 	}
 	return &policyCreator{tools: tools, teardown: teardown, loc: loc, name: named, policy: policy}
 }

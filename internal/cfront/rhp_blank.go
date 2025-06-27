@@ -18,8 +18,7 @@ func (b *RHPBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id cor
 		case "Value":
 			value = v
 		default:
-			tools.Reporter.At(p.Loc().Line)
-			tools.Reporter.Reportf(loc.Offset, "invalid property for ResponseHeaderPolicy: %s", p.Id())
+			tools.Reporter.ReportAtf(loc, "invalid property for ResponseHeaderPolicy: %s", p.Id())
 		}
 	}
 	return &RHPCreator{tools: tools, teardown: teardown, loc: loc, name: named, header: header, value: value}

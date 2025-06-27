@@ -24,25 +24,20 @@ func (b *CacheBehaviorBlank) Mint(tools *corebottom.Tools, loc *errorsink.Locati
 		case "TargetOriginId":
 			toid = v
 		default:
-			tools.Reporter.At(p.Loc().Line)
-			tools.Reporter.Reportf(p.Loc().Offset, "invalid property for OriginAccessControl: %s", p.Id())
+			tools.Reporter.ReportAtf(p.Loc(), "invalid property for OriginAccessControl: %s", p.Id())
 		}
 	}
 	if cp == nil {
-		tools.Reporter.At(loc.Line)
-		tools.Reporter.Reportf(loc.Offset, "CachePolicy was not defined")
+		tools.Reporter.ReportAtf(loc, "CachePolicy was not defined")
 	}
 	if rhp == nil {
-		tools.Reporter.At(loc.Line)
-		tools.Reporter.Reportf(loc.Offset, "ResponseHeadersPolicy was not defined")
+		tools.Reporter.ReportAtf(loc, "ResponseHeadersPolicy was not defined")
 	}
 	if pp == nil {
-		tools.Reporter.At(loc.Line)
-		tools.Reporter.Reportf(loc.Offset, "PathPattern was not defined")
+		tools.Reporter.ReportAtf(loc, "PathPattern was not defined")
 	}
 	if toid == nil {
-		tools.Reporter.At(loc.Line)
-		tools.Reporter.Reportf(loc.Offset, "TargetOriginId was not defined")
+		tools.Reporter.ReportAtf(loc, "TargetOriginId was not defined")
 	}
 	return &CacheBehaviorCreator{tools: tools, teardown: teardown, loc: loc, name: named, cpId: cp, pp: pp, rhp: rhp, toid: toid}
 }

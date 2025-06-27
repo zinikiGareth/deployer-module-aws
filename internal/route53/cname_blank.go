@@ -19,17 +19,14 @@ func (b *CNAMEBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id c
 		case "Zone":
 			zone = v
 		default:
-			tools.Reporter.At(p.Loc().Line)
-			tools.Reporter.Reportf(loc.Offset, "invalid property for IAM policy: %s", p.Id())
+			tools.Reporter.ReportAtf(loc, "invalid property for IAM policy: %s", p.Id())
 		}
 	}
 	if !seenErr && zone == nil {
-		tools.Reporter.At(loc.Line)
-		tools.Reporter.Reportf(loc.Offset, "no Zone property was specified for %s", named)
+		tools.Reporter.ReportAtf(loc, "no Zone property was specified for %s", named)
 	}
 	if !seenErr && pointsTo == nil {
-		tools.Reporter.At(loc.Line)
-		tools.Reporter.Reportf(loc.Offset, "no PointsTo property was specified for %s", named)
+		tools.Reporter.ReportAtf(loc, "no PointsTo property was specified for %s", named)
 	}
 	return &cnameCreator{tools: tools, teardown: teardown, loc: loc, name: named, pointsTo: pointsTo, zone: zone}
 }

@@ -60,14 +60,12 @@ func (p *policyCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) 
 	loc := p.policy.Loc()
 	pv := p.policy.Eval(p.tools.Storage)
 	if pv == nil {
-		p.tools.Reporter.At(loc.Line)
-		p.tools.Reporter.Reportf(loc.Offset, "policy was nil")
+		p.tools.Reporter.ReportAtf(loc, "policy was nil")
 		return
 	}
 	pi, ok := pv.(corebottom.PolicyDocument)
 	if !ok {
-		p.tools.Reporter.At(loc.Line)
-		p.tools.Reporter.Reportf(loc.Offset, "expression was not a policy but %T %v", pv, pv)
+		p.tools.Reporter.ReportAtf(loc, "expression was not a policy but %T %v", pv, pv)
 		return
 	}
 

@@ -21,8 +21,7 @@ func (b *OACBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id cor
 		case "SigningProtocol":
 			sp = v
 		default:
-			tools.Reporter.At(p.Loc().Line)
-			tools.Reporter.Reportf(loc.Offset, "invalid property for OriginAccessControl: %s", p.Id())
+			tools.Reporter.ReportAtf(loc, "invalid property for OriginAccessControl: %s", p.Id())
 		}
 	}
 	return &OACCreator{tools: tools, teardown: teardown, loc: loc, name: named, acType: oacTy, signBehavior: sb, signProt: sp}

@@ -22,21 +22,17 @@ func (b *ALIASBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id c
 		case "AliasZone":
 			aliasZone = v
 		default:
-			tools.Reporter.At(p.Loc().Line)
-			tools.Reporter.Reportf(loc.Offset, "invalid property for IAM policy: %s", p.Id())
+			tools.Reporter.ReportAtf(loc, "invalid property for IAM policy: %s", p.Id())
 		}
 	}
 	if !seenErr && updZone == nil {
-		tools.Reporter.At(loc.Line)
-		tools.Reporter.Reportf(loc.Offset, "no UpdateZone property was specified for %s", named)
+		tools.Reporter.ReportAtf(loc, "no UpdateZone property was specified for %s", named)
 	}
 	if !seenErr && aliasZone == nil {
-		tools.Reporter.At(loc.Line)
-		tools.Reporter.Reportf(loc.Offset, "no AliasZone property was specified for %s", named)
+		tools.Reporter.ReportAtf(loc, "no AliasZone property was specified for %s", named)
 	}
 	if !seenErr && pointsTo == nil {
-		tools.Reporter.At(loc.Line)
-		tools.Reporter.Reportf(loc.Offset, "no PointsTo property was specified for %s", named)
+		tools.Reporter.ReportAtf(loc, "no PointsTo property was specified for %s", named)
 	}
 	return &aliasCreator{tools: tools, teardown: teardown, loc: loc, name: named, pointsTo: pointsTo, updateZone: updZone, aliasZone: aliasZone}
 }

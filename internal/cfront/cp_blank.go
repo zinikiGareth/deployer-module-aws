@@ -15,8 +15,7 @@ func (b *CachePolicyBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location
 		case "MinTTL":
 			minttl = v
 		default:
-			tools.Reporter.At(p.Loc().Line)
-			tools.Reporter.Reportf(loc.Offset, "invalid property for OriginAccessControl: %s", p.Id())
+			tools.Reporter.ReportAtf(loc, "invalid property for OriginAccessControl: %s", p.Id())
 		}
 	}
 	return &CachePolicyCreator{tools: tools, teardown: teardown, loc: loc, name: named, minttl: minttl}
