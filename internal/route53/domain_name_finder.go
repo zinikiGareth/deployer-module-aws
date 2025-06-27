@@ -27,8 +27,6 @@ type domainNameFinder struct {
 	name          string
 	route53Client *route53.Client
 	domainsClient *route53domains.Client
-	Details       *route53domains.GetDomainDetailOutput
-	hzid          string
 }
 
 func (dnf *domainNameFinder) Loc() *errorsink.Location {
@@ -69,55 +67,27 @@ func (dnf *domainNameFinder) DetermineInitialState(pres driverbottom.ValuePresen
 			log.Fatal(err)
 		}
 	}
-	dnf.Details = detail
-	// log.Printf("%v\n", detail)
 
 	zones, err := dnf.route53Client.ListHostedZones(context.TODO(), &route53.ListHostedZonesInput{})
 	if err != nil {
 		panic(err)
 	}
+	var hzid string
 	for _, z := range zones.HostedZones {
 		if *z.Name == dnf.name+"." {
-			dnf.hzid = strings.Replace(*z.Id, "/hostedzone/", "", 1)
-			log.Printf("found zone %s: %s\n", dnf.hzid, *z.Name)
+			hzid = strings.Replace(*z.Id, "/hostedzone/", "", 1)
+			log.Printf("found zone %s: %s\n", hzid, *z.Name)
 		}
 	}
-	if dnf.hzid == "" {
+	if hzid == "" {
 		log.Fatalf("No hosted zone found for " + dnf.name)
 	}
-	pres.Present(dnf)
+	model := CreateDomainModel(dnf.loc, detail, hzid)
+	pres.Present(model)
 }
 
 func (dnf *domainNameFinder) String() string {
 	return fmt.Sprintf("FindDomainName[%s]", dnf.name)
 }
 
-func (dnf *domainNameFinder) HostedZoneId() string {
-	return dnf.hzid
-}
-
-func (dnf *domainNameFinder) ObtainMethod(name string) driverbottom.Method {
-	switch name {
-	case "zoneId":
-		return &zoneIdMethod{}
-	}
-	return nil
-}
-
-type zoneIdMethod struct {
-}
-
-func (a *zoneIdMethod) Invoke(s driverbottom.RuntimeStorage, on driverbottom.Expr, args []driverbottom.Expr) any {
-	e := on.Eval(s)
-	cfdc, ok := e.(*domainNameFinder)
-	if !ok {
-		panic(fmt.Sprintf("zoneId can only be called on a domain, not a %T", e))
-	}
-	if len(args) != 0 {
-		panic("invalid number of arguments")
-	}
-	return cfdc.hzid
-}
-
 var _ corebottom.FindCoin = &domainNameFinder{}
-var _ driverbottom.HasMethods = &domainNameFinder{}
