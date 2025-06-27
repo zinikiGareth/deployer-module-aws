@@ -20,6 +20,7 @@ type bucketCreator struct {
 	tools *corebottom.Tools
 
 	loc      *errorsink.Location
+	coin     driverbottom.Holder
 	teardown corebottom.TearDown
 	name     string // name is here (as well as?) the model because it's core to who we are
 	props    map[driverbottom.Identifier]driverbottom.Expr
@@ -64,7 +65,7 @@ func (b *bucketCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) 
 	b.client = awsEnv.S3Client()
 
 	region, _ := utils.AsStringer("us-east-1")
-	b.model = &bucketModel{client: b.client, name: b.name}
+	b.model = &bucketModel{loc: b.loc, storage: b.tools.Storage, id: b.coin, client: b.client, name: b.name}
 	// TODO: should this be an earlier phase?
 	for i, e := range b.props {
 		v := b.tools.Storage.Eval(e)

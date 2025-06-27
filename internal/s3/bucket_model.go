@@ -8,15 +8,21 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
+	"ziniki.org/deployer/driver/pkg/errorsink"
 	"ziniki.org/deployer/modules/aws/internal/policyjson"
 )
 
 type bucketModel struct {
+	loc     *errorsink.Location
+	storage driverbottom.RuntimeStorage
+	id      corebottom.CoinId
 	// May I say how much I hate that this is here, but we need it for Attach ...
 	client *s3.Client
 
 	name   string
 	region fmt.Stringer
+
+	policy string
 }
 
 func (b *bucketModel) Attach(doc corebottom.PolicyDocument) {
@@ -25,6 +31,8 @@ func (b *bucketModel) Attach(doc corebottom.PolicyDocument) {
 	if err != nil {
 		log.Fatalf("could not build policy: %v", err)
 	}
+	newbm := &bucketModel{loc: b.loc, storage: b.storage, id: b.id, name: b.name, client: b.client, policy: policyJson}
+	b.storage.Bind(b.id, newbm)
 	b.client.PutBucketPolicy(context.TODO(), &s3.PutBucketPolicyInput{Bucket: &b.name, Policy: &policyJson})
 	log.Printf("attached policy to bucket %s\n", b.name)
 }
