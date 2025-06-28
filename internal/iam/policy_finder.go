@@ -34,7 +34,7 @@ func (b *policyFinder) DumpTo(iw driverbottom.IndentWriter) {
 	iw.EndAttrs()
 }
 
-func (b *policyFinder) DetermineDesiredState(pres driverbottom.ValuePresenter) {
+func (b *policyFinder) DetermineDesiredState(pres corebottom.ValuePresenter) {
 	/*
 		eq := b.tools.Recall.ObtainDriver("aws.AwsEnv")
 		awsEnv, ok := eq.(*env.AwsEnv)

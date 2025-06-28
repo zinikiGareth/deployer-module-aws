@@ -17,6 +17,7 @@ type CacheBehaviorCreator struct {
 
 	loc      *errorsink.Location
 	name     string
+	coin     corebottom.CoinId
 	cpId     driverbottom.Expr
 	pp       driverbottom.Expr
 	rhp      driverbottom.Expr
@@ -46,10 +47,14 @@ func (cfdc *CacheBehaviorCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.EndAttrs()
 }
 
-func (cfdc *CacheBehaviorCreator) DetermineInitialState(pres driverbottom.ValuePresenter) {
+func (acmc *CacheBehaviorCreator) CoinId() corebottom.CoinId {
+	return acmc.coin
 }
 
-func (cfdc *CacheBehaviorCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) {
+func (cfdc *CacheBehaviorCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
+}
+
+func (cfdc *CacheBehaviorCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 	eq := cfdc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {

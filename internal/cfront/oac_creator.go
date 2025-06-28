@@ -19,6 +19,7 @@ type OACCreator struct {
 
 	loc          *errorsink.Location
 	name         string
+	coin         corebottom.CoinId
 	acType       driverbottom.Expr
 	signBehavior driverbottom.Expr
 	signProt     driverbottom.Expr
@@ -50,10 +51,14 @@ func (cfdc *OACCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.EndAttrs()
 }
 
-func (cfdc *OACCreator) DetermineInitialState(pres driverbottom.ValuePresenter) {
+func (acmc *OACCreator) CoinId() corebottom.CoinId {
+	return acmc.coin
 }
 
-func (cfdc *OACCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) {
+func (cfdc *OACCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
+}
+
+func (cfdc *OACCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 	eq := cfdc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {

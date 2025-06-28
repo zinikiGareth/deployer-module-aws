@@ -45,7 +45,11 @@ func (acmc *certificateCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.EndAttrs()
 }
 
-func (acmc *certificateCreator) DetermineInitialState(pres driverbottom.ValuePresenter) {
+func (acmc *certificateCreator) CoinId() corebottom.CoinId {
+	return acmc.coin
+}
+
+func (acmc *certificateCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 	ae := acmc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := ae.(*env.AwsEnv)
 	if !ok {
@@ -66,11 +70,12 @@ func (acmc *certificateCreator) DetermineInitialState(pres driverbottom.ValuePre
 		model.arn = certs[0]
 
 		// acmc.describeCertificate(acmc.arn)
+		// acmc.tools.Storage.Bind(acmc.coin, model)
 		pres.Present(model)
 	}
 }
 
-func (acmc *certificateCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) {
+func (acmc *certificateCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 	model := NewCertificateModel(acmc.loc)
 	for k, p := range acmc.props {
 		v := acmc.tools.Storage.Eval(p)
@@ -104,13 +109,15 @@ func (acmc *certificateCreator) DetermineDesiredState(pres driverbottom.ValuePre
 			log.Fatalf("certificate coin does not support a parameter %s\n", k.Id())
 		}
 	}
+	// acmc.tools.Storage.Bind(acmc.coin, model)
 	pres.Present(model)
 }
 
 func (acmc *certificateCreator) UpdateReality() {
-	found := acmc.tools.Storage.GetCoin(acmc.coin, corebottom.DETERMINE_INITIAL_MODE).(*certificateModel)
+	tmp := acmc.tools.Storage.GetCoin(acmc.coin, corebottom.DETERMINE_INITIAL_MODE)
 
-	if found != nil {
+	if tmp != nil {
+		found := tmp.(*certificateModel)
 		log.Printf("certificate %s already existed for %s\n", found.arn, found.name)
 		return
 	}
@@ -149,13 +156,14 @@ func (acmc *certificateCreator) UpdateReality() {
 }
 
 func (acmc *certificateCreator) TearDown() {
-	found := acmc.tools.Storage.GetCoin(acmc.coin, corebottom.DETERMINE_INITIAL_MODE).(*certificateModel)
+	tmp := acmc.tools.Storage.GetCoin(acmc.coin, corebottom.DETERMINE_INITIAL_MODE)
 
-	if found == nil {
+	if tmp == nil {
 		log.Printf("no certificate existed for %s\n", acmc.name)
 		return
 	}
 
+	found := tmp.(*certificateModel)
 	log.Printf("you have asked to tear down certificate for %s (arn: %s) with mode %s\n", found.name, found.arn, acmc.teardown.Mode())
 	switch acmc.teardown.Mode() {
 	case "preserve":

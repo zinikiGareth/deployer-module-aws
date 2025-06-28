@@ -18,6 +18,7 @@ type aliasCreator struct {
 
 	loc        *errorsink.Location
 	name       string
+	coin       corebottom.CoinId
 	pointsTo   driverbottom.Expr
 	updateZone driverbottom.Expr
 	aliasZone  driverbottom.Expr
@@ -45,10 +46,14 @@ func (p *aliasCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.EndAttrs()
 }
 
-func (cc *aliasCreator) DetermineInitialState(pres driverbottom.ValuePresenter) {
+func (acmc *aliasCreator) CoinId() corebottom.CoinId {
+	return acmc.coin
 }
 
-func (cc *aliasCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) {
+func (cc *aliasCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
+}
+
+func (cc *aliasCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 	eq := cc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {

@@ -19,6 +19,7 @@ type distributionCreator struct {
 
 	loc         *errorsink.Location
 	name        string
+	coin        corebottom.CoinId
 	origindns   driverbottom.Expr
 	toid        driverbottom.Expr
 	domains     driverbottom.List
@@ -51,10 +52,14 @@ func (cfdc *distributionCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.EndAttrs()
 }
 
-func (cfdc *distributionCreator) DetermineInitialState(pres driverbottom.ValuePresenter) {
+func (acmc *distributionCreator) CoinId() corebottom.CoinId {
+	return acmc.coin
 }
 
-func (cfdc *distributionCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) {
+func (cfdc *distributionCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
+}
+
+func (cfdc *distributionCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 	eq := cfdc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {

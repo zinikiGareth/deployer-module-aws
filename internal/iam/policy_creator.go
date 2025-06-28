@@ -42,7 +42,7 @@ func (p *policyCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.EndAttrs()
 }
 
-func (p *policyCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) {
+func (p *policyCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 	log.Printf("Need to find and/or build a policy model for %s\n", p.name)
 
 	// We need to do three things here:

@@ -25,9 +25,9 @@ type bucketCreator struct {
 	name     string // name is here (as well as?) the model because it's core to who we are
 	props    map[driverbottom.Identifier]driverbottom.Expr
 
-	client        *s3.Client
-	alreadyExists bool
-	model         *bucketModel
+	client *s3.Client
+	// alreadyExists bool
+	// model         *bucketModel
 	// cloud *BucketCloud
 }
 
@@ -52,10 +52,11 @@ func (b *bucketCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.EndAttrs()
 }
 
-func (b *bucketCreator) DetermineInitialState(pres driverbottom.ValuePresenter) {
+func (b *bucketCreator) CoinId() corebottom.CoinId {
+	return b.coin
 }
 
-func (b *bucketCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) {
+func (b *bucketCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 	eq := b.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {
@@ -63,23 +64,6 @@ func (b *bucketCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) 
 	}
 
 	b.client = awsEnv.S3Client()
-
-	region, _ := utils.AsStringer("us-east-1")
-	b.model = &bucketModel{loc: b.loc, storage: b.tools.Storage, id: b.coin, client: b.client, name: b.name}
-	// TODO: should this be an earlier phase?
-	for i, e := range b.props {
-		v := b.tools.Storage.Eval(e)
-		switch i.Id() {
-		case "Region":
-			region, ok = v.(fmt.Stringer)
-			if !ok {
-				b.tools.Reporter.ReportAtf(e.Loc(), "must be a string value")
-				return
-			}
-		}
-	}
-	b.model.region = region
-
 	_, err := b.client.HeadBucket(context.TODO(), &s3.HeadBucketInput{
 		Bucket: aws.String(b.name),
 	})
@@ -89,6 +73,7 @@ func (b *bucketCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) 
 			// log.Printf("code: %s", api.ErrorCode())
 			if api.ErrorCode() == "NotFound" {
 				log.Printf("bucket does not exist: %s", b.name)
+				pres.NotFound()
 			} else {
 				log.Fatal(err)
 			}
@@ -97,15 +82,38 @@ func (b *bucketCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) 
 		}
 	} else {
 		log.Printf("bucket exists: %s", b.name)
-		b.alreadyExists = true
+		model := &bucketModel{loc: b.loc, storage: b.tools.Storage, id: b.coin, client: b.client, name: b.name}
+		pres.Present(model)
 	}
+}
 
-	pres.Present(b.model)
+func (b *bucketCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
+	region, _ := utils.AsStringer("us-east-1")
+	model := &bucketModel{loc: b.loc, storage: b.tools.Storage, id: b.coin, client: b.client, name: b.name}
+	// TODO: should this be an earlier phase?
+	for i, e := range b.props {
+		v := b.tools.Storage.Eval(e)
+		switch i.Id() {
+		case "Region":
+			var ok bool
+			region, ok = v.(fmt.Stringer)
+			if !ok {
+				b.tools.Reporter.ReportAtf(e.Loc(), "must be a string value")
+				return
+			}
+		}
+	}
+	model.region = region
+
+	pres.Present(model)
 }
 
 func (b *bucketCreator) UpdateReality() {
-	if b.alreadyExists {
-		log.Printf("bucket %s already existed\n", b.name)
+	tmp := b.tools.Storage.GetCoin(b.coin, corebottom.DETERMINE_INITIAL_MODE)
+
+	if tmp != nil {
+		found := tmp.(*bucketModel)
+		log.Printf("bucket %s already existed\n", found.name)
 		return
 	}
 
@@ -116,7 +124,9 @@ func (b *bucketCreator) UpdateReality() {
 }
 
 func (b *bucketCreator) TearDown() {
-	if !b.alreadyExists {
+	tmp := b.tools.Storage.GetCoin(b.coin, corebottom.DETERMINE_INITIAL_MODE)
+
+	if tmp == nil {
 		log.Printf("bucket %s does not exist\n", b.name)
 		return
 	}

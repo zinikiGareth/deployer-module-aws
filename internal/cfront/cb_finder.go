@@ -33,7 +33,7 @@ func (acm *CacheBehaviorFinder) DumpTo(iw driverbottom.IndentWriter) {
 }
 
 // This is called during the "Prepare" phase
-func (cfc *CacheBehaviorFinder) DetermineDesiredState(pres driverbottom.ValuePresenter) {
+func (cfc *CacheBehaviorFinder) DetermineDesiredState(pres corebottom.ValuePresenter) {
 	eq := cfc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {

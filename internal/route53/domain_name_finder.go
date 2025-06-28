@@ -25,6 +25,7 @@ type domainNameFinder struct {
 
 	loc           *errorsink.Location
 	name          string
+	coin          corebottom.CoinId
 	route53Client *route53.Client
 	domainsClient *route53domains.Client
 }
@@ -44,7 +45,11 @@ func (dnf *domainNameFinder) DumpTo(iw driverbottom.IndentWriter) {
 	iw.EndAttrs()
 }
 
-func (dnf *domainNameFinder) DetermineInitialState(pres driverbottom.ValuePresenter) {
+func (acmc *domainNameFinder) CoinId() corebottom.CoinId {
+	return acmc.coin
+}
+
+func (dnf *domainNameFinder) DetermineInitialState(pres corebottom.ValuePresenter) {
 	eq := dnf.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {

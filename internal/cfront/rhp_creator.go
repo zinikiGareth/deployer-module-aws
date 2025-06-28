@@ -19,6 +19,7 @@ type RHPCreator struct {
 
 	loc      *errorsink.Location
 	name     string
+	coin     corebottom.CoinId
 	header   driverbottom.Expr
 	value    driverbottom.Expr
 	teardown corebottom.TearDown
@@ -48,10 +49,14 @@ func (cfdc *RHPCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.EndAttrs()
 }
 
-func (cfdc *RHPCreator) DetermineInitialState(pres driverbottom.ValuePresenter) {
+func (acmc *RHPCreator) CoinId() corebottom.CoinId {
+	return acmc.coin
 }
 
-func (cfdc *RHPCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) {
+func (cfdc *RHPCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
+}
+
+func (cfdc *RHPCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 	eq := cfdc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {

@@ -18,6 +18,7 @@ type cnameCreator struct {
 
 	loc      *errorsink.Location
 	name     string
+	coin     corebottom.CoinId
 	pointsTo driverbottom.Expr
 	zone     driverbottom.Expr
 	teardown corebottom.TearDown
@@ -43,10 +44,14 @@ func (p *cnameCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.EndAttrs()
 }
 
-func (cc *cnameCreator) DetermineInitialState(pres driverbottom.ValuePresenter) {
+func (acmc *cnameCreator) CoinId() corebottom.CoinId {
+	return acmc.coin
 }
 
-func (cc *cnameCreator) DetermineDesiredState(pres driverbottom.ValuePresenter) {
+func (cc *cnameCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
+}
+
+func (cc *cnameCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 	eq := cc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {
