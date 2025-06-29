@@ -30,11 +30,11 @@ func (ac *aliasCreator) Loc() *errorsink.Location {
 }
 
 func (ac *aliasCreator) ShortDescription() string {
-	return "aws.IAM.Policy[" + ac.name + "]"
+	return "aws.Route53.Alias[" + ac.name + "]"
 }
 
 func (ac *aliasCreator) DumpTo(iw driverbottom.IndentWriter) {
-	iw.Intro("aws.IAM.Policy[")
+	iw.Intro("aws.Route53.ALIAS")
 	iw.AttrsWhere(ac)
 	iw.TextAttr("named", ac.name)
 	iw.EndAttrs()
@@ -46,11 +46,14 @@ func (ac *aliasCreator) CoinId() corebottom.CoinId {
 
 func (ac *aliasCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 	var updZone driverbottom.Expr
+	var aliasZone driverbottom.Expr
 	seenErr := false
 	for p, v := range ac.props {
 		switch p.Id() {
 		case "PointsTo":
 		case "AliasZone":
+			aliasZone = v
+
 		case "UpdateZone":
 			updZone = v
 		default:
@@ -60,8 +63,16 @@ func (ac *aliasCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 	if !seenErr && updZone == nil {
 		ac.tools.Reporter.ReportAtf(ac.loc, "no UpdateZone property was specified for %s", ac.name)
 	}
+	if !seenErr && aliasZone == nil {
+		ac.tools.Reporter.ReportAtf(ac.loc, "no AliasZone property was specified for %s", ac.name)
+	}
 
 	updZoneId, ok := ac.tools.Storage.EvalAsStringer(updZone)
+	if !ok {
+		panic("hello, world")
+	}
+
+	aliasZoneId, ok := ac.tools.Storage.EvalAsStringer(aliasZone)
 	if !ok {
 		panic("hello, world")
 	}
@@ -89,7 +100,7 @@ func (ac *aliasCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 		if r.Type == "A" && *r.Name == ac.name+"." {
 			// TODO: we should also handle the case where it has changed
 			log.Printf("already have A %s %v\n", *r.Name, *r.AliasTarget.DNSName)
-			model := &aliasModel{loc: ac.loc, name: ac.name, otherDomain: *r.AliasTarget.DNSName, updateZoneId: updZoneId.String()}
+			model := &aliasModel{loc: ac.loc, name: ac.name, otherDomain: *r.AliasTarget.DNSName, aliasZoneId: aliasZoneId.String(), updateZoneId: updZoneId.String()}
 			pres.Present(model)
 			return
 		}
@@ -177,7 +188,7 @@ func (ac *aliasCreator) UpdateReality() {
 func (ac *aliasCreator) TearDown() {
 	tmp := ac.tools.Storage.GetCoin(ac.coin, corebottom.DETERMINE_INITIAL_MODE)
 
-	if tmp != nil {
+	if tmp == nil {
 		log.Printf("alias %s already deleted\n", ac.name)
 		return
 	}

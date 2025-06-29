@@ -28,23 +28,15 @@ func (b *CNAMEBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id c
 	if !seenErr && pointsTo == nil {
 		tools.Reporter.ReportAtf(loc, "no PointsTo property was specified for %s", named)
 	}
-	return &cnameCreator{tools: tools, teardown: teardown, loc: loc, name: named, pointsTo: pointsTo, zone: zone}
+	return &cnameCreator{tools: tools, teardown: teardown, loc: loc, name: named, coin: id, props: props}
 }
 
 func (b *CNAMEBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) any {
-	panic("not implemented")
-}
-
-func (b *CNAMEBlank) Loc() *errorsink.Location {
-	panic("not implemented")
+	return &cnameCreator{tools: tools, loc: loc, name: named, coin: id}
 }
 
 func (b *CNAMEBlank) ShortDescription() string {
 	return "test.S3.Bucket[]"
-}
-
-func (b *CNAMEBlank) DumpTo(iw driverbottom.IndentWriter) {
-	panic("not implemented")
 }
 
 var _ corebottom.Blank = &CNAMEBlank{}
