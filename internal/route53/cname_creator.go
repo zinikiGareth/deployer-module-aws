@@ -83,7 +83,7 @@ func (cc *cnameCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 		if r.Type == "CNAME" && *r.Name == cc.name+"." {
 			// TODO: we should also handle the case where it has changed
 			log.Printf("already have %s %v\n", *r.Name, *r.ResourceRecords[0].Value)
-			model := &cnameModel{loc: cc.loc, name: cc.name, pointsTo: *r.AliasTarget.DNSName, updateZoneId: z}
+			model := &cnameModel{loc: cc.loc, name: cc.name, pointsTo: *r.ResourceRecords[0].Value, updateZoneId: z}
 			pres.Present(model)
 			return
 		}
@@ -143,7 +143,8 @@ func (cc *cnameCreator) UpdateReality() {
 	if !ok {
 		str, ok := desired.pointsTo.(fmt.Stringer)
 		if !ok {
-			panic("not a string or Stringer)")
+			log.Printf("pointsto was %T %p", desired.pointsTo, desired.pointsTo)
+			panic("not a string or Stringer")
 		}
 		od = str.String()
 	}
@@ -172,7 +173,8 @@ func (cc *cnameCreator) TearDown() {
 	if !ok {
 		str, ok := found.pointsTo.(fmt.Stringer)
 		if !ok {
-			panic("not a string or Stringer)")
+			log.Printf("pointsto was %T %p", found.pointsTo, found.pointsTo)
+			panic("not a string or Stringer")
 		}
 		od = str.String()
 	}
