@@ -1,15 +1,9 @@
 package cfront
 
 import (
-	"fmt"
-
-	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
-	"github.com/aws/aws-sdk-go-v2/service/cloudfront/types"
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
-	"ziniki.org/deployer/driver/pkg/utils"
-	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
 type CacheBehaviorCreator struct {
@@ -18,82 +12,76 @@ type CacheBehaviorCreator struct {
 	loc      *errorsink.Location
 	name     string
 	coin     corebottom.CoinId
-	cpId     driverbottom.Expr
-	pp       driverbottom.Expr
-	rhp      driverbottom.Expr
-	toid     driverbottom.Expr
+	props    map[driverbottom.Identifier]driverbottom.Expr
 	teardown corebottom.TearDown
 
-	client *cloudfront.Client
+	// client *cloudfront.Client
 }
 
-func (cfdc *CacheBehaviorCreator) Loc() *errorsink.Location {
-	return cfdc.loc
+func (cbc *CacheBehaviorCreator) Loc() *errorsink.Location {
+	return cbc.loc
 }
 
-func (cfdc *CacheBehaviorCreator) ShortDescription() string {
-	return "aws.CloudFront.CacheBehavior[" + cfdc.name + "]"
+func (cbc *CacheBehaviorCreator) ShortDescription() string {
+	return "aws.CloudFront.CacheBehavior[" + cbc.name + "]"
 }
 
-func (cfdc *CacheBehaviorCreator) DumpTo(iw driverbottom.IndentWriter) {
+func (cbc *CacheBehaviorCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.Intro("aws.CloudFront.CacheBehavior[")
-	iw.AttrsWhere(cfdc)
-	iw.TextAttr("named", cfdc.name)
-	iw.NestedAttr("pp", cfdc.pp)
-	iw.NestedAttr("rhp", cfdc.rhp)
-	if cfdc.teardown != nil {
-		iw.TextAttr("teardown", cfdc.teardown.Mode())
+	iw.AttrsWhere(cbc)
+	iw.TextAttr("named", cbc.name)
+	if cbc.teardown != nil {
+		iw.TextAttr("teardown", cbc.teardown.Mode())
 	}
 	iw.EndAttrs()
 }
 
-func (acmc *CacheBehaviorCreator) CoinId() corebottom.CoinId {
-	return acmc.coin
+func (cbc *CacheBehaviorCreator) CoinId() corebottom.CoinId {
+	return cbc.coin
 }
 
-func (cfdc *CacheBehaviorCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
-}
-
-func (cfdc *CacheBehaviorCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
-	eq := cfdc.tools.Recall.ObtainDriver("aws.AwsEnv")
-	awsEnv, ok := eq.(*env.AwsEnv)
-	if !ok {
-		panic("could not cast env to AwsEnv")
+func (cbc *CacheBehaviorCreator) Create(pres corebottom.ValuePresenter) {
+	var pp driverbottom.Expr
+	var rhp driverbottom.Expr
+	var cp driverbottom.Expr
+	var toid driverbottom.Expr
+	for p, v := range cbc.props {
+		switch p.Id() {
+		case "CachePolicy":
+			cp = v
+		case "PathPattern":
+			pp = v
+		case "ResponseHeadersPolicy":
+			rhp = v
+		case "TargetOriginId":
+			toid = v
+		default:
+			cbc.tools.Reporter.ReportAtf(p.Loc(), "invalid property for OriginAccessControl: %s", p.Id())
+		}
 	}
-	cfdc.client = awsEnv.CFClient()
+	if cp == nil {
+		cbc.tools.Reporter.ReportAtf(cbc.loc, "CachePolicy was not defined")
+	}
+	if rhp == nil {
+		cbc.tools.Reporter.ReportAtf(cbc.loc, "ResponseHeadersPolicy was not defined")
+	}
+	if pp == nil {
+		cbc.tools.Reporter.ReportAtf(cbc.loc, "PathPattern was not defined")
+	}
+	if toid == nil {
+		cbc.tools.Reporter.ReportAtf(cbc.loc, "TargetOriginId was not defined")
+	}
 
-	pp := cfdc.tools.Storage.Eval(cfdc.pp)
-	rhp := cfdc.tools.Storage.Eval(cfdc.rhp)
-	targetOriginId := cfdc.tools.Storage.Eval(cfdc.toid)
+	ppEval := cbc.tools.Storage.Eval(pp)
+	rhpEval := cbc.tools.Storage.Eval(rhp)
+	targetOriginId := cbc.tools.Storage.Eval(toid)
 
-	// this is going to need to handle "deferred"
-	cpId, ok := cfdc.tools.Storage.EvalAsStringer(cfdc.cpId)
+	cpId, ok := cbc.tools.Storage.EvalAsStringer(cp)
 	if !ok {
 		panic("not a string")
 	}
 
-	pres.Present(cbModel{pp: pp, rhp: rhp, targetOriginId: targetOriginId, cpId: cpId})
+	pres.Present(&cbModel{pp: ppEval, rhp: rhpEval, targetOriginId: targetOriginId, cpId: cpId})
 }
 
-func (cfdc *CacheBehaviorCreator) UpdateReality() {
-}
-
-func (cfdc *CacheBehaviorCreator) TearDown() {
-}
-
-type cbModel struct {
-	pp             any
-	rhp            any
-	targetOriginId any
-	cpId           fmt.Stringer
-}
-
-func (d *cbModel) Complete() types.CacheBehavior {
-	toi := utils.AsString(d.targetOriginId)
-	pp := utils.AsString(d.pp)
-	rhp := utils.AsString(d.rhp)
-	cpId := d.cpId.String()
-	return types.CacheBehavior{TargetOriginId: &toi, PathPattern: &pp, ViewerProtocolPolicy: types.ViewerProtocolPolicyRedirectToHttps, CachePolicyId: &cpId, ResponseHeadersPolicyId: &rhp}
-}
-
-var _ corebottom.Ensurable = &CacheBehaviorCreator{}
+var _ corebottom.MemoryCoinCreator = &CacheBehaviorCreator{}

@@ -13,7 +13,7 @@ func (b *CachePolicyBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location
 }
 
 func (b *CachePolicyBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) any {
-	return &CachePolicyCreator{tools: tools, loc: loc, name: named}
+	return &CachePolicyCreator{tools: tools, loc: loc, name: named, coin: id}
 }
 
 func (b *CachePolicyBlank) Loc() *errorsink.Location {
