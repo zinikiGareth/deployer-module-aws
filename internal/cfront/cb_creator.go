@@ -81,7 +81,9 @@ func (cbc *CacheBehaviorCreator) Create(pres corebottom.ValuePresenter) {
 		panic("not a string")
 	}
 
-	pres.Present(&cbModel{pp: ppEval, rhp: rhpEval, targetOriginId: targetOriginId, cpId: cpId})
+	model := &cbModel{pp: ppEval, rhp: rhpEval, targetOriginId: targetOriginId, cpId: cpId}
+	// log.Printf("presenting CB %p\n", model)
+	pres.Present(model)
 }
 
 var _ corebottom.MemoryCoinCreator = &CacheBehaviorCreator{}

@@ -225,7 +225,8 @@ func (cfdc *distributionCreator) FigureCacheBehaviors() *types.CacheBehaviors {
 	}
 	cbs := []types.CacheBehavior{}
 	for _, m := range cbcl {
-		cbc, ok := m.(cbModel)
+		log.Printf("m = %p\n", m)
+		cbc, ok := m.(*cbModel)
 		if !ok {
 			log.Fatalf("not a cache behavior but %T", cbci)
 		}

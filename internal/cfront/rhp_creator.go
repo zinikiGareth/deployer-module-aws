@@ -58,7 +58,7 @@ func (rhpc *RHPCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 	if err != nil {
 		log.Fatalf("could not list RHPs")
 	}
-	model := &rhpModel{loc: rhpc.loc, name: rhpc.name}
+	model := &rhpModel{loc: rhpc.loc, name: rhpc.name, coin: rhpc.coin}
 	found := false
 	for _, p := range zeb.ResponseHeadersPolicyList.Items {
 		if p.ResponseHeadersPolicy.Id != nil {
@@ -95,7 +95,7 @@ func (rhpc *RHPCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 		}
 	}
 
-	model := &rhpModel{loc: rhpc.loc, name: rhpc.name, header: header, value: value}
+	model := &rhpModel{loc: rhpc.loc, name: rhpc.name, coin: rhpc.coin, header: header, value: value}
 	pres.Present(model)
 }
 
@@ -110,7 +110,7 @@ func (rhpc *RHPCreator) UpdateReality() {
 
 	desired := rhpc.tools.Storage.GetCoin(rhpc.coin, corebottom.DETERMINE_DESIRED_MODE).(*rhpModel)
 
-	created := &rhpModel{loc: desired.loc, name: desired.name}
+	created := &rhpModel{loc: desired.loc, name: desired.name, coin: rhpc.coin}
 
 	ht, ok1 := rhpc.tools.Storage.EvalAsStringer(desired.header)
 	ov := true

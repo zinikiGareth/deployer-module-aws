@@ -1,8 +1,6 @@
 package cfront
 
 import (
-	"log"
-
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
@@ -11,7 +9,6 @@ import (
 type RHPBlank struct{}
 
 func (b *RHPBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
-	log.Printf("Minting RHP with coin %s", id.VarName().Id())
 	return &RHPCreator{tools: tools, teardown: teardown, loc: loc, name: named, coin: id, props: props}
 }
 

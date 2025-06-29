@@ -3,6 +3,7 @@ package cfront
 import (
 	"fmt"
 
+	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
 	"ziniki.org/deployer/driver/pkg/utils"
@@ -11,12 +12,14 @@ import (
 type cachePolicyModel struct {
 	loc           *errorsink.Location
 	name          string
+	coin          corebottom.CoinId
 	minttl        driverbottom.Expr
+	which         string
 	CachePolicyId string
 }
 
-func NewCachePolicyModel(loc *errorsink.Location, name string) *cachePolicyModel {
-	return &cachePolicyModel{loc: loc, name: name}
+func NewCachePolicyModel(coin corebottom.CoinId, loc *errorsink.Location, name string, which string) *cachePolicyModel {
+	return &cachePolicyModel{coin: coin, loc: loc, name: name, which: which}
 }
 
 func (model *cachePolicyModel) ObtainMethod(name string) driverbottom.Method {
@@ -43,10 +46,16 @@ func (a *CachePolicyIdMethod) Invoke(s driverbottom.RuntimeStorage, on driverbot
 		return model.CachePolicyId
 	} else {
 		return utils.DeferString(func() string {
-			if model.CachePolicyId == "" {
-				panic("id is still not set")
+			curr := s.GetCoinFrom(model.coin, []int{1, 3})
+			if curr == nil {
+				panic("could not find find/create version of " + model.coin.VarName().Id())
 			}
-			return model.CachePolicyId
+
+			cp := curr.(*cachePolicyModel)
+			if cp.CachePolicyId == "" {
+				panic("cache policy id is still not set in " + cp.which)
+			}
+			return cp.CachePolicyId
 		})
 	}
 }

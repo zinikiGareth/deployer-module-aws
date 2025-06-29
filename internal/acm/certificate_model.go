@@ -3,6 +3,7 @@ package acm
 import (
 	"fmt"
 
+	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
 	"ziniki.org/deployer/driver/pkg/utils"
@@ -11,6 +12,7 @@ import (
 type certificateModel struct {
 	loc              *errorsink.Location
 	name             string
+	coin             corebottom.CoinId
 	validationMethod fmt.Stringer
 	hzid             string
 	arn              string
@@ -53,13 +55,22 @@ func (a *arnMethod) Invoke(s driverbottom.RuntimeStorage, on driverbottom.Expr, 
 		return cc.arn
 	} else {
 		return utils.DeferString(func() string {
-			return cc.arn
+			curr := s.GetCoinFrom(cc.coin, []int{1, 3})
+			if curr == nil {
+				panic("could not find find/create version of " + cc.coin.VarName().Id())
+			}
+
+			cert := curr.(*certificateModel)
+			if cert.arn == "" {
+				panic("cert arn is still not set")
+			}
+			return cert.arn
 		})
 	}
 }
 
-func NewCertificateModel(loc *errorsink.Location) *certificateModel {
-	return &certificateModel{loc: loc}
+func NewCertificateModel(loc *errorsink.Location, coin corebottom.CoinId) *certificateModel {
+	return &certificateModel{loc: loc, coin: coin}
 }
 
 var _ driverbottom.Describable = &certificateModel{}

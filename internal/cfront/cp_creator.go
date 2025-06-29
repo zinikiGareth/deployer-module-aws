@@ -22,9 +22,6 @@ type CachePolicyCreator struct {
 	props    map[driverbottom.Identifier]driverbottom.Expr
 
 	client *cloudfront.Client
-	// CachePolicyId string
-	// alreadyExists bool
-	// minttl   driverbottom.Expr
 }
 
 func (cfdc *CachePolicyCreator) Loc() *errorsink.Location {
@@ -64,7 +61,7 @@ func (cfdc *CachePolicyCreator) DetermineInitialState(pres corebottom.ValuePrese
 	}
 	for _, p := range bert.CachePolicyList.Items {
 		if p.CachePolicy.Id != nil && p.CachePolicy.CachePolicyConfig.Name != nil && *p.CachePolicy.CachePolicyConfig.Name == cfdc.name {
-			model = NewCachePolicyModel(cfdc.loc, cfdc.name)
+			model = NewCachePolicyModel(cfdc.coin, cfdc.loc, cfdc.name, "found")
 			model.CachePolicyId = *p.CachePolicy.Id
 			log.Printf("found CachePolicy for %s with id %s\n", model.name, model.CachePolicyId)
 		}
@@ -87,7 +84,7 @@ func (cfdc *CachePolicyCreator) DetermineDesiredState(pres corebottom.ValuePrese
 		}
 	}
 
-	model := NewCachePolicyModel(cfdc.loc, cfdc.name)
+	model := NewCachePolicyModel(cfdc.coin, cfdc.loc, cfdc.name, "desired")
 	model.minttl = minttl
 
 	// cfdc.tools.Storage.Bind(cfdc.coin, model)
@@ -105,7 +102,7 @@ func (cfdc *CachePolicyCreator) UpdateReality() {
 
 	desired := cfdc.tools.Storage.GetCoin(cfdc.coin, corebottom.DETERMINE_DESIRED_MODE).(*cachePolicyModel)
 
-	created := NewCachePolicyModel(desired.loc, desired.name)
+	created := NewCachePolicyModel(cfdc.coin, desired.loc, desired.name, "created")
 
 	created.minttl = desired.minttl
 

@@ -3,6 +3,7 @@ package cfront
 import (
 	"fmt"
 
+	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
 	"ziniki.org/deployer/driver/pkg/utils"
@@ -11,6 +12,7 @@ import (
 type rhpModel struct {
 	loc    *errorsink.Location
 	name   string
+	coin   corebottom.CoinId
 	header driverbottom.Expr
 	value  driverbottom.Expr
 	rpId   string
@@ -56,10 +58,17 @@ func (rmm *RHPIdMethod) Invoke(s driverbottom.RuntimeStorage, on driverbottom.Ex
 		return m.rpId
 	} else {
 		return utils.DeferString(func() string {
-			if m.rpId == "" {
-				panic("id is still not set")
+			curr := s.GetCoinFrom(m.coin, []int{1, 3})
+			if curr == nil {
+				panic("could not find find/create version of " + m.coin.VarName().Id())
 			}
-			return m.rpId
+
+			rhp := curr.(*rhpModel)
+
+			if rhp.rpId == "" {
+				panic("rhp id is still not set")
+			}
+			return rhp.rpId
 		})
 	}
 }

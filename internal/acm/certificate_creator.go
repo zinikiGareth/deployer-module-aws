@@ -63,7 +63,7 @@ func (acmc *certificateCreator) DetermineInitialState(pres corebottom.ValuePrese
 		log.Printf("there were no certs found for %s\n", acmc.name)
 		pres.NotFound()
 	} else {
-		model := NewCertificateModel(acmc.loc)
+		model := NewCertificateModel(acmc.loc, acmc.coin)
 		model.name = acmc.name
 
 		// log.Printf("found %d certs for %s\n", len(certs), acmc.name)
@@ -76,7 +76,7 @@ func (acmc *certificateCreator) DetermineInitialState(pres corebottom.ValuePrese
 }
 
 func (acmc *certificateCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
-	model := NewCertificateModel(acmc.loc)
+	model := NewCertificateModel(acmc.loc, acmc.coin)
 	for k, p := range acmc.props {
 		v := acmc.tools.Storage.Eval(p)
 		switch k.Id() {
@@ -124,7 +124,7 @@ func (acmc *certificateCreator) UpdateReality() {
 
 	desired := acmc.tools.Storage.GetCoin(acmc.coin, corebottom.DETERMINE_DESIRED_MODE).(*certificateModel)
 
-	created := NewCertificateModel(desired.loc)
+	created := NewCertificateModel(desired.loc, acmc.coin)
 	created.name = desired.name
 	created.hzid = desired.hzid
 

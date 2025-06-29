@@ -55,7 +55,7 @@ func (oacc *OACCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 	}
 	oacc.client = awsEnv.CFClient()
 
-	model := &oacModel{name: oacc.name}
+	model := &oacModel{loc: oacc.loc, name: oacc.name, coin: oacc.coin}
 	found := false
 	fred, err := oacc.client.ListOriginAccessControls(context.TODO(), &cloudfront.ListOriginAccessControlsInput{})
 	if err != nil {
@@ -92,7 +92,7 @@ func (oacc *OACCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 		}
 	}
 
-	model := &oacModel{acType: oacTy, signBehavior: sb, signProt: sp}
+	model := &oacModel{loc: oacc.loc, name: oacc.name, coin: oacc.coin, acType: oacTy, signBehavior: sb, signProt: sp}
 	pres.Present(model)
 }
 
@@ -107,7 +107,7 @@ func (oacc *OACCreator) UpdateReality() {
 
 	desired := oacc.tools.Storage.GetCoin(oacc.coin, corebottom.DETERMINE_DESIRED_MODE).(*oacModel)
 
-	created := &oacModel{loc: desired.loc, name: desired.name}
+	created := &oacModel{loc: desired.loc, name: desired.name, coin: oacc.coin}
 
 	acs, ok1 := oacc.tools.Storage.EvalAsStringer(desired.acType)
 	sbs, ok2 := oacc.tools.Storage.EvalAsStringer(desired.signBehavior)
