@@ -96,9 +96,10 @@ func (cfdc *CachePolicyCreator) DetermineDesiredState(pres corebottom.ValuePrese
 }
 
 func (cfdc *CachePolicyCreator) UpdateReality() {
-	found := cfdc.tools.Storage.GetCoin(cfdc.coin, corebottom.DETERMINE_INITIAL_MODE).(*cachePolicyModel)
+	tmp := cfdc.tools.Storage.GetCoin(cfdc.coin, corebottom.DETERMINE_INITIAL_MODE)
 
-	if found != nil {
+	if tmp != nil {
+		found := tmp.(*cachePolicyModel)
 		log.Printf("CachePolicy %s already existed for %s\n", found.CachePolicyId, found.name)
 		return
 	}
@@ -123,9 +124,10 @@ func (cfdc *CachePolicyCreator) UpdateReality() {
 }
 
 func (cfdc *CachePolicyCreator) TearDown() {
-	found := cfdc.tools.Storage.GetCoin(cfdc.coin, corebottom.DETERMINE_INITIAL_MODE).(*cachePolicyModel)
+	tmp := cfdc.tools.Storage.GetCoin(cfdc.coin, corebottom.DETERMINE_INITIAL_MODE)
 
-	if found != nil {
+	if tmp != nil {
+		found := tmp.(*cachePolicyModel)
 		log.Printf("you have asked to tear down CachePolicy %s (id: %s) with mode %s\n", cfdc.name, found.CachePolicyId, cfdc.teardown.Mode())
 		x, err := cfdc.client.GetCachePolicy(context.TODO(), &cloudfront.GetCachePolicyInput{Id: &found.CachePolicyId})
 		if err != nil {

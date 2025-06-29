@@ -2,7 +2,6 @@ package cfront
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
@@ -10,148 +9,143 @@ import (
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
-	"ziniki.org/deployer/driver/pkg/utils"
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
 type OACCreator struct {
 	tools *corebottom.Tools
 
-	loc          *errorsink.Location
-	name         string
-	coin         corebottom.CoinId
-	acType       driverbottom.Expr
-	signBehavior driverbottom.Expr
-	signProt     driverbottom.Expr
-	teardown     corebottom.TearDown
+	loc      *errorsink.Location
+	name     string
+	coin     corebottom.CoinId
+	teardown corebottom.TearDown
 
-	client        *cloudfront.Client
-	oacId         string
-	alreadyExists bool
+	client *cloudfront.Client
+	props  map[driverbottom.Identifier]driverbottom.Expr
 }
 
-func (cfdc *OACCreator) Loc() *errorsink.Location {
-	return cfdc.loc
+func (oacc *OACCreator) Loc() *errorsink.Location {
+	return oacc.loc
 }
 
-func (cfdc *OACCreator) ShortDescription() string {
-	return "aws.CloudFront.OAC[" + cfdc.name + "]"
+func (oacc *OACCreator) ShortDescription() string {
+	return "aws.CloudFront.OAC[" + oacc.name + "]"
 }
 
-func (cfdc *OACCreator) DumpTo(iw driverbottom.IndentWriter) {
+func (oacc *OACCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.Intro("aws.CloudFront.OAC[")
-	iw.AttrsWhere(cfdc)
-	iw.TextAttr("named", cfdc.name)
-	iw.NestedAttr("acType", cfdc.acType)
-	iw.NestedAttr("signingBehavior", cfdc.signBehavior)
-	iw.NestedAttr("signingProtocol", cfdc.signProt)
-	if cfdc.teardown != nil {
-		iw.TextAttr("teardown", cfdc.teardown.Mode())
+	iw.AttrsWhere(oacc)
+	iw.TextAttr("named", oacc.name)
+	iw.TextAttr("coin", oacc.coin.VarName().Id())
+	if oacc.teardown != nil {
+		iw.TextAttr("teardown", oacc.teardown.Mode())
 	}
 	iw.EndAttrs()
 }
 
-func (acmc *OACCreator) CoinId() corebottom.CoinId {
-	return acmc.coin
+func (oacc *OACCreator) CoinId() corebottom.CoinId {
+	return oacc.coin
 }
 
-func (cfdc *OACCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
-}
-
-func (cfdc *OACCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
-	eq := cfdc.tools.Recall.ObtainDriver("aws.AwsEnv")
+func (oacc *OACCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
+	eq := oacc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {
 		panic("could not cast env to AwsEnv")
 	}
-	cfdc.client = awsEnv.CFClient()
+	oacc.client = awsEnv.CFClient()
 
-	fred, err := cfdc.client.ListOriginAccessControls(context.TODO(), &cloudfront.ListOriginAccessControlsInput{})
+	model := &oacModel{name: oacc.name}
+	found := false
+	fred, err := oacc.client.ListOriginAccessControls(context.TODO(), &cloudfront.ListOriginAccessControlsInput{})
 	if err != nil {
 		log.Fatalf("could not list OACs")
 	}
 	for _, p := range fred.OriginAccessControlList.Items {
-		if p.Id != nil && p.Name != nil && *p.Name == cfdc.name {
-			cfdc.oacId = *p.Id
-			cfdc.alreadyExists = true
-			log.Printf("found OAC for %s with id %s\n", cfdc.name, cfdc.oacId)
+		if p.Id != nil && p.Name != nil && *p.Name == oacc.name {
+			model.oacId = *p.Id
+			log.Printf("found OAC for %s with id %s\n", oacc.name, model.oacId)
+		}
+	}
+	if found {
+		pres.Present(model)
+	} else {
+		pres.NotFound()
+	}
+}
+
+func (oacc *OACCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
+	var oacTy driverbottom.Expr
+	var sb driverbottom.Expr
+	var sp driverbottom.Expr
+	for p, v := range oacc.props {
+		switch p.Id() {
+		case "OriginAccessControlOriginType":
+			oacTy = v
+		case "SigningBehavior":
+			sb = v
+		case "SigningProtocol":
+			sp = v
+		default:
+			oacc.tools.Reporter.ReportAtf(oacc.loc, "invalid property for OriginAccessControl: %s", p.Id())
 		}
 	}
 
-	pres.Present(cfdc)
+	model := &oacModel{acType: oacTy, signBehavior: sb, signProt: sp}
+	pres.Present(model)
 }
 
-func (cfdc *OACCreator) UpdateReality() {
-	if cfdc.alreadyExists {
-		log.Printf("OAC %s already existed for %s\n", cfdc.oacId, cfdc.name)
+func (oacc *OACCreator) UpdateReality() {
+	tmp := oacc.tools.Storage.GetCoin(oacc.coin, corebottom.DETERMINE_INITIAL_MODE)
+
+	if tmp != nil {
+		found := tmp.(*oacModel)
+		log.Printf("OAC %s already existed for %s\n", found.oacId, found.name)
 		return
 	}
-	acs, ok1 := cfdc.tools.Storage.EvalAsStringer(cfdc.acType)
-	sbs, ok2 := cfdc.tools.Storage.EvalAsStringer(cfdc.signBehavior)
-	sps, ok3 := cfdc.tools.Storage.EvalAsStringer(cfdc.signProt)
+
+	desired := oacc.tools.Storage.GetCoin(oacc.coin, corebottom.DETERMINE_DESIRED_MODE).(*oacModel)
+
+	created := &oacModel{loc: desired.loc, name: desired.name}
+
+	acs, ok1 := oacc.tools.Storage.EvalAsStringer(desired.acType)
+	sbs, ok2 := oacc.tools.Storage.EvalAsStringer(desired.signBehavior)
+	sps, ok3 := oacc.tools.Storage.EvalAsStringer(desired.signProt)
 	if !ok1 || !ok2 || !ok3 {
 		panic("not ok")
 	}
 	ty := types.OriginAccessControlOriginTypes(acs.String())
 	sb := types.OriginAccessControlSigningBehaviors(sbs.String())
 	sp := types.OriginAccessControlSigningProtocols(sps.String())
-	oaccfg := types.OriginAccessControlConfig{Name: &cfdc.name, OriginAccessControlOriginType: ty, SigningBehavior: sb, SigningProtocol: sp}
-	oac, err := cfdc.client.CreateOriginAccessControl(context.TODO(), &cloudfront.CreateOriginAccessControlInput{OriginAccessControlConfig: &oaccfg})
+	oaccfg := types.OriginAccessControlConfig{Name: &oacc.name, OriginAccessControlOriginType: ty, SigningBehavior: sb, SigningProtocol: sp}
+	oac, err := oacc.client.CreateOriginAccessControl(context.TODO(), &cloudfront.CreateOriginAccessControlInput{OriginAccessControlConfig: &oaccfg})
 	if err != nil {
-		log.Fatalf("failed to create OAC for %s: %v\n", cfdc.name, err)
+		log.Fatalf("failed to create OAC for %s: %v\n", oacc.name, err)
 	}
-	cfdc.oacId = *oac.OriginAccessControl.Id
-	log.Printf("created OAC for %s: %s\n", cfdc.name, cfdc.oacId)
+	created.oacId = *oac.OriginAccessControl.Id
+	log.Printf("created OAC for %s: %s\n", oacc.name, created.oacId)
+
+	oacc.tools.Storage.Bind(oacc.coin, created)
 }
 
-func (cfdc *OACCreator) TearDown() {
-	if cfdc.alreadyExists {
-		log.Printf("you have asked to tear down OAC %s (id: %s) with mode %s\n", cfdc.name, cfdc.oacId, cfdc.teardown.Mode())
-		x, err := cfdc.client.GetOriginAccessControl(context.TODO(), &cloudfront.GetOriginAccessControlInput{Id: &cfdc.oacId})
+func (oacc *OACCreator) TearDown() {
+	tmp := oacc.tools.Storage.GetCoin(oacc.coin, corebottom.DETERMINE_INITIAL_MODE)
+
+	if tmp != nil {
+		found := tmp.(*oacModel)
+		log.Printf("you have asked to tear down OAC %s (id: %s) with mode %s\n", oacc.name, found.oacId, oacc.teardown.Mode())
+		x, err := oacc.client.GetOriginAccessControl(context.TODO(), &cloudfront.GetOriginAccessControlInput{Id: &found.oacId})
 		if err != nil {
-			log.Fatalf("could not get OAC %s: %v", cfdc.oacId, err)
+			log.Fatalf("could not get OAC %s: %v", found.oacId, err)
 		}
-		_, err = cfdc.client.DeleteOriginAccessControl(context.TODO(), &cloudfront.DeleteOriginAccessControlInput{Id: &cfdc.oacId, IfMatch: x.ETag})
+		_, err = oacc.client.DeleteOriginAccessControl(context.TODO(), &cloudfront.DeleteOriginAccessControlInput{Id: &found.oacId, IfMatch: x.ETag})
 		if err != nil {
-			log.Fatalf("could not delete OAC %s: %v", cfdc.oacId, err)
+			log.Fatalf("could not delete OAC %s: %v", found.oacId, err)
 		}
-		log.Printf("deleted OAC %s\n", cfdc.oacId)
+		log.Printf("deleted OAC %s\n", found.oacId)
 	} else {
-		log.Printf("no OAC existed for %s\n", cfdc.name)
-	}
-}
-
-func (cfdc *OACCreator) ObtainMethod(name string) driverbottom.Method {
-	switch name {
-	case "id":
-		return &oacIdMethod{}
-	}
-	return nil
-}
-
-type oacIdMethod struct {
-}
-
-func (a *oacIdMethod) Invoke(s driverbottom.RuntimeStorage, on driverbottom.Expr, args []driverbottom.Expr) any {
-	e := on.Eval(s)
-	cfdc, ok := e.(*OACCreator)
-	if !ok {
-		panic(fmt.Sprintf("arn can only be called on a OAC, not a %T", e))
-	}
-	if len(args) != 0 {
-		panic("invalid number of arguments")
-	}
-	if cfdc.alreadyExists {
-		return cfdc.oacId
-	} else {
-		return utils.DeferString(func() string {
-			if cfdc.oacId == "" {
-				panic("id is still not set")
-			}
-			return cfdc.oacId
-		})
+		log.Printf("no OAC existed for %s\n", oacc.name)
 	}
 }
 
 var _ corebottom.Ensurable = &OACCreator{}
-var _ driverbottom.HasMethods = &OACCreator{}
