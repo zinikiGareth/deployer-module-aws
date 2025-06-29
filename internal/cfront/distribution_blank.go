@@ -16,16 +16,8 @@ func (b *DistributionBlank) Find(tools *corebottom.Tools, loc *errorsink.Locatio
 	return &distributionCreator{tools: tools, loc: loc, name: named, coin: id}
 }
 
-func (b *DistributionBlank) Loc() *errorsink.Location {
-	panic("not implemented")
-}
-
 func (b *DistributionBlank) ShortDescription() string {
 	return "aws.CloudFront.Distribution[]"
-}
-
-func (b *DistributionBlank) DumpTo(iw driverbottom.IndentWriter) {
-	panic("not implemented")
 }
 
 var _ corebottom.Blank = &DistributionBlank{}
