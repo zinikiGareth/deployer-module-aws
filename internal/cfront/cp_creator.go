@@ -71,7 +71,6 @@ func (cfdc *CachePolicyCreator) DetermineInitialState(pres corebottom.ValuePrese
 	}
 	if model != nil {
 		pres.Present(model)
-		// cfdc.tools.Storage.Bind(cfdc.coin, model)
 	} else {
 		pres.NotFound()
 	}

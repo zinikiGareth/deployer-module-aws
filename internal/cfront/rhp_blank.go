@@ -1,6 +1,8 @@
 package cfront
 
 import (
+	"log"
+
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
@@ -9,23 +11,12 @@ import (
 type RHPBlank struct{}
 
 func (b *RHPBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
-	var header driverbottom.Expr
-	var value driverbottom.Expr
-	for p, v := range props {
-		switch p.Id() {
-		case "Header":
-			header = v
-		case "Value":
-			value = v
-		default:
-			tools.Reporter.ReportAtf(loc, "invalid property for ResponseHeaderPolicy: %s", p.Id())
-		}
-	}
-	return &RHPCreator{tools: tools, teardown: teardown, loc: loc, name: named, header: header, value: value}
+	log.Printf("Minting RHP with coin %s", id.VarName().Id())
+	return &RHPCreator{tools: tools, teardown: teardown, loc: loc, name: named, coin: id, props: props}
 }
 
 func (b *RHPBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) any {
-	return &RHPFinder{tools: tools, loc: loc, name: named}
+	return &RHPCreator{tools: tools, loc: loc, name: named, coin: id}
 }
 
 func (b *RHPBlank) Loc() *errorsink.Location {

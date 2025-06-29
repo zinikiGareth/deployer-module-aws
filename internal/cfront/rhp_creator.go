@@ -2,7 +2,6 @@ package cfront
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
@@ -10,7 +9,6 @@ import (
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
-	"ziniki.org/deployer/driver/pkg/utils"
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
@@ -20,79 +18,103 @@ type RHPCreator struct {
 	loc      *errorsink.Location
 	name     string
 	coin     corebottom.CoinId
-	header   driverbottom.Expr
-	value    driverbottom.Expr
+	props    map[driverbottom.Identifier]driverbottom.Expr
 	teardown corebottom.TearDown
 
-	client        *cloudfront.Client
-	rpId          string
-	alreadyExists bool
+	client *cloudfront.Client
 }
 
-func (cfdc *RHPCreator) Loc() *errorsink.Location {
-	return cfdc.loc
+func (rhpc *RHPCreator) Loc() *errorsink.Location {
+	return rhpc.loc
 }
 
-func (cfdc *RHPCreator) ShortDescription() string {
-	return "aws.CloudFront.RHP[" + cfdc.name + "]"
+func (rhpc *RHPCreator) ShortDescription() string {
+	return "aws.CloudFront.RHP[" + rhpc.name + "]"
 }
 
-func (cfdc *RHPCreator) DumpTo(iw driverbottom.IndentWriter) {
+func (rhpc *RHPCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.Intro("aws.CloudFront.RHP[")
-	iw.AttrsWhere(cfdc)
-	iw.TextAttr("named", cfdc.name)
-	iw.NestedAttr("header", cfdc.header)
-	iw.NestedAttr("value", cfdc.value)
-	if cfdc.teardown != nil {
-		iw.TextAttr("teardown", cfdc.teardown.Mode())
+	iw.AttrsWhere(rhpc)
+	iw.TextAttr("named", rhpc.name)
+	if rhpc.teardown != nil {
+		iw.TextAttr("teardown", rhpc.teardown.Mode())
 	}
 	iw.EndAttrs()
 }
 
-func (acmc *RHPCreator) CoinId() corebottom.CoinId {
-	return acmc.coin
+func (rhpc *RHPCreator) CoinId() corebottom.CoinId {
+	return rhpc.coin
 }
 
-func (cfdc *RHPCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
-}
-
-func (cfdc *RHPCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
-	eq := cfdc.tools.Recall.ObtainDriver("aws.AwsEnv")
+func (rhpc *RHPCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
+	eq := rhpc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {
 		panic("could not cast env to AwsEnv")
 	}
-	cfdc.client = awsEnv.CFClient()
+	rhpc.client = awsEnv.CFClient()
 
-	zeb, err := cfdc.client.ListResponseHeadersPolicies(context.TODO(), &cloudfront.ListResponseHeadersPoliciesInput{})
+	zeb, err := rhpc.client.ListResponseHeadersPolicies(context.TODO(), &cloudfront.ListResponseHeadersPoliciesInput{})
 	if err != nil {
 		log.Fatalf("could not list RHPs")
 	}
+	model := &rhpModel{loc: rhpc.loc, name: rhpc.name}
+	found := false
 	for _, p := range zeb.ResponseHeadersPolicyList.Items {
 		if p.ResponseHeadersPolicy.Id != nil {
-			rhc, err := cfdc.client.GetResponseHeadersPolicyConfig(context.TODO(), &cloudfront.GetResponseHeadersPolicyConfigInput{Id: p.ResponseHeadersPolicy.Id})
+			rhc, err := rhpc.client.GetResponseHeadersPolicyConfig(context.TODO(), &cloudfront.GetResponseHeadersPolicyConfigInput{Id: p.ResponseHeadersPolicy.Id})
 			if err != nil {
 				log.Fatalf("could not recover RHP %s", *p.ResponseHeadersPolicy.Id)
 			}
-			if rhc.ResponseHeadersPolicyConfig.Name != nil && *rhc.ResponseHeadersPolicyConfig.Name == cfdc.name {
-				cfdc.rpId = *p.ResponseHeadersPolicy.Id
-				cfdc.alreadyExists = true
-				log.Printf("found rhpc %s\n", cfdc.rpId)
+			if rhc.ResponseHeadersPolicyConfig.Name != nil && *rhc.ResponseHeadersPolicyConfig.Name == rhpc.name {
+				model.rpId = *p.ResponseHeadersPolicy.Id
+				log.Printf("found rhpc %s\n", model.rpId)
+				found = true
 			}
 		}
 	}
 
-	pres.Present(cfdc)
+	if found {
+		pres.Present(model)
+	} else {
+		pres.NotFound()
+	}
 }
 
-func (cfdc *RHPCreator) UpdateReality() {
-	if cfdc.alreadyExists {
-		log.Printf("RHP %s already existed for %s\n", cfdc.rpId, cfdc.name)
+func (rhpc *RHPCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
+	var header driverbottom.Expr
+	var value driverbottom.Expr
+	for p, v := range rhpc.props {
+		switch p.Id() {
+		case "Header":
+			header = v
+		case "Value":
+			value = v
+		default:
+			rhpc.tools.Reporter.ReportAtf(rhpc.loc, "invalid property for ResponseHeaderPolicy: %s", p.Id())
+		}
+	}
+
+	model := &rhpModel{loc: rhpc.loc, name: rhpc.name, header: header, value: value}
+	pres.Present(model)
+}
+
+func (rhpc *RHPCreator) UpdateReality() {
+	tmp := rhpc.tools.Storage.GetCoin(rhpc.coin, corebottom.DETERMINE_INITIAL_MODE)
+
+	if tmp != nil {
+		found := tmp.(*rhpModel)
+		log.Printf("RHP %s already existed for %s\n", found.rpId, found.name)
 		return
 	}
-	ht, ok1 := cfdc.tools.Storage.EvalAsStringer(cfdc.header)
+
+	desired := rhpc.tools.Storage.GetCoin(rhpc.coin, corebottom.DETERMINE_DESIRED_MODE).(*rhpModel)
+
+	created := &rhpModel{loc: desired.loc, name: desired.name}
+
+	ht, ok1 := rhpc.tools.Storage.EvalAsStringer(desired.header)
 	ov := true
-	vt, ok2 := cfdc.tools.Storage.EvalAsStringer(cfdc.value)
+	vt, ok2 := rhpc.tools.Storage.EvalAsStringer(desired.value)
 	if !ok1 || !ok2 {
 		panic("not ok")
 	}
@@ -101,63 +123,35 @@ func (cfdc *RHPCreator) UpdateReality() {
 	rhs := []types.ResponseHeadersPolicyCustomHeader{{Header: &h, Override: &ov, Value: &v}}
 	rhslen := int32(len(rhs))
 	ch := types.ResponseHeadersPolicyCustomHeadersConfig{Items: rhs, Quantity: &rhslen}
-	rhp := types.ResponseHeadersPolicyConfig{Name: &cfdc.name, CustomHeadersConfig: &ch}
-	crhp, err := cfdc.client.CreateResponseHeadersPolicy(context.TODO(), &cloudfront.CreateResponseHeadersPolicyInput{ResponseHeadersPolicyConfig: &rhp})
+	rhp := types.ResponseHeadersPolicyConfig{Name: &rhpc.name, CustomHeadersConfig: &ch}
+	crhp, err := rhpc.client.CreateResponseHeadersPolicy(context.TODO(), &cloudfront.CreateResponseHeadersPolicyInput{ResponseHeadersPolicyConfig: &rhp})
 	if err != nil {
-		log.Fatalf("failed to create CRHP %s: %v\n", cfdc.name, err)
+		log.Fatalf("failed to create CRHP %s: %v\n", rhpc.name, err)
 	}
-	cfdc.rpId = *crhp.ResponseHeadersPolicy.Id
-	log.Printf("created RHP for %s: %s\n", cfdc.name, cfdc.rpId)
+	created.rpId = *crhp.ResponseHeadersPolicy.Id
+	log.Printf("created RHP for %s: %s\n", created.name, created.rpId)
+
+	rhpc.tools.Storage.Bind(rhpc.coin, created)
 }
 
-func (cfdc *RHPCreator) TearDown() {
-	if cfdc.alreadyExists {
-		log.Printf("you have asked to tear down RHP %s (id: %s) with mode %s\n", cfdc.name, cfdc.rpId, cfdc.teardown.Mode())
-		x, err := cfdc.client.GetResponseHeadersPolicy(context.TODO(), &cloudfront.GetResponseHeadersPolicyInput{Id: &cfdc.rpId})
+func (rhpc *RHPCreator) TearDown() {
+	tmp := rhpc.tools.Storage.GetCoin(rhpc.coin, corebottom.DETERMINE_INITIAL_MODE)
+
+	if tmp != nil {
+		found := tmp.(*rhpModel)
+		log.Printf("you have asked to tear down RHP %s (id: %s) with mode %s\n", found.name, found.rpId, rhpc.teardown.Mode())
+		x, err := rhpc.client.GetResponseHeadersPolicy(context.TODO(), &cloudfront.GetResponseHeadersPolicyInput{Id: &found.rpId})
 		if err != nil {
-			log.Fatalf("could not get RHP %s: %v", cfdc.rpId, err)
+			log.Fatalf("could not get RHP %s: %v", found.rpId, err)
 		}
-		_, err = cfdc.client.DeleteResponseHeadersPolicy(context.TODO(), &cloudfront.DeleteResponseHeadersPolicyInput{Id: &cfdc.rpId, IfMatch: x.ETag})
+		_, err = rhpc.client.DeleteResponseHeadersPolicy(context.TODO(), &cloudfront.DeleteResponseHeadersPolicyInput{Id: &found.rpId, IfMatch: x.ETag})
 		if err != nil {
-			log.Fatalf("could not delete RHP %s: %v", cfdc.rpId, err)
+			log.Fatalf("could not delete RHP %s: %v", found.rpId, err)
 		}
-		log.Printf("deleted RHP %s\n", cfdc.rpId)
+		log.Printf("deleted RHP %s\n", found.rpId)
 	} else {
-		log.Printf("no RHP existed for %s\n", cfdc.name)
-	}
-}
-
-func (cfdc *RHPCreator) ObtainMethod(name string) driverbottom.Method {
-	switch name {
-	case "id":
-		return &RHPIdMethod{}
-	}
-	return nil
-}
-
-type RHPIdMethod struct {
-}
-
-func (a *RHPIdMethod) Invoke(s driverbottom.RuntimeStorage, on driverbottom.Expr, args []driverbottom.Expr) any {
-	e := on.Eval(s)
-	cfdc, ok := e.(*RHPCreator)
-	if !ok {
-		panic(fmt.Sprintf("arn can only be called on a RHP, not a %T", e))
-	}
-	if len(args) != 0 {
-		panic("invalid number of arguments")
-	}
-	if cfdc.alreadyExists {
-		return cfdc.rpId
-	} else {
-		return utils.DeferString(func() string {
-			if cfdc.rpId == "" {
-				panic("id is still not set")
-			}
-			return cfdc.rpId
-		})
+		log.Printf("no RHP existed for %s\n", rhpc.name)
 	}
 }
 
 var _ corebottom.Ensurable = &RHPCreator{}
-var _ driverbottom.HasMethods = &RHPCreator{}

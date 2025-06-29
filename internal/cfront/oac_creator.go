@@ -65,6 +65,7 @@ func (oacc *OACCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 		if p.Id != nil && p.Name != nil && *p.Name == oacc.name {
 			model.oacId = *p.Id
 			log.Printf("found OAC for %s with id %s\n", oacc.name, model.oacId)
+			found = true
 		}
 	}
 	if found {
