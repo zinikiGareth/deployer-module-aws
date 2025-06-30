@@ -8,12 +8,12 @@ import (
 
 type DomainNameBlank struct{}
 
-func (b *DomainNameBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
+func (b *DomainNameBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) corebottom.Ensurable {
 	tools.Reporter.ReportAtf(loc, "cannot create domain names automatically; use find")
 	return nil
 }
 
-func (b *DomainNameBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) any {
+func (b *DomainNameBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) corebottom.FindCoin {
 	return &domainNameFinder{tools: tools, loc: loc, name: named}
 }
 

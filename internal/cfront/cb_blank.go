@@ -8,7 +8,7 @@ import (
 
 type CacheBehaviorBlank struct{}
 
-func (b *CacheBehaviorBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr) any {
+func (b *CacheBehaviorBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr) corebottom.MemoryCoinCreator {
 	return &CacheBehaviorCreator{tools: tools, loc: loc, name: named, coin: id, props: props}
 }
 

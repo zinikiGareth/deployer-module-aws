@@ -18,6 +18,7 @@ type policyCreator struct {
 
 	loc      *errorsink.Location
 	name     string
+	coin     corebottom.CoinId
 	teardown corebottom.TearDown
 	policy   driverbottom.Expr
 
@@ -40,6 +41,13 @@ func (p *policyCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.AttrsWhere(p)
 	iw.TextAttr("named", p.name)
 	iw.EndAttrs()
+}
+
+func (b *policyCreator) CoinId() corebottom.CoinId {
+	return b.coin
+}
+
+func (p *policyCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 }
 
 func (p *policyCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {

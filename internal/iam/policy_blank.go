@@ -8,7 +8,7 @@ import (
 
 type PolicyBlank struct{}
 
-func (b *PolicyBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
+func (b *PolicyBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) corebottom.Ensurable {
 	var policy driverbottom.Expr
 	seenErr := false
 	for p, v := range props {
@@ -22,11 +22,11 @@ func (b *PolicyBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id 
 	if !seenErr && policy == nil {
 		tools.Reporter.ReportAtf(loc, "no Policy property was specified for %s", named)
 	}
-	return &policyCreator{tools: tools, teardown: teardown, loc: loc, name: named, policy: policy}
+	return &policyCreator{tools: tools, teardown: teardown, loc: loc, name: named, coin: id, policy: policy}
 }
 
-func (b *PolicyBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) any {
-	return &policyFinder{tools: tools, loc: loc, name: named}
+func (b *PolicyBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) corebottom.FindCoin {
+	return &policyFinder{tools: tools, loc: loc, name: named, coin: id}
 }
 
 func (b *PolicyBlank) Loc() *errorsink.Location {

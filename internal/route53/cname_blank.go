@@ -8,7 +8,7 @@ import (
 
 type CNAMEBlank struct{}
 
-func (b *CNAMEBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
+func (b *CNAMEBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) corebottom.Ensurable {
 	var pointsTo driverbottom.Expr
 	var zone driverbottom.Expr
 	seenErr := false
@@ -31,7 +31,7 @@ func (b *CNAMEBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id c
 	return &cnameCreator{tools: tools, teardown: teardown, loc: loc, name: named, coin: id, props: props}
 }
 
-func (b *CNAMEBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) any {
+func (b *CNAMEBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) corebottom.FindCoin {
 	return &cnameCreator{tools: tools, loc: loc, name: named, coin: id}
 }
 

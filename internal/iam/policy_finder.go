@@ -13,6 +13,7 @@ type policyFinder struct {
 
 	loc  *errorsink.Location
 	name string
+	coin corebottom.CoinId
 
 	// client        *s3.Client
 	// alreadyExists bool
@@ -34,7 +35,11 @@ func (b *policyFinder) DumpTo(iw driverbottom.IndentWriter) {
 	iw.EndAttrs()
 }
 
-func (b *policyFinder) DetermineDesiredState(pres corebottom.ValuePresenter) {
+func (b *policyFinder) CoinId() corebottom.CoinId {
+	return b.coin
+}
+
+func (b *policyFinder) DetermineInitialState(pres corebottom.ValuePresenter) {
 	/*
 		eq := b.tools.Recall.ObtainDriver("aws.AwsEnv")
 		awsEnv, ok := eq.(*env.AwsEnv)

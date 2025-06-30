@@ -8,11 +8,11 @@ import (
 
 type ALIASBlank struct{}
 
-func (b *ALIASBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) any {
+func (b *ALIASBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) corebottom.Ensurable {
 	return &aliasCreator{tools: tools, teardown: teardown, coin: id, loc: loc, name: named, props: props}
 }
 
-func (b *ALIASBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) any {
+func (b *ALIASBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) corebottom.FindCoin {
 	return &aliasCreator{tools: tools, loc: loc, coin: id, name: named}
 }
 
