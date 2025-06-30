@@ -1,6 +1,7 @@
 package awsmod
 
 import (
+	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/drivertop"
 	"ziniki.org/deployer/modules/aws/internal/acm"
@@ -21,6 +22,10 @@ func ProvideTestRunner(runner driverbottom.TestRunner) error {
 func RegisterWithDriver(deployer driverbottom.Driver) error {
 	tools := deployer.ObtainCoreTools()
 	tools.Register.ProvideDriver("aws.AwsEnv", env.InitAwsEnv())
+
+	mytools := tools.RetrieveOther("coremod").(*corebottom.Tools)
+
+	tools.Register.Register("target", "cloudfront.distribution.fromS3", cfront.NewWebsiteFromS3Handler(mytools))
 
 	tools.Register.Register("blank", "aws.Route53.DomainName", &route53.DomainNameBlank{})
 	tools.Register.Register("blank", "aws.Route53.ALIAS", &route53.ALIASBlank{})
