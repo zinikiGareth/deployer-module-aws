@@ -10,7 +10,7 @@ type websiteFromS3Handler struct {
 	tools *corebottom.Tools
 }
 
-func (wh *websiteFromS3Handler) Handle(attacher driverbottom.AttachResult, tokens []driverbottom.Token) driverbottom.Interpreter {
+func (wh *websiteFromS3Handler) Handle(attacher driverbottom.AttachResult, scope driverbottom.Scope, tokens []driverbottom.Token) driverbottom.Interpreter {
 	if len(tokens) != 2 {
 		wh.tools.Reporter.Report(tokens[0].Loc().Offset, "cloudfront.distribution.fromS3: instance-name")
 		return drivertop.NewIgnoreInnerScope()

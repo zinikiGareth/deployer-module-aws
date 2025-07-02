@@ -40,19 +40,19 @@ func RegisterWithDriver(deployer driverbottom.Driver) error {
 	tools.Register.Register("blank", "aws.IAM.Policy", &iam.PolicyBlank{})
 
 	// Permissions by name
-	tools.Repository.IntroduceSymbol(driverbottom.SymbolName("aws.action.S3.GetObject"), drivertop.MakeString("s3:GetObject"))
-	tools.Repository.IntroduceSymbol(driverbottom.SymbolName("aws.action.S3.PutObject"), drivertop.MakeString("s3:PutObject"))
+	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.action.S3.GetObject"), drivertop.MakeString("s3:GetObject"))
+	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.action.S3.PutObject"), drivertop.MakeString("s3:PutObject"))
 
 	// Principals
-	tools.Repository.IntroduceSymbol(driverbottom.SymbolName("aws.principal.AWS"), drivertop.MakeString("AWS"))
-	tools.Repository.IntroduceSymbol(driverbottom.SymbolName("aws.principal.Service"), drivertop.MakeString("Service"))
+	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.principal.AWS"), drivertop.MakeString("AWS"))
+	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.principal.Service"), drivertop.MakeString("Service"))
 
 	// Service Principals
-	tools.Repository.IntroduceSymbol(driverbottom.SymbolName("aws.principal.CloudFront"), drivertop.MakeString("cloudfront.amazonaws.com"))
+	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.principal.CloudFront"), drivertop.MakeString("cloudfront.amazonaws.com"))
 
 	// other strings
-	tools.Repository.IntroduceSymbol(driverbottom.SymbolName("aws.cond.StringEquals"), drivertop.MakeString("StringEquals"))
-	tools.Repository.IntroduceSymbol(driverbottom.SymbolName("aws.SourceArn"), drivertop.MakeString("aws:SourceArn"))
+	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.cond.StringEquals"), drivertop.MakeString("StringEquals"))
+	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.SourceArn"), drivertop.MakeString("aws:SourceArn"))
 
 	return nil
 }

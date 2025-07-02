@@ -283,13 +283,11 @@ func (cfdc *distributionCreator) FigureCacheBehaviors(desired *DistributionModel
 	}
 	cbs := []types.CacheBehavior{}
 	for _, m := range cbcl {
-		log.Printf("m = %p\n", m)
 		cbc, ok := m.(*cbModel)
 		if !ok {
 			log.Fatalf("not a cache behavior but %T", cbci)
 		}
 		resolved := cbc.Complete()
-		log.Printf("have cb %s\n", *resolved.TargetOriginId)
 		cbs = append(cbs, resolved)
 	}
 
@@ -320,7 +318,6 @@ func (cfdc *distributionCreator) BuildConfig(desired *DistributionModel, dcb *ty
 
 func (cfdc *distributionCreator) AttachViewerCert(desired *DistributionModel, config *types.DistributionConfig) {
 	vc := cfdc.tools.Storage.Eval(desired.viewerCert)
-	log.Printf("have vc %T %v\n", vc, vc)
 	vcs, ok := vc.(string)
 	if !ok {
 		tmp, ok := vc.(fmt.Stringer)
@@ -329,7 +326,6 @@ func (cfdc *distributionCreator) AttachViewerCert(desired *DistributionModel, co
 		}
 		vcs = tmp.String()
 	}
-	log.Printf("have cert arn %s\n", vcs)
 	minver := types.MinimumProtocolVersionTLSv122021
 	supp := types.SSLSupportMethodSniOnly
 	cfdef := false
