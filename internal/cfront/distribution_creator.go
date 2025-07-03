@@ -276,7 +276,7 @@ func (cfdc *distributionCreator) FigureOrigins(desired *DistributionModel, targe
 }
 
 func (cfdc *distributionCreator) FigureCacheBehaviors(desired *DistributionModel) *types.CacheBehaviors {
-	cbci := desired.behaviors.Eval(cfdc.tools.Storage) // TODO: expect a list
+	cbci := desired.behaviors.Eval(cfdc.tools.Storage)
 	cbcl, ok := cbci.([]any)
 	if !ok {
 		log.Fatalf("not a list but %T", cbci)

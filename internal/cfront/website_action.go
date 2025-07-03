@@ -74,15 +74,37 @@ func (w *websiteAction) Completed() {
 }
 
 func (w *websiteAction) Resolve(r driverbottom.Resolver) driverbottom.BindingRequirement {
-	// TODO: create all the ensurables here and join them together in some fashion
-
 	notused := w.propsMap()
 
 	w.coins = &websiteCoins{}
 	cpcoin := corebottom.CoinId(w.tools.Storage.NewObjId(w.named.Loc()))
+	oaccoin := corebottom.CoinId(w.tools.Storage.NewObjId(w.named.Loc()))
+	rhpcoin := corebottom.CoinId(w.tools.Storage.NewObjId(w.named.Loc()))
+	cbcoin := corebottom.CoinId(w.tools.Storage.NewObjId(w.named.Loc()))
 	discoin := corebottom.CoinId(w.tools.Storage.NewObjId(w.named.Loc()))
 	teardown := &CFS3TearDown{mode: "delete"}
 	w.coins.cachePolicy = &CachePolicyCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: cpcoin, name: w.named.Text() + "-cpc", props: w.useProps(notused, "MinTTL")}
+
+	oacOpts := make(map[driverbottom.Identifier]driverbottom.Expr)
+	oacOpts[drivertop.NewIdentifierToken(w.named.Loc(), "OriginAccessControlOriginType")] = drivertop.MakeString("s3")
+	oacOpts[drivertop.NewIdentifierToken(w.named.Loc(), "SigningBehavior")] = drivertop.MakeString("always")
+	oacOpts[drivertop.NewIdentifierToken(w.named.Loc(), "SigningProtocol")] = drivertop.MakeString("sigv4")
+	w.coins.originAccessControl = &OACCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: oaccoin, name: w.named.Text() + "-oac", props: oacOpts}
+
+	// TODO: loop on CacheBehaviors
+	// TODO: pull this out of the CacheBehaviors map
+	rhpOpts := make(map[driverbottom.Identifier]driverbottom.Expr)
+	rhpOpts[drivertop.NewIdentifierToken(w.named.Loc(), "Header")] = drivertop.MakeString("Content-Type")
+	rhpOpts[drivertop.NewIdentifierToken(w.named.Loc(), "Value")] = drivertop.MakeString("text/html")
+	w.coins.rhp = &RHPCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: rhpcoin, name: w.named.Text() + "-rhp", props: rhpOpts}
+
+	cbOpts := w.useProps(notused, "TargetOriginId")
+	cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "CachePolicy")] = drivertop.MakeString("Content-Type")
+	cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "PathPattern")] = drivertop.MakeString("*.html")
+	cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "ResponseHeadersPolicy")] = drivertop.MakeString("text/html")
+	w.coins.cb = &CacheBehaviorCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: cbcoin, name: w.named.Text() + "-cb", props: cbOpts}
+
+	// END LOOP
 	// TODO: we should generate some of these options ourselves
 	// and do so by introducing vars with field expressions
 	dprops := w.useProps(notused, "Certificate", "Comment", "Domain", "TargetOriginId")
@@ -124,6 +146,8 @@ func (w *websiteAction) useProps(notused map[string]driverbottom.Identifier, whi
 func (w *websiteAction) DetermineInitialState(pres corebottom.ValuePresenter) {
 	mypres := w.newCoinPresenter()
 	w.coins.cachePolicy.DetermineInitialState(mypres)
+	w.coins.originAccessControl.DetermineInitialState(mypres)
+	w.coins.rhp.DetermineInitialState(mypres)
 	w.coins.distribution.DetermineInitialState(mypres)
 	pres.Present(mypres.distro)
 }
@@ -131,17 +155,24 @@ func (w *websiteAction) DetermineInitialState(pres corebottom.ValuePresenter) {
 func (w *websiteAction) DetermineDesiredState(pres corebottom.ValuePresenter) {
 	mypres := w.newCoinPresenter()
 	w.coins.cachePolicy.DetermineDesiredState(mypres)
+	w.coins.originAccessControl.DetermineDesiredState(mypres)
+	w.coins.rhp.DetermineDesiredState(mypres)
+	w.coins.cb.Create(mypres)
 	w.coins.distribution.DetermineDesiredState(mypres)
 	pres.Present(mypres.distro)
 }
 
 func (w *websiteAction) UpdateReality() {
 	w.coins.cachePolicy.UpdateReality()
+	w.coins.originAccessControl.UpdateReality()
+	w.coins.rhp.UpdateReality()
 	w.coins.distribution.UpdateReality()
 }
 
 func (w *websiteAction) TearDown() {
 	w.coins.distribution.TearDown()
+	w.coins.rhp.TearDown()
+	w.coins.originAccessControl.TearDown()
 	w.coins.cachePolicy.TearDown()
 }
 
@@ -164,6 +195,9 @@ var _ corebottom.RealityShifter = &websiteAction{}
 type coinPresenter struct {
 	main   *websiteAction
 	cpm    *cachePolicyModel
+	oac    *oacModel
+	rhp    *rhpModel
+	cbm    *cbModel
 	distro *DistributionModel
 }
 
@@ -177,6 +211,15 @@ func (c *coinPresenter) Present(value any) {
 	case *cachePolicyModel:
 		c.cpm = value
 		w.tools.Storage.Bind(w.coins.cachePolicy.coin, value)
+	case *oacModel:
+		c.oac = value
+		w.tools.Storage.Bind(w.coins.originAccessControl.coin, value)
+	case *rhpModel:
+		c.rhp = value
+		w.tools.Storage.Bind(w.coins.rhp.coin, value)
+	case *cbModel:
+		c.cbm = value
+		w.tools.Storage.Bind(w.coins.cb.coin, value)
 	case *DistributionModel:
 		c.distro = value
 		w.tools.Storage.Bind(w.coins.distribution.coin, value)
