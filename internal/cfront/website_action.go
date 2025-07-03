@@ -88,6 +88,8 @@ func (w *websiteAction) Resolve(r driverbottom.Resolver) driverbottom.BindingReq
 
 	getcp := coretop.MakeGetCoinMethod(w.named.Loc(), cpcoin)
 	getcb := coretop.MakeGetCoinMethod(w.named.Loc(), cbcoin)
+	getoac := coretop.MakeGetCoinMethod(w.named.Loc(), oaccoin)
+	getrhp := coretop.MakeGetCoinMethod(w.named.Loc(), rhpcoin)
 
 	cpcProps := w.useProps(r, notused, "MinTTL")
 	w.coins.cachePolicy = &CachePolicyCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: cpcoin, name: w.named.Text() + "-cpc", props: cpcProps}
@@ -108,18 +110,21 @@ func (w *websiteAction) Resolve(r driverbottom.Resolver) driverbottom.BindingReq
 	cbOpts := w.useProps(r, notused, "TargetOriginId")
 	cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "CachePolicy")] = coretop.MakeInvokeExpr(getcp, drivertop.NewIdentifierToken(w.named.Loc(), "id"))
 	cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "PathPattern")] = drivertop.MakeString(w.named.Loc(), "*.html")
-	cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "ResponseHeadersPolicy")] = drivertop.MakeString(w.named.Loc(), "text/html")
+	cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "ResponseHeadersPolicy")] = coretop.MakeInvokeExpr(getrhp, drivertop.NewIdentifierToken(w.named.Loc(), "id"))
 	w.coins.cb = &CacheBehaviorCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: cbcoin, name: w.named.Text() + "-cb", props: cbOpts}
 
 	// END LOOP
 	// TODO: we should generate some of these options ourselves
 	// and do so by introducing vars with field expressions
 	dprops := w.useProps(r, notused, "Certificate", "Comment", "Domain", "TargetOriginId")
-	// "CacheBehaviors", "CachePolicy", "OriginAccessControl", "OriginDNS"
+	// "CachePolicy"
 	// TODO: these should be "fromCoin" expressions - a special method
 	// fromCoin()
 	dprops[drivertop.NewIdentifierToken(w.named.Loc(), "CacheBehaviors")] = drivertop.NewListExpr([]driverbottom.Expr{getcb})
+	dprops[drivertop.NewIdentifierToken(w.named.Loc(), "CachePolicy")] = coretop.MakeInvokeExpr(getcp, drivertop.NewIdentifierToken(w.named.Loc(), "id"))
 	dprops[drivertop.NewIdentifierToken(w.named.Loc(), "OriginDNS")] = coretop.MakeInvokeExpr(bucket, drivertop.NewIdentifierToken(w.named.Loc(), "dnsName"))
+	dprops[drivertop.NewIdentifierToken(w.named.Loc(), "OriginAccessControl")] = coretop.MakeInvokeExpr(getoac, drivertop.NewIdentifierToken(w.named.Loc(), "id"))
+
 	// dprops[drivertop.NewIdentifierToken(w.named.Loc(), "TargetOriginId")] = drivertop.MakeString("targetOriginId")
 	w.coins.distribution = &distributionCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: discoin, name: w.named.Text(), props: dprops}
 
@@ -152,7 +157,7 @@ func (w *websiteAction) useProps(r driverbottom.Resolver, notused map[string]dri
 }
 
 func (w *websiteAction) findProp(r driverbottom.Resolver, notused map[string]driverbottom.Identifier, which string) driverbottom.Expr {
-	log.Printf("looking for %s", s)
+	log.Printf("looking for %s", which)
 	for k, v := range w.props {
 		if k.Id() == which {
 			v.Resolve(r)
