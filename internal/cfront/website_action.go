@@ -71,11 +71,12 @@ func (w *websiteAction) AddProperty(name driverbottom.Identifier, value driverbo
 }
 
 func (w *websiteAction) Completed() {
-	log.Printf("completed cloudfront from s3\n")
 }
 
 func (w *websiteAction) Resolve(r driverbottom.Resolver) driverbottom.BindingRequirement {
 	notused := w.propsMap()
+
+	bucket := w.findProp(r, notused, "Bucket")
 
 	w.coins = &websiteCoins{}
 	cpcoin := corebottom.CoinId(w.tools.Storage.NewObjId(w.named.Loc()))
@@ -118,7 +119,7 @@ func (w *websiteAction) Resolve(r driverbottom.Resolver) driverbottom.BindingReq
 	// TODO: these should be "fromCoin" expressions - a special method
 	// fromCoin()
 	dprops[drivertop.NewIdentifierToken(w.named.Loc(), "CacheBehaviors")] = drivertop.NewListExpr([]driverbottom.Expr{getcb})
-	dprops[drivertop.NewIdentifierToken(w.named.Loc(), "OriginDNS")] = drivertop.MakeString(w.named.Loc(), "originDNS")
+	dprops[drivertop.NewIdentifierToken(w.named.Loc(), "OriginDNS")] = coretop.MakeInvokeExpr(bucket, drivertop.NewIdentifierToken(w.named.Loc(), "dnsName"))
 	// dprops[drivertop.NewIdentifierToken(w.named.Loc(), "TargetOriginId")] = drivertop.MakeString("targetOriginId")
 	w.coins.distribution = &distributionCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: discoin, name: w.named.Text(), props: dprops}
 
@@ -135,20 +136,31 @@ func (w *websiteAction) propsMap() map[string]driverbottom.Identifier {
 
 func (w *websiteAction) useProps(r driverbottom.Resolver, notused map[string]driverbottom.Identifier, which ...string) map[driverbottom.Identifier]driverbottom.Expr {
 	ret := make(map[driverbottom.Identifier]driverbottom.Expr)
-	log.Printf("have %v\n", w.props)
 	for _, s := range which {
 		log.Printf("looking for %s", s)
 		for k, v := range w.props {
 			if k.Id() == s {
 				ret[k] = v
 				v.Resolve(r)
+				notused[s] = nil
 				break
 			}
 		}
-		notused[s] = nil
 	}
 	log.Printf("passing on props: %v\n", ret)
 	return ret
+}
+
+func (w *websiteAction) findProp(r driverbottom.Resolver, notused map[string]driverbottom.Identifier, which string) driverbottom.Expr {
+	log.Printf("looking for %s", s)
+	for k, v := range w.props {
+		if k.Id() == which {
+			v.Resolve(r)
+			notused[which] = nil
+			return v
+		}
+	}
+	panic("could not find " + which)
 }
 
 func (w *websiteAction) DetermineInitialState(pres corebottom.ValuePresenter) {
