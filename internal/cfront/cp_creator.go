@@ -80,14 +80,16 @@ func (cfdc *CachePolicyCreator) DetermineDesiredState(pres corebottom.ValuePrese
 		case "MinTTL":
 			minttl = v
 		default:
-			cfdc.tools.Reporter.ReportAtf(cfdc.loc, "invalid property for OriginAccessControl: %s", p.Id())
+			cfdc.tools.Reporter.ReportAtf(cfdc.loc, "invalid property for CachePolicy: %s", p.Id())
 		}
 	}
 
+	if minttl == nil {
+		cfdc.tools.Reporter.ReportAtf(cfdc.loc, "CachePolicy requires MinTTL")
+	}
 	model := NewCachePolicyModel(cfdc.coin, cfdc.loc, cfdc.name, "desired")
 	model.minttl = minttl
 
-	// cfdc.tools.Storage.Bind(cfdc.coin, model)
 	pres.Present(model)
 }
 
