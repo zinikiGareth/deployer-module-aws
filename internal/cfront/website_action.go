@@ -1,6 +1,7 @@
 package cfront
 
 import (
+	"fmt"
 	"log"
 
 	"ziniki.org/deployer/coremod/pkg/corebottom"
@@ -81,15 +82,11 @@ func (w *websiteAction) Resolve(r driverbottom.Resolver) driverbottom.BindingReq
 	w.coins = &websiteCoins{}
 	cpcoin := corebottom.CoinId(w.tools.Storage.NewObjId(w.named.Loc()))
 	oaccoin := corebottom.CoinId(w.tools.Storage.NewObjId(w.named.Loc()))
-	rhpcoin := corebottom.CoinId(w.tools.Storage.NewObjId(w.named.Loc()))
-	cbcoin := corebottom.CoinId(w.tools.Storage.NewObjId(w.named.Loc()))
 	discoin := corebottom.CoinId(w.tools.Storage.NewObjId(w.named.Loc()))
 	teardown := &CFS3TearDown{mode: "delete"}
 
 	getcp := coretop.MakeGetCoinMethod(w.named.Loc(), cpcoin)
-	getcb := coretop.MakeGetCoinMethod(w.named.Loc(), cbcoin)
 	getoac := coretop.MakeGetCoinMethod(w.named.Loc(), oaccoin)
-	getrhp := coretop.MakeGetCoinMethod(w.named.Loc(), rhpcoin)
 
 	cpcProps := w.useProps(r, notused, "MinTTL")
 	w.coins.cachePolicy = &CachePolicyCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: cpcoin, name: w.named.Text() + "-cpc", props: cpcProps}
@@ -100,34 +97,92 @@ func (w *websiteAction) Resolve(r driverbottom.Resolver) driverbottom.BindingReq
 	oacOpts[drivertop.NewIdentifierToken(w.named.Loc(), "SigningProtocol")] = drivertop.MakeString(w.named.Loc(), "sigv4")
 	w.coins.originAccessControl = &OACCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: oaccoin, name: w.named.Text() + "-oac", props: oacOpts}
 
-	// TODO: loop on CacheBehaviors
-	// TODO: pull this out of the CacheBehaviors map
-	rhpOpts := make(map[driverbottom.Identifier]driverbottom.Expr)
-	rhpOpts[drivertop.NewIdentifierToken(w.named.Loc(), "Header")] = drivertop.MakeString(w.named.Loc(), "Content-Type")
-	rhpOpts[drivertop.NewIdentifierToken(w.named.Loc(), "Value")] = drivertop.MakeString(w.named.Loc(), "text/html")
-	w.coins.rhp = &RHPCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: rhpcoin, name: w.named.Text() + "-rhp", props: rhpOpts}
+	cblist := w.findProp(r, notused, "CacheBehaviors")
+	log.Printf("have cblist %v\n", cblist)
+	cbe := w.tools.Storage.Eval(cblist)
+	cbs, ok := cbe.([]any)
+	if !ok {
+		log.Fatalf("was %T", cbe)
+	}
+	cbcoins := []driverbottom.Expr{}
+	for n, cb := range cbs {
+		cbName := fmt.Sprintf("%s-cb-%d", w.named.Text(), n)
+		rhpName := fmt.Sprintf("%s-cb-%d-rh", w.named.Text(), n)
+		cbi := cb.(map[string]interface{})
+		pp := ""
+		var rhp *RHPCreator
+		for k, v := range cbi {
+			log.Printf("have %s %v\n", k, v)
+			switch k {
+			case "PathPattern":
+				pp = v.(string)
+			case "ResponseHeaders":
+				m := v.(map[string]interface{})
+				header := ""
+				value := ""
+				for a, b := range m {
+					switch a {
+					case "Header":
+						header = b.(string)
+					case "Value":
+						value = b.(string)
+					default:
+						log.Printf("no such RH property %s\n", k)
+					}
+				}
+				if header == "" {
+					w.tools.Reporter.ReportAtf(cblist.Loc(), "ResponseHeaders requires Header")
+				}
+				if value == "" {
+					w.tools.Reporter.ReportAtf(cblist.Loc(), "ResponseHeaders requires Value")
+				}
+				rhpOpts := make(map[driverbottom.Identifier]driverbottom.Expr)
+				rhpOpts[drivertop.NewIdentifierToken(w.named.Loc(), "Header")] = drivertop.MakeString(w.named.Loc(), header)
+				rhpOpts[drivertop.NewIdentifierToken(w.named.Loc(), "Value")] = drivertop.MakeString(w.named.Loc(), value)
+				log.Printf("tools = %T %p\n", w.tools, w.tools)
+				rhpcoin := corebottom.CoinId(w.tools.Storage.NewObjId(w.named.Loc()))
+				rhp = &RHPCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: rhpcoin, name: rhpName, props: rhpOpts}
+			default:
+				w.tools.Reporter.ReportAtf(cblist.Loc(), "No CacheBehavior parameter %s", k)
+			}
+		}
+		if rhp == nil {
+			w.tools.Reporter.ReportAtf(cblist.Loc(), "CacheBehaviors requires ResponseHeaders")
+			continue
+		}
+		if pp == "" {
+			w.tools.Reporter.ReportAtf(cblist.Loc(), "CacheBehaviors requires PathPattern")
+			continue
+		}
+		cbcoin := corebottom.CoinId(w.tools.Storage.NewObjId(w.named.Loc()))
+		cbOpts := w.useProps(r, notused, "TargetOriginId")
+		cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "CachePolicy")] = coretop.MakeInvokeExpr(getcp, drivertop.NewIdentifierToken(w.named.Loc(), "id"))
+		cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "PathPattern")] = drivertop.MakeString(w.named.Loc(), "*.html")
+		getrhp := coretop.MakeGetCoinMethod(w.named.Loc(), rhp.coin)
+		cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "ResponseHeadersPolicy")] = coretop.MakeInvokeExpr(getrhp, drivertop.NewIdentifierToken(w.named.Loc(), "id"))
+		w.coins.cbs = append(w.coins.cbs, &CacheBehaviorCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: cbcoin, name: cbName, props: cbOpts, rhp: rhp})
+		getcb := coretop.MakeGetCoinMethod(w.named.Loc(), cbcoin)
+		cbcoins = append(cbcoins, getcb)
+	}
 
-	cbOpts := w.useProps(r, notused, "TargetOriginId")
-	cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "CachePolicy")] = coretop.MakeInvokeExpr(getcp, drivertop.NewIdentifierToken(w.named.Loc(), "id"))
-	cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "PathPattern")] = drivertop.MakeString(w.named.Loc(), "*.html")
-	cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "ResponseHeadersPolicy")] = coretop.MakeInvokeExpr(getrhp, drivertop.NewIdentifierToken(w.named.Loc(), "id"))
-	w.coins.cb = &CacheBehaviorCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: cbcoin, name: w.named.Text() + "-cb", props: cbOpts}
-
-	// END LOOP
-	// TODO: we should generate some of these options ourselves
-	// and do so by introducing vars with field expressions
 	dprops := w.useProps(r, notused, "Certificate", "Comment", "Domain", "TargetOriginId")
-	// "CachePolicy"
-	// TODO: these should be "fromCoin" expressions - a special method
-	// fromCoin()
-	dprops[drivertop.NewIdentifierToken(w.named.Loc(), "CacheBehaviors")] = drivertop.NewListExpr([]driverbottom.Expr{getcb})
+	dprops[drivertop.NewIdentifierToken(w.named.Loc(), "CacheBehaviors")] = drivertop.NewListExpr(w.named.Loc(), cbcoins)
 	dprops[drivertop.NewIdentifierToken(w.named.Loc(), "CachePolicy")] = coretop.MakeInvokeExpr(getcp, drivertop.NewIdentifierToken(w.named.Loc(), "id"))
 	dprops[drivertop.NewIdentifierToken(w.named.Loc(), "OriginDNS")] = coretop.MakeInvokeExpr(bucket, drivertop.NewIdentifierToken(w.named.Loc(), "dnsName"))
 	dprops[drivertop.NewIdentifierToken(w.named.Loc(), "OriginAccessControl")] = coretop.MakeInvokeExpr(getoac, drivertop.NewIdentifierToken(w.named.Loc(), "id"))
 
-	// dprops[drivertop.NewIdentifierToken(w.named.Loc(), "TargetOriginId")] = drivertop.MakeString("targetOriginId")
 	w.coins.distribution = &distributionCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: discoin, name: w.named.Text(), props: dprops}
 
+	iserr := false
+	for k, id := range notused {
+		if id != nil {
+			w.tools.Reporter.ReportAtf(id.Loc(), "no such property %s on cloudfront.distribution", k)
+			iserr = true
+		}
+	}
+	if iserr {
+		return driverbottom.ERROR_OCCURRED
+	}
 	return driverbottom.MAY_BE_BOUND
 }
 
@@ -142,7 +197,6 @@ func (w *websiteAction) propsMap() map[string]driverbottom.Identifier {
 func (w *websiteAction) useProps(r driverbottom.Resolver, notused map[string]driverbottom.Identifier, which ...string) map[driverbottom.Identifier]driverbottom.Expr {
 	ret := make(map[driverbottom.Identifier]driverbottom.Expr)
 	for _, s := range which {
-		log.Printf("looking for %s", s)
 		for k, v := range w.props {
 			if k.Id() == s {
 				ret[k] = v
@@ -152,12 +206,10 @@ func (w *websiteAction) useProps(r driverbottom.Resolver, notused map[string]dri
 			}
 		}
 	}
-	log.Printf("passing on props: %v\n", ret)
 	return ret
 }
 
 func (w *websiteAction) findProp(r driverbottom.Resolver, notused map[string]driverbottom.Identifier, which string) driverbottom.Expr {
-	log.Printf("looking for %s", which)
 	for k, v := range w.props {
 		if k.Id() == which {
 			v.Resolve(r)
@@ -172,7 +224,9 @@ func (w *websiteAction) DetermineInitialState(pres corebottom.ValuePresenter) {
 	mypres := w.newCoinPresenter()
 	w.coins.cachePolicy.DetermineInitialState(mypres)
 	w.coins.originAccessControl.DetermineInitialState(mypres)
-	w.coins.rhp.DetermineInitialState(mypres)
+	for _, cb := range w.coins.cbs {
+		cb.rhp.DetermineInitialState(mypres)
+	}
 	w.coins.distribution.DetermineInitialState(mypres)
 	pres.Present(mypres.distro)
 }
@@ -181,8 +235,10 @@ func (w *websiteAction) DetermineDesiredState(pres corebottom.ValuePresenter) {
 	mypres := w.newCoinPresenter()
 	w.coins.cachePolicy.DetermineDesiredState(mypres)
 	w.coins.originAccessControl.DetermineDesiredState(mypres)
-	w.coins.rhp.DetermineDesiredState(mypres)
-	w.coins.cb.Create(mypres)
+	for _, cb := range w.coins.cbs {
+		cb.rhp.DetermineDesiredState(mypres)
+		cb.Create(mypres)
+	}
 	w.coins.distribution.DetermineDesiredState(mypres)
 	pres.Present(mypres.distro)
 }
@@ -190,13 +246,17 @@ func (w *websiteAction) DetermineDesiredState(pres corebottom.ValuePresenter) {
 func (w *websiteAction) UpdateReality() {
 	w.coins.cachePolicy.UpdateReality()
 	w.coins.originAccessControl.UpdateReality()
-	w.coins.rhp.UpdateReality()
+	for _, cb := range w.coins.cbs {
+		cb.rhp.UpdateReality()
+	}
 	w.coins.distribution.UpdateReality()
 }
 
 func (w *websiteAction) TearDown() {
 	w.coins.distribution.TearDown()
-	w.coins.rhp.TearDown()
+	for _, cb := range w.coins.cbs {
+		cb.rhp.TearDown()
+	}
 	w.coins.originAccessControl.TearDown()
 	w.coins.cachePolicy.TearDown()
 }
@@ -222,7 +282,7 @@ type coinPresenter struct {
 	cpm    *cachePolicyModel
 	oac    *oacModel
 	rhp    *rhpModel
-	cbm    *cbModel
+	cbms   []*cbModel
 	distro *DistributionModel
 }
 
@@ -240,11 +300,14 @@ func (c *coinPresenter) Present(value any) {
 		c.oac = value
 		w.tools.Storage.Bind(w.coins.originAccessControl.coin, value)
 	case *rhpModel:
+		k := len(c.cbms)
+		c.cbms = append(c.cbms, nil)
 		c.rhp = value
-		w.tools.Storage.Bind(w.coins.rhp.coin, value)
-	case *cbModel:
-		c.cbm = value
-		w.tools.Storage.Bind(w.coins.cb.coin, value)
+		w.tools.Storage.Bind(w.coins.cbs[k].rhp.coin, value)
+	// case *cbModel:
+	// 	k := len(c.cbms)
+	// 	c.cbms[k] = value
+	// 	w.tools.Storage.Bind(w.coins.cbs[k].coin, value)
 	case *DistributionModel:
 		c.distro = value
 		w.tools.Storage.Bind(w.coins.distribution.coin, value)

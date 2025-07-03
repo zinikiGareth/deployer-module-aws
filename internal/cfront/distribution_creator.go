@@ -102,7 +102,7 @@ func (cfdc *distributionCreator) DetermineDesiredState(pres corebottom.ValuePres
 			if isList {
 				domain = le
 			} else {
-				domain = drivertop.NewListExpr([]driverbottom.Expr{v})
+				domain = drivertop.NewListExpr(le.Loc(), []driverbottom.Expr{v})
 			}
 		case "OriginAccessControl":
 			oac = v
@@ -111,7 +111,7 @@ func (cfdc *distributionCreator) DetermineDesiredState(pres corebottom.ValuePres
 			if isList {
 				cbs = le
 			} else {
-				cbs = drivertop.NewListExpr([]driverbottom.Expr{v})
+				cbs = drivertop.NewListExpr(le.Loc(), []driverbottom.Expr{v})
 			}
 		case "CachePolicy":
 			cp = v

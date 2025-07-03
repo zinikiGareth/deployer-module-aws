@@ -13,6 +13,7 @@ type CacheBehaviorCreator struct {
 	name     string
 	coin     corebottom.CoinId
 	props    map[driverbottom.Identifier]driverbottom.Expr
+	rhp      *RHPCreator
 	teardown corebottom.TearDown
 
 	// client *cloudfront.Client
