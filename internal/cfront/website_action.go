@@ -278,12 +278,12 @@ var _ corebottom.RealityShifter = &websiteAction{}
 // could switch on model type - let's try that first
 // We need to bind them to their coin names in Storage
 type coinPresenter struct {
-	main   *websiteAction
-	cpm    *cachePolicyModel
-	oac    *oacModel
-	rhp    *rhpModel
-	cbms   []*cbModel
-	distro *DistributionModel
+	main     *websiteAction
+	cpm      *cachePolicyModel
+	oac      *oacModel
+	rhpCount int
+	cbms     []*cbModel
+	distro   *DistributionModel
 }
 
 func (c *coinPresenter) NotFound() {
@@ -300,19 +300,18 @@ func (c *coinPresenter) Present(value any) {
 		c.oac = value
 		w.tools.Storage.Bind(w.coins.originAccessControl.coin, value)
 	case *rhpModel:
+		k := c.rhpCount
+		c.rhpCount++
+		w.tools.Storage.Bind(w.coins.cbs[k].rhp.coin, value)
+	case *cbModel:
 		k := len(c.cbms)
 		c.cbms = append(c.cbms, nil)
-		c.rhp = value
-		w.tools.Storage.Bind(w.coins.cbs[k].rhp.coin, value)
-	// case *cbModel:
-	// 	k := len(c.cbms)
-	// 	c.cbms[k] = value
-	// 	w.tools.Storage.Bind(w.coins.cbs[k].coin, value)
+		w.tools.Storage.Bind(w.coins.cbs[k].coin, value)
 	case *DistributionModel:
 		c.distro = value
 		w.tools.Storage.Bind(w.coins.distribution.coin, value)
 	default:
-		log.Printf("need to handle present(%T %v)\n", value, value)
+		log.Fatalf("need to handle present(%T %v)\n", value, value)
 	}
 }
 
