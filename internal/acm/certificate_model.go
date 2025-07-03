@@ -28,7 +28,17 @@ func (c *certificateModel) ShortDescription() string {
 }
 
 func (c *certificateModel) DumpTo(to driverbottom.IndentWriter) {
-	panic("unimplemented")
+	to.Intro("Certificate[%s]", c.name)
+	to.AttrsWhere(c)
+	if c.validationMethod != nil {
+		to.TextAttr("validationMethod", c.validationMethod.String())
+	}
+	to.TextAttr("hzid", c.hzid)
+	to.TextAttr("arn", c.arn)
+	for k, s := range c.sans {
+		to.TextAttr(fmt.Sprintf("san%d", k), s)
+	}
+	to.EndAttrs()
 }
 
 func (acmc *certificateModel) ObtainMethod(name string) driverbottom.Method {

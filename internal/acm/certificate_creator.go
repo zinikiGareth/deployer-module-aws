@@ -119,6 +119,7 @@ func (acmc *certificateCreator) UpdateReality() {
 	if tmp != nil {
 		found := tmp.(*certificateModel)
 		log.Printf("certificate %s already existed for %s\n", found.arn, found.name)
+		acmc.tools.Storage.Adopt(acmc.coin, found)
 		return
 	}
 

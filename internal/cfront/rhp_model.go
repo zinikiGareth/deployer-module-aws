@@ -28,9 +28,15 @@ func (rm *rhpModel) ShortDescription() string {
 
 func (rm *rhpModel) DumpTo(iw driverbottom.IndentWriter) {
 	iw.Intro("RHPModel %s", rm.name)
-	iw.AttrsWhere(rm)
-	iw.NestedAttr("header", rm.header)
-	iw.NestedAttr("value", rm.value)
+	if rm.loc != nil {
+		iw.AttrsWhere(rm)
+	}
+	if rm.header != nil {
+		iw.NestedAttr("header", rm.header)
+	}
+	if rm.value != nil {
+		iw.NestedAttr("value", rm.value)
+	}
 	iw.EndAttrs()
 }
 

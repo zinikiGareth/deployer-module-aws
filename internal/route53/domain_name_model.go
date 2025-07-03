@@ -17,13 +17,15 @@ func (d *domainModel) Loc() *errorsink.Location {
 	return d.loc
 }
 
-// ShortDescription implements driverbottom.Describable.
 func (d *domainModel) ShortDescription() string {
-	panic("unimplemented")
+	return "DomainName[" + d.hzid + "]"
 }
 
 func (d *domainModel) DumpTo(to driverbottom.IndentWriter) {
-	panic("unimplemented")
+	to.Intro("DomainName")
+	to.AttrsWhere(d)
+	to.TextAttr("hzid", d.hzid)
+	to.EndAttrs()
 }
 
 func (d *domainModel) HostedZoneId() string {

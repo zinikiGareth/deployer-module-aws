@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"ziniki.org/deployer/coremod/pkg/corebottom"
+	"ziniki.org/deployer/coremod/pkg/coretop"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/drivertop"
 	"ziniki.org/deployer/driver/pkg/errorsink"
@@ -83,35 +84,41 @@ func (w *websiteAction) Resolve(r driverbottom.Resolver) driverbottom.BindingReq
 	cbcoin := corebottom.CoinId(w.tools.Storage.NewObjId(w.named.Loc()))
 	discoin := corebottom.CoinId(w.tools.Storage.NewObjId(w.named.Loc()))
 	teardown := &CFS3TearDown{mode: "delete"}
-	w.coins.cachePolicy = &CachePolicyCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: cpcoin, name: w.named.Text() + "-cpc", props: w.useProps(notused, "MinTTL")}
+
+	getcp := coretop.MakeGetCoinMethod(w.named.Loc(), cpcoin)
+	getcb := coretop.MakeGetCoinMethod(w.named.Loc(), cbcoin)
+
+	cpcProps := w.useProps(r, notused, "MinTTL")
+	w.coins.cachePolicy = &CachePolicyCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: cpcoin, name: w.named.Text() + "-cpc", props: cpcProps}
 
 	oacOpts := make(map[driverbottom.Identifier]driverbottom.Expr)
-	oacOpts[drivertop.NewIdentifierToken(w.named.Loc(), "OriginAccessControlOriginType")] = drivertop.MakeString("s3")
-	oacOpts[drivertop.NewIdentifierToken(w.named.Loc(), "SigningBehavior")] = drivertop.MakeString("always")
-	oacOpts[drivertop.NewIdentifierToken(w.named.Loc(), "SigningProtocol")] = drivertop.MakeString("sigv4")
+	oacOpts[drivertop.NewIdentifierToken(w.named.Loc(), "OriginAccessControlOriginType")] = drivertop.MakeString(w.named.Loc(), "s3")
+	oacOpts[drivertop.NewIdentifierToken(w.named.Loc(), "SigningBehavior")] = drivertop.MakeString(w.named.Loc(), "always")
+	oacOpts[drivertop.NewIdentifierToken(w.named.Loc(), "SigningProtocol")] = drivertop.MakeString(w.named.Loc(), "sigv4")
 	w.coins.originAccessControl = &OACCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: oaccoin, name: w.named.Text() + "-oac", props: oacOpts}
 
 	// TODO: loop on CacheBehaviors
 	// TODO: pull this out of the CacheBehaviors map
 	rhpOpts := make(map[driverbottom.Identifier]driverbottom.Expr)
-	rhpOpts[drivertop.NewIdentifierToken(w.named.Loc(), "Header")] = drivertop.MakeString("Content-Type")
-	rhpOpts[drivertop.NewIdentifierToken(w.named.Loc(), "Value")] = drivertop.MakeString("text/html")
+	rhpOpts[drivertop.NewIdentifierToken(w.named.Loc(), "Header")] = drivertop.MakeString(w.named.Loc(), "Content-Type")
+	rhpOpts[drivertop.NewIdentifierToken(w.named.Loc(), "Value")] = drivertop.MakeString(w.named.Loc(), "text/html")
 	w.coins.rhp = &RHPCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: rhpcoin, name: w.named.Text() + "-rhp", props: rhpOpts}
 
-	cbOpts := w.useProps(notused, "TargetOriginId")
-	cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "CachePolicy")] = drivertop.MakeString("Content-Type")
-	cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "PathPattern")] = drivertop.MakeString("*.html")
-	cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "ResponseHeadersPolicy")] = drivertop.MakeString("text/html")
+	cbOpts := w.useProps(r, notused, "TargetOriginId")
+	cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "CachePolicy")] = coretop.MakeInvokeExpr(getcp, drivertop.NewIdentifierToken(w.named.Loc(), "id"))
+	cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "PathPattern")] = drivertop.MakeString(w.named.Loc(), "*.html")
+	cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "ResponseHeadersPolicy")] = drivertop.MakeString(w.named.Loc(), "text/html")
 	w.coins.cb = &CacheBehaviorCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: cbcoin, name: w.named.Text() + "-cb", props: cbOpts}
 
 	// END LOOP
 	// TODO: we should generate some of these options ourselves
 	// and do so by introducing vars with field expressions
-	dprops := w.useProps(notused, "Certificate", "Comment", "Domain", "TargetOriginId")
+	dprops := w.useProps(r, notused, "Certificate", "Comment", "Domain", "TargetOriginId")
 	// "CacheBehaviors", "CachePolicy", "OriginAccessControl", "OriginDNS"
 	// TODO: these should be "fromCoin" expressions - a special method
 	// fromCoin()
-	dprops[drivertop.NewIdentifierToken(w.named.Loc(), "OriginDNS")] = drivertop.MakeString("originDNS")
+	dprops[drivertop.NewIdentifierToken(w.named.Loc(), "CacheBehaviors")] = drivertop.NewListExpr([]driverbottom.Expr{getcb})
+	dprops[drivertop.NewIdentifierToken(w.named.Loc(), "OriginDNS")] = drivertop.MakeString(w.named.Loc(), "originDNS")
 	// dprops[drivertop.NewIdentifierToken(w.named.Loc(), "TargetOriginId")] = drivertop.MakeString("targetOriginId")
 	w.coins.distribution = &distributionCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: discoin, name: w.named.Text(), props: dprops}
 
@@ -126,7 +133,7 @@ func (w *websiteAction) propsMap() map[string]driverbottom.Identifier {
 	return ret
 }
 
-func (w *websiteAction) useProps(notused map[string]driverbottom.Identifier, which ...string) map[driverbottom.Identifier]driverbottom.Expr {
+func (w *websiteAction) useProps(r driverbottom.Resolver, notused map[string]driverbottom.Identifier, which ...string) map[driverbottom.Identifier]driverbottom.Expr {
 	ret := make(map[driverbottom.Identifier]driverbottom.Expr)
 	log.Printf("have %v\n", w.props)
 	for _, s := range which {
@@ -134,6 +141,7 @@ func (w *websiteAction) useProps(notused map[string]driverbottom.Identifier, whi
 		for k, v := range w.props {
 			if k.Id() == s {
 				ret[k] = v
+				v.Resolve(r)
 				break
 			}
 		}

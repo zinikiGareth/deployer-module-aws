@@ -4,6 +4,7 @@ import (
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/drivertop"
+	"ziniki.org/deployer/driver/pkg/errorsink"
 	"ziniki.org/deployer/modules/aws/internal/acm"
 	"ziniki.org/deployer/modules/aws/internal/cfront"
 	"ziniki.org/deployer/modules/aws/internal/env"
@@ -39,20 +40,21 @@ func RegisterWithDriver(deployer driverbottom.Driver) error {
 	tools.Register.Register("blank", "aws.S3.Bucket", &s3.BucketBlank{})
 	tools.Register.Register("blank", "aws.IAM.Policy", &iam.PolicyBlank{})
 
+	loc := &errorsink.Location{}
 	// Permissions by name
-	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.action.S3.GetObject"), drivertop.MakeString("s3:GetObject"))
-	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.action.S3.PutObject"), drivertop.MakeString("s3:PutObject"))
+	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.action.S3.GetObject"), drivertop.MakeString(loc, "s3:GetObject"))
+	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.action.S3.PutObject"), drivertop.MakeString(loc, "s3:PutObject"))
 
 	// Principals
-	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.principal.AWS"), drivertop.MakeString("AWS"))
-	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.principal.Service"), drivertop.MakeString("Service"))
+	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.principal.AWS"), drivertop.MakeString(loc, "AWS"))
+	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.principal.Service"), drivertop.MakeString(loc, "Service"))
 
 	// Service Principals
-	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.principal.CloudFront"), drivertop.MakeString("cloudfront.amazonaws.com"))
+	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.principal.CloudFront"), drivertop.MakeString(loc, "cloudfront.amazonaws.com"))
 
 	// other strings
-	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.cond.StringEquals"), drivertop.MakeString("StringEquals"))
-	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.SourceArn"), drivertop.MakeString("aws:SourceArn"))
+	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.cond.StringEquals"), drivertop.MakeString(loc, "StringEquals"))
+	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.SourceArn"), drivertop.MakeString(loc, "aws:SourceArn"))
 
 	return nil
 }
