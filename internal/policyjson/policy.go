@@ -2,6 +2,7 @@ package policyjson
 
 import (
 	"fmt"
+	"log"
 
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 )
@@ -96,9 +97,13 @@ func makeCondition(p any) map[string]any {
 		rm := map[string]string{}
 		ret[k] = rm
 		for l, r := range mv {
-			rs, ok := r.(fmt.Stringer)
-			if ok {
+			switch rs := r.(type) {
+			case string:
+				rm[l] = rs
+			case fmt.Stringer:
 				rm[l] = rs.String()
+			default:
+				log.Fatalf("can't handle %T %v", r, r)
 			}
 		}
 	}

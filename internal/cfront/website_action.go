@@ -19,7 +19,9 @@ type websiteAction struct {
 	props    map[driverbottom.Identifier]driverbottom.Expr
 	teardown corebottom.TearDown
 
-	coins *websiteCoins
+	bucket         driverbottom.Expr
+	coins          *websiteCoins
+	policyAttacher corebottom.PolicyAttacher
 }
 
 func (w *websiteAction) Loc() *errorsink.Location {
@@ -78,6 +80,7 @@ func (w *websiteAction) Resolve(r driverbottom.Resolver) driverbottom.BindingReq
 	notused := w.propsMap()
 
 	bucket := w.findProp(r, notused, "Bucket")
+	w.bucket = bucket
 
 	w.coins = &websiteCoins{}
 	cpcoin := corebottom.CoinId(w.tools.Storage.NewObjId(w.named.Loc()))
@@ -98,7 +101,6 @@ func (w *websiteAction) Resolve(r driverbottom.Resolver) driverbottom.BindingReq
 	w.coins.originAccessControl = &OACCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: oaccoin, name: w.named.Text() + "-oac", props: oacOpts}
 
 	cblist := w.findProp(r, notused, "CacheBehaviors")
-	log.Printf("have cblist %v\n", cblist)
 	cbe := w.tools.Storage.Eval(cblist)
 	cbs, ok := cbe.([]any)
 	if !ok {
@@ -112,7 +114,6 @@ func (w *websiteAction) Resolve(r driverbottom.Resolver) driverbottom.BindingReq
 		pp := ""
 		var rhp *RHPCreator
 		for k, v := range cbi {
-			log.Printf("have %s %v\n", k, v)
 			switch k {
 			case "PathPattern":
 				pp = v.(string)
@@ -139,7 +140,6 @@ func (w *websiteAction) Resolve(r driverbottom.Resolver) driverbottom.BindingReq
 				rhpOpts := make(map[driverbottom.Identifier]driverbottom.Expr)
 				rhpOpts[drivertop.NewIdentifierToken(w.named.Loc(), "Header")] = drivertop.MakeString(w.named.Loc(), header)
 				rhpOpts[drivertop.NewIdentifierToken(w.named.Loc(), "Value")] = drivertop.MakeString(w.named.Loc(), value)
-				log.Printf("tools = %T %p\n", w.tools, w.tools)
 				rhpcoin := corebottom.CoinId(w.tools.Storage.NewObjId(w.named.Loc()))
 				rhp = &RHPCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: rhpcoin, name: rhpName, props: rhpOpts}
 			default:
@@ -233,6 +233,13 @@ func (w *websiteAction) DetermineInitialState(pres corebottom.ValuePresenter) {
 
 func (w *websiteAction) DetermineDesiredState(pres corebottom.ValuePresenter) {
 	mypres := w.newCoinPresenter()
+	bucket := w.tools.Storage.Eval(w.bucket)
+	isBucket, ok := bucket.(corebottom.PolicyAttacher)
+	if !ok {
+		log.Fatalf("%v evaluated to %p, which was not a policy attacher but %T", w.bucket, bucket, bucket)
+	}
+	w.policyAttacher = isBucket
+
 	w.coins.cachePolicy.DetermineDesiredState(mypres)
 	w.coins.originAccessControl.DetermineDesiredState(mypres)
 	for _, cb := range w.coins.cbs {
@@ -250,6 +257,29 @@ func (w *websiteAction) UpdateReality() {
 		cb.rhp.UpdateReality()
 	}
 	w.coins.distribution.UpdateReality()
+	// I think we can wait until now to build the actual policy, since its only variable is the distribution id
+
+	w.policyAttacher.Attach(w.makePolicy())
+}
+
+func (w *websiteAction) makePolicy() corebottom.PolicyDocument {
+	allResources, ok := w.tools.Storage.EvalAsStringer(coretop.MakeInvokeExpr(w.bucket, drivertop.NewIdentifierToken(w.loc, "allResources")))
+	if !ok {
+		log.Fatalf("allResources failed")
+	}
+	ret := coretop.NewPolicyDocument(w.loc)
+	item := ret.Item("Allow")
+	item.Action("s3:GetObject")
+	item.Resource(allResources.String())
+	item.Principal(coretop.NewPrincipal("Service", "cloudfront.amazonaws.com"))
+
+	distribution := w.tools.Storage.GetCoin(w.coins.distribution.coin, corebottom.UPDATE_REALITY_MODE).(*DistributionModel)
+	expr := map[string]any{}
+	expr["aws:sourceArn"] = distribution.arn
+	cond := map[string]any{}
+	cond["StringEquals"] = expr
+	item.AMore("Condition", cond)
+	return ret
 }
 
 func (w *websiteAction) TearDown() {

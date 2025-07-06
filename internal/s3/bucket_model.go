@@ -33,7 +33,10 @@ func (b *bucketModel) Attach(doc corebottom.PolicyDocument) {
 	}
 	newbm := &bucketModel{loc: b.loc, storage: b.storage, id: b.id, name: b.name, client: b.client, policy: policyJson}
 	b.storage.Bind(b.id, newbm)
-	b.client.PutBucketPolicy(context.TODO(), &s3.PutBucketPolicyInput{Bucket: &b.name, Policy: &policyJson})
+	_, err = b.client.PutBucketPolicy(context.TODO(), &s3.PutBucketPolicyInput{Bucket: &b.name, Policy: &policyJson})
+	if err != nil {
+		log.Fatalf("Failed to attach policy to bucket %s: %v", b.name, err)
+	}
 	log.Printf("attached policy to bucket %s\n", b.name)
 }
 
