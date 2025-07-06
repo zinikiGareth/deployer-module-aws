@@ -7,8 +7,10 @@ import (
 	"ziniki.org/deployer/driver/pkg/errorsink"
 	"ziniki.org/deployer/modules/aws/internal/acm"
 	"ziniki.org/deployer/modules/aws/internal/cfront"
+	"ziniki.org/deployer/modules/aws/internal/dynamodb"
 	"ziniki.org/deployer/modules/aws/internal/env"
 	"ziniki.org/deployer/modules/aws/internal/iam"
+	"ziniki.org/deployer/modules/aws/internal/neptune"
 	"ziniki.org/deployer/modules/aws/internal/route53"
 	"ziniki.org/deployer/modules/aws/internal/s3"
 )
@@ -39,6 +41,8 @@ func RegisterWithDriver(deployer driverbottom.Driver) error {
 	tools.Register.Register("blank", "aws.CloudFront.Distribution", &cfront.DistributionBlank{})
 	tools.Register.Register("blank", "aws.S3.Bucket", &s3.BucketBlank{})
 	tools.Register.Register("blank", "aws.IAM.Policy", &iam.PolicyBlank{})
+	tools.Register.Register("blank", "aws.Neptune.Cluster", &neptune.ClusterBlank{})
+	tools.Register.Register("blank", "aws.DynamoDB.Table", &dynamodb.TableBlank{})
 
 	loc := &errorsink.Location{}
 	// Permissions by name
