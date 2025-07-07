@@ -12,6 +12,7 @@ type clusterModel struct {
 	loc  *errorsink.Location
 	name string
 	coin corebottom.CoinId
+	arn  string
 }
 
 func (c *clusterModel) Loc() *errorsink.Location {
@@ -34,8 +35,8 @@ func (acmc *clusterModel) ObtainMethod(name string) driverbottom.Method {
 	return nil
 }
 
-func NewClusterModel(loc *errorsink.Location, coin corebottom.CoinId) *clusterModel {
-	return &clusterModel{loc: loc, coin: coin}
+func NewClusterModel(loc *errorsink.Location, coin corebottom.CoinId, name string, arn string) *clusterModel {
+	return &clusterModel{loc: loc, coin: coin, name: name, arn: arn}
 }
 
 var _ driverbottom.Describable = &clusterModel{}

@@ -1,22 +1,32 @@
 package neptune
 
 import (
+	"context"
 	"fmt"
 	"log"
 
+	ht "github.com/aws/aws-sdk-go-v2/aws/transport/http"
+	"github.com/aws/aws-sdk-go-v2/service/neptune"
+	"github.com/aws/smithy-go"
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
+	"ziniki.org/deployer/driver/pkg/utils"
+	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
 type clusterCreator struct {
 	tools *corebottom.Tools
 
-	loc      *errorsink.Location
-	name     string
-	coin     corebottom.CoinId
+	loc  *errorsink.Location
+	name string
+	coin corebottom.CoinId
+	// todo: allow @teardown finalSnapshot
+	// will require @finalShapshotIdentifier
 	teardown corebottom.TearDown
 	props    map[driverbottom.Identifier]driverbottom.Expr
+
+	client *neptune.Client
 }
 
 func (cc *clusterCreator) Loc() *errorsink.Location {
@@ -40,128 +50,218 @@ func (cc *clusterCreator) CoinId() corebottom.CoinId {
 
 func (cc *clusterCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 	log.Printf("want to find neptune cluster %s", cc.name)
-	// ae := acmc.tools.Recall.ObtainDriver("aws.AwsEnv")
-	// awsEnv, ok := ae.(*env.AwsEnv)
-	// if !ok {
-	// 	panic("could not cast env to AwsEnv")
-	// }
+	ae := cc.tools.Recall.ObtainDriver("aws.AwsEnv")
+	awsEnv, ok := ae.(*env.AwsEnv)
+	if !ok {
+		panic("could not cast env to AwsEnv")
+	}
 
-	// if len(certs) == 0 {
-	// 	log.Printf("there were no certs found for %s\n", acmc.name)
-	// 	pres.NotFound()
-	// } else {
-	// 	model := NewCertificateModel(acmc.loc, acmc.coin)
-	// 	model.name = acmc.name
+	cc.client = awsEnv.NeptuneClient()
 
-	// 	// log.Printf("found %d certs for %s\n", len(certs), acmc.name)
-	// 	model.arn = certs[0]
+	model := cc.findClustersNamed(cc.name)
 
-	// 	// acmc.describeCertificate(acmc.arn)
-	// 	// acmc.tools.Storage.Bind(acmc.coin, model)
-	// 	pres.Present(model)
-	// }
+	log.Printf("clusters = %p\n", model)
+
+	if model == nil {
+		log.Printf("cluster %s not found\n", cc.name)
+		pres.NotFound()
+	} else {
+		log.Printf("cluster found for %s\n", cc.name)
+		// 	model := NewCertificateModel(cc.loc, cc.coin)
+		// 	model.name = cc.name
+
+		// 	// log.Printf("found %d certs for %s\n", len(certs), cc.name)
+		// 	model.arn = certs[0]
+
+		// 	// cc.describeCertificate(cc.arn)
+		// 	// cc.tools.Storage.Bind(cc.coin, model)
+		pres.Present(model)
+	}
 }
 
 func (cc *clusterCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
-	// model := NewCertificateModel(acmc.loc, acmc.coin)
-	// for k, p := range acmc.props {
-	// 	v := acmc.tools.Storage.Eval(p)
-	// 	switch k.Id() {
-	// 	case "Domain":
-	// 		domain, ok := v.(myroute53.ExportedDomain)
-	// 		if !ok {
-	// 			log.Fatalf("Domain did not point to a domain instance")
-	// 		}
-	// 		model.hzid = domain.HostedZoneId()
-	// 	case "SubjectAlternativeNames":
-	// 		san, ok := utils.AsStringList(v)
-	// 		if !ok {
-	// 			justString, ok := v.(string)
-	// 			if !ok {
-	// 				log.Fatalf("SubjectAlternativeNames must be a list of strings")
-	// 				return
-	// 			} else {
-	// 				san = []string{justString}
-	// 			}
-	// 		}
-	// 		model.sans = san
-	// 	case "ValidationMethod":
-	// 		meth, ok := utils.AsStringer(v)
-	// 		if !ok {
-	// 			log.Fatalf("ValidationMethod must be a string")
-	// 			return
-	// 		}
-	// 		model.validationMethod = meth
-	// 	default:
-	// 		log.Fatalf("certificate coin does not support a parameter %s\n", k.Id())
-	// 	}
-	// }
-	// // acmc.tools.Storage.Bind(acmc.coin, model)
-	// pres.Present(model)
+	model := NewClusterModel(cc.loc, cc.coin, cc.name, "")
+	for k := range cc.props {
+		// v := cc.tools.Storage.Eval(p)
+		switch k.Id() {
+		// case "SubnetGroupName":
+		// 	domain, ok := v.(myroute53.ExportedDomain)
+		// 	if !ok {
+		// 		log.Fatalf("Domain did not point to a domain instance")
+		// 	}
+		// 	model.subnetGroup = domain.HostedZoneId()
+		// 	case "SubjectAlternativeNames":
+		// 		san, ok := utils.AsStringList(v)
+		// 		if !ok {
+		// 			justString, ok := v.(string)
+		// 			if !ok {
+		// 				log.Fatalf("SubjectAlternativeNames must be a list of strings")
+		// 				return
+		// 			} else {
+		// 				san = []string{justString}
+		// 			}
+		// 		}
+		// 		model.sans = san
+		// 	case "ValidationMethod":
+		// 		meth, ok := utils.AsStringer(v)
+		// 		if !ok {
+		// 			log.Fatalf("ValidationMethod must be a string")
+		// 			return
+		// 		}
+		// 		model.validationMethod = meth
+		default:
+			log.Fatalf("neptune cluster does not support a parameter %s\n", k.Id())
+		}
+	}
+	log.Printf("have desired neptune config for %s\n", model.name)
+	pres.Present(model)
 }
 
 func (cc *clusterCreator) UpdateReality() {
-	// tmp := acmc.tools.Storage.GetCoin(acmc.coin, corebottom.DETERMINE_INITIAL_MODE)
+	tmp := cc.tools.Storage.GetCoin(cc.coin, corebottom.DETERMINE_INITIAL_MODE)
 
-	// if tmp != nil {
-	// 	found := tmp.(*clusterModel)
-	// 	log.Printf("certificate %s already existed for %s\n", found.arn, found.name)
-	// 	acmc.tools.Storage.Adopt(acmc.coin, found)
-	// 	return
-	// }
+	if tmp != nil {
+		found := tmp.(*clusterModel)
+		log.Printf("cluster %s already existed for %s\n", found.arn, found.name)
+		cc.tools.Storage.Adopt(cc.coin, found)
+		return
+	}
 
-	// desired := acmc.tools.Storage.GetCoin(acmc.coin, corebottom.DETERMINE_DESIRED_MODE).(*clusterModel)
+	desired := cc.tools.Storage.GetCoin(cc.coin, corebottom.DETERMINE_DESIRED_MODE).(*clusterModel)
 
-	// created := NewCertificateModel(desired.loc, acmc.coin)
-	// created.name = desired.name
-	// created.hzid = desired.hzid
+	created := NewClusterModel(desired.loc, cc.coin, cc.name, "")
 
-	// vm := types.ValidationMethod(desired.validationMethod.String())
-	// if vm == "" {
-	// 	vm = types.ValidationMethodDns
-	// }
+	neptuneName := "neptune"  // because of some way that AWS centralizes DB creation
+	dbsubnet := "neptunetest" // should be a parameter
+	create, err := cc.client.CreateDBCluster(context.TODO(), &neptune.CreateDBClusterInput{DBClusterIdentifier: &cc.name, Engine: &neptuneName, DBSubnetGroupName: &dbsubnet})
+	if err != nil {
+		log.Fatalf("failed to create cluster %s: %v\n", cc.name, err)
+	}
+	created.arn = *create.DBCluster.DBClusterArn
+	log.Printf("initiated request to create cluster %s: %s %s\n", cc.name, *create.DBCluster.Status, *create.DBCluster.DBClusterArn)
 
-	// input := acm.RequestCertificateInput{DomainName: &acmc.name, ValidationMethod: vm}
-	// if len(desired.sans) > 0 {
-	// 	input.SubjectAlternativeNames = desired.sans
-	// }
-	// req, err := acmc.client.RequestCertificate(context.TODO(), &input)
-	// if err != nil {
-	// 	log.Printf("failed to request cert %s: %v\n", acmc.name, err)
-	// }
-	// log.Printf("requested cert for %s: %s\n", acmc.name, *req.CertificateArn)
-	// created.arn = *req.CertificateArn
+	utils.ExponentialBackoff(func() bool {
+		return cc.waitForCreation(created)
+	})
 
-	// // Check if we still need to validate it ...
-
-	// // acmc.describeCertificate(*req.CertificateArn)
-
-	// utils.ExponentialBackoff(func() bool {
-	// 	return acmc.tryToValidateCert(created.arn, created.hzid)
-	// })
-
-	// acmc.tools.Storage.Bind(acmc.coin, created)
+	log.Printf("created neptune cluster %s %s", created.name, created.arn)
+	cc.tools.Storage.Bind(cc.coin, created)
 }
 
 func (cc *clusterCreator) TearDown() {
-	// tmp := acmc.tools.Storage.GetCoin(acmc.coin, corebottom.DETERMINE_INITIAL_MODE)
+	tmp := cc.tools.Storage.GetCoin(cc.coin, corebottom.DETERMINE_INITIAL_MODE)
 
-	// if tmp == nil {
-	// 	log.Printf("no certificate existed for %s\n", acmc.name)
-	// 	return
-	// }
+	if tmp == nil {
+		log.Printf("no cluster existed for %s\n", cc.name)
+		return
+	}
 
-	// found := tmp.(*clusterModel)
-	// log.Printf("you have asked to tear down certificate for %s (arn: %s) with mode %s\n", found.name, found.arn, acmc.teardown.Mode())
-	// switch acmc.teardown.Mode() {
-	// case "preserve":
-	// 	log.Printf("not deleting certificate %s because teardown mode is 'preserve'", found.name)
-	// case "delete":
-	// 	log.Printf("deleting certificate for %s with teardown mode 'delete'", found.name)
-	// 	DeleteCertificate(acmc.client, found.arn)
-	// default:
-	// 	log.Printf("cannot handle teardown mode '%s' for bucket %s", acmc.teardown.Mode(), found.name)
-	// }
+	found := tmp.(*clusterModel)
+	log.Printf("you have asked to tear down neptune cluster for %s (arn: %s) with mode %s\n", found.name, found.arn, cc.teardown.Mode())
+	// todo: allow @teardown finalSnapshot
+	// will require @finalShapshotIdentifier
+	switch cc.teardown.Mode() {
+	case "preserve":
+		log.Printf("not deleting cluster %s because teardown mode is 'preserve'", found.name)
+	case "delete":
+		log.Printf("deleting cluster for %s with teardown mode 'delete'", found.name)
+		cc.deleteCluster(found, "")
+	default:
+		log.Printf("cannot handle teardown mode '%s' for bucket %s", cc.teardown.Mode(), found.name)
+	}
+
+	utils.ExponentialBackoff(func() bool {
+		return cc.waitForDeletion(found)
+	})
+
+	log.Printf("deleted neptune cluster %s", found.name)
+}
+
+func (cc *clusterCreator) findClustersNamed(name string) *clusterModel {
+	clusters, err := cc.client.DescribeDBClusters(context.TODO(), &neptune.DescribeDBClustersInput{DBClusterIdentifier: &name})
+	if !clusterExists(err) {
+		return nil
+	}
+	if len(clusters.DBClusters) == 0 {
+		return nil
+	} else if len(clusters.DBClusters) > 1 {
+		log.Fatalf("More than one cluster called %s found", name)
+		panic("multiple clusters")
+	} else {
+		c1 := clusters.DBClusters[0]
+		log.Printf("%s %s %p %p", cc.name, *c1.Status, c1.DBClusterIdentifier, c1.DBClusterArn)
+		return NewClusterModel(cc.loc, cc.coin, *c1.DBClusterIdentifier, *c1.DBClusterArn)
+	}
+}
+
+func clusterExists(err error) bool {
+	if err == nil {
+		return true
+	}
+	e1, ok := err.(*smithy.OperationError)
+	if ok {
+		e2, ok := e1.Err.(*ht.ResponseError)
+		if ok {
+			if e2.ResponseError.Response.StatusCode == 404 {
+				return false
+			}
+			log.Fatalf("error: %T %v %T %v", e2.Response.Status, e2.Response.Status, e2.ResponseError.Response.StatusCode, e2.ResponseError.Response.StatusCode)
+		}
+		log.Fatalf("error: %T %v", e1.Err, e1.Err)
+	}
+	log.Fatalf("getting clusters failed: %T %v", err, err)
+	panic("failed")
+}
+
+func (cc *clusterCreator) deleteCluster(cluster *clusterModel, finalSnapshotId string) {
+	args := &neptune.DeleteDBClusterInput{DBClusterIdentifier: &cluster.name}
+	if finalSnapshotId != "" {
+		args.FinalDBSnapshotIdentifier = &finalSnapshotId
+	} else {
+		skip := true
+		args.SkipFinalSnapshot = &skip
+	}
+	_, err := cc.client.DeleteDBCluster(context.TODO(), args)
+	if err != nil {
+		log.Fatalf("deleting cluster failed: %T %v", err, err)
+	}
+}
+
+func (cc *clusterCreator) waitForCreation(cluster *clusterModel) bool {
+	clusters, err := cc.client.DescribeDBClusters(context.TODO(), &neptune.DescribeDBClustersInput{DBClusterIdentifier: &cluster.name})
+	if !clusterExists(err) || len(clusters.DBClusters) == 0 {
+		log.Printf("no clusters found with name %s\n", cluster.name)
+		return false
+	}
+	c := clusters.DBClusters[0]
+	if c.Status != nil {
+		if *c.Status == "available" {
+			return true
+		} else {
+			log.Printf("status was %s, not available", *c.Status)
+		}
+	} else {
+		log.Printf("status was nil")
+	}
+	return false
+}
+
+func (cc *clusterCreator) waitForDeletion(cluster *clusterModel) bool {
+	clusters, err := cc.client.DescribeDBClusters(context.TODO(), &neptune.DescribeDBClustersInput{DBClusterIdentifier: &cluster.name})
+	if !clusterExists(err) || len(clusters.DBClusters) == 0 {
+		return true
+	}
+	c := clusters.DBClusters[0]
+	if c.Status != nil {
+		if *c.Status == "deleting" || *c.Status == "available" {
+			log.Printf("cluster %s still exists with status %s\n", cluster.name, *c.Status)
+		} else {
+			log.Fatalf("status was %s, not available or deleting", *c.Status)
+		}
+	} else {
+		log.Printf("cluster %s still exists with nil status\n", cluster.name)
+	}
+	return false
 }
 
 func (cc *clusterCreator) String() string {

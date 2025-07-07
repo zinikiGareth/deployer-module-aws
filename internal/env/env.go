@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/acm"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/aws/aws-sdk-go-v2/service/neptune"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	"github.com/aws/aws-sdk-go-v2/service/route53domains"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -19,6 +20,7 @@ type AwsEnv struct {
 	acmclient            *acm.Client
 	cfclient             *cloudfront.Client
 	iamclient            *iam.Client
+	neptuneClient        *neptune.Client
 	route53client        *route53.Client
 	route53domainsclient *route53domains.Client
 	s3client             *s3.Client
@@ -33,6 +35,7 @@ func (a *AwsEnv) Init() {
 	a.acmclient = acm.NewFromConfig(a.cfg)
 	a.cfclient = cloudfront.NewFromConfig(a.cfg)
 	a.iamclient = iam.NewFromConfig(a.cfg)
+	a.neptuneClient = neptune.NewFromConfig(a.cfg)
 	a.route53client = route53.NewFromConfig(a.cfg)
 	a.route53domainsclient = route53domains.NewFromConfig(a.cfg)
 	a.s3client = s3.NewFromConfig(a.cfg)
@@ -48,6 +51,10 @@ func (a *AwsEnv) CFClient() *cloudfront.Client {
 
 func (a *AwsEnv) IAMClient() *iam.Client {
 	return a.iamclient
+}
+
+func (a *AwsEnv) NeptuneClient() *neptune.Client {
+	return a.neptuneClient
 }
 
 func (a *AwsEnv) Route53Client() *route53.Client {

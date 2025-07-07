@@ -16,16 +16,16 @@ func (b *ClusterBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id
 	return &clusterCreator{tools: tools, loc: loc, name: named}
 }
 
-func (b *ClusterBlank) Loc() *errorsink.Location {
-	panic("not implemented")
-}
+// func (b *ClusterBlank) Loc() *errorsink.Location {
+// 	panic("not implemented")
+// }
 
 func (b *ClusterBlank) ShortDescription() string {
-	return "aws.CertificateManager.Certificate[]"
+	return "aws.Neptune.ClusterBlank[]"
 }
 
-func (b *ClusterBlank) DumpTo(iw driverbottom.IndentWriter) {
-	panic("not implemented")
-}
+// func (b *ClusterBlank) DumpTo(iw driverbottom.IndentWriter) {
+// 	panic("not implemented")
+// }
 
 var _ corebottom.Blank = &ClusterBlank{}
