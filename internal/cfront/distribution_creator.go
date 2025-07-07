@@ -138,19 +138,15 @@ func (cfdc *distributionCreator) DetermineDesiredState(pres corebottom.ValuePres
 func (cfdc *distributionCreator) UpdateReality() {
 	tmp := cfdc.tools.Storage.GetCoin(cfdc.coin, corebottom.DETERMINE_INITIAL_MODE)
 
-	created := &DistributionModel{name: cfdc.name, loc: cfdc.loc, coin: cfdc.coin}
-
 	if tmp != nil {
 		found := tmp.(*DistributionModel)
 		log.Printf("distribution %s already existed for %s (%s %s)\n", found.arn, found.name, found.distroId, found.domainName)
-		created.arn = found.arn
-		created.distroId = found.distroId
-		created.domainName = found.domainName
-		cfdc.tools.Storage.Bind(cfdc.coin, created)
+		cfdc.tools.Storage.Adopt(cfdc.coin, found)
 		return
 	}
 
 	desired := cfdc.tools.Storage.GetCoin(cfdc.coin, corebottom.DETERMINE_DESIRED_MODE).(*DistributionModel)
+	created := &DistributionModel{name: cfdc.name, loc: cfdc.loc, coin: cfdc.coin}
 
 	cpId, ok1 := cfdc.tools.Storage.EvalAsStringer(desired.cachePolicy)
 	toid, ok2 := cfdc.tools.Storage.EvalAsStringer(desired.toid)
