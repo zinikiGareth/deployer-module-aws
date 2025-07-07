@@ -81,15 +81,15 @@ func (cc *clusterCreator) DetermineInitialState(pres corebottom.ValuePresenter) 
 
 func (cc *clusterCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 	model := NewClusterModel(cc.loc, cc.coin, cc.name, "")
-	for k := range cc.props {
-		// v := cc.tools.Storage.Eval(p)
+	for k, p := range cc.props {
+		v := cc.tools.Storage.Eval(p)
 		switch k.Id() {
-		// case "SubnetGroupName":
-		// 	domain, ok := v.(myroute53.ExportedDomain)
-		// 	if !ok {
-		// 		log.Fatalf("Domain did not point to a domain instance")
-		// 	}
-		// 	model.subnetGroup = domain.HostedZoneId()
+		case "SubnetGroupName":
+			subnetGroup, ok := v.(*subnetModel)
+			if !ok {
+				log.Fatalf("SubnetGroupName did not point to a subnet model")
+			}
+			model.subnetGroup = subnetGroup.name
 		// 	case "SubjectAlternativeNames":
 		// 		san, ok := utils.AsStringList(v)
 		// 		if !ok {
@@ -113,6 +113,10 @@ func (cc *clusterCreator) DetermineDesiredState(pres corebottom.ValuePresenter) 
 			log.Fatalf("neptune cluster does not support a parameter %s\n", k.Id())
 		}
 	}
+	if model.subnetGroup == "" {
+		cc.tools.Reporter.ReportAtf(cc.loc, "SubnetGroupName required for Neptune Cluster")
+		return
+	}
 	log.Printf("have desired neptune config for %s\n", model.name)
 	pres.Present(model)
 }
@@ -131,9 +135,8 @@ func (cc *clusterCreator) UpdateReality() {
 
 	created := NewClusterModel(desired.loc, cc.coin, cc.name, "")
 
-	neptuneName := "neptune"  // because of some way that AWS centralizes DB creation
-	dbsubnet := "neptunetest" // should be a parameter
-	create, err := cc.client.CreateDBCluster(context.TODO(), &neptune.CreateDBClusterInput{DBClusterIdentifier: &cc.name, Engine: &neptuneName, DBSubnetGroupName: &dbsubnet})
+	neptuneName := "neptune" // because of some way that AWS centralizes DB creation
+	create, err := cc.client.CreateDBCluster(context.TODO(), &neptune.CreateDBClusterInput{DBClusterIdentifier: &cc.name, Engine: &neptuneName, DBSubnetGroupName: &desired.subnetGroup})
 	if err != nil {
 		log.Fatalf("failed to create cluster %s: %v\n", cc.name, err)
 	}

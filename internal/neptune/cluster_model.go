@@ -12,7 +12,10 @@ type clusterModel struct {
 	loc  *errorsink.Location
 	name string
 	coin corebottom.CoinId
-	arn  string
+
+	subnetGroup string
+
+	arn string
 }
 
 func (c *clusterModel) Loc() *errorsink.Location {
