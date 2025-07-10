@@ -77,38 +77,51 @@ func (tc *tableCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 func (tc *tableCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 	model := NewTableModel(tc.loc, tc.coin)
 	model.name = tc.name
-	// for k, p := range tc.props {
-	// 	v := tc.tools.Storage.Eval(p)
-	// 	switch k.Id() {
-	// 	case "Domain":
-	// 		domain, ok := v.(myroute53.ExportedDomain)
-	// 		if !ok {
-	// 			log.Fatalf("Domain did not point to a domain instance")
-	// 		}
-	// 		model.hzid = domain.HostedZoneId()
-	// 	case "SubjectAlternativeNames":
-	// 		san, ok := utils.AsStringList(v)
-	// 		if !ok {
-	// 			justString, ok := v.(string)
-	// 			if !ok {
-	// 				log.Fatalf("SubjectAlternativeNames must be a list of strings")
-	// 				return
-	// 			} else {
-	// 				san = []string{justString}
-	// 			}
-	// 		}
-	// 		model.sans = san
-	// 	case "ValidationMethod":
-	// 		meth, ok := utils.AsStringer(v)
-	// 		if !ok {
-	// 			log.Fatalf("ValidationMethod must be a string")
-	// 			return
-	// 		}
-	// 		model.validationMethod = meth
-	// 	default:
-	// 		log.Fatalf("certificate coin does not support a parameter %s\n", k.Id())
-	// 	}
-	// }
+	for k, p := range tc.props {
+		v := tc.tools.Storage.Eval(p)
+		switch k.Id() {
+		case "Fields":
+			list, ok := v.([]any)
+			if !ok {
+				panic("Fields was not a list")
+			}
+			for _, le := range list {
+				dfe, ok := le.(*DynamoFieldExpr)
+				if ok {
+					model.fields = append(model.fields, dfe)
+				} else {
+					panic("field was not a *DynamoFieldExpr")
+				}
+			}
+			// 	case "Domain":
+			// 		domain, ok := v.(myroute53.ExportedDomain)
+			// 		if !ok {
+			// 			log.Fatalf("Domain did not point to a domain instance")
+			// 		}
+			// 		model.hzid = domain.HostedZoneId()
+			// 	case "SubjectAlternativeNames":
+			// 		san, ok := utils.AsStringList(v)
+			// 		if !ok {
+			// 			justString, ok := v.(string)
+			// 			if !ok {
+			// 				log.Fatalf("SubjectAlternativeNames must be a list of strings")
+			// 				return
+			// 			} else {
+			// 				san = []string{justString}
+			// 			}
+			// 		}
+			// 		model.sans = san
+			// 	case "ValidationMethod":
+			// 		meth, ok := utils.AsStringer(v)
+			// 		if !ok {
+			// 			log.Fatalf("ValidationMethod must be a string")
+			// 			return
+			// 		}
+			// 		model.validationMethod = meth
+			// 	default:
+			// 		log.Fatalf("certificate coin does not support a parameter %s\n", k.Id())
+		}
+	}
 	pres.Present(model)
 }
 

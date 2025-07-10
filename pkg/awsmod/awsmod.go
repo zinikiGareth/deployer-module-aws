@@ -45,6 +45,8 @@ func RegisterWithDriver(deployer driverbottom.Driver) error {
 	tools.Register.Register("blank", "aws.Neptune.Cluster", &neptune.ClusterBlank{})
 	tools.Register.Register("blank", "aws.DynamoDB.Table", &dynamodb.TableBlank{})
 
+	tools.Register.Register("prop-interpreter", "aws.DynamoFields", driverbottom.CreateInterpreter(dynamodb.CreateFieldInterpreter))
+
 	loc := &errorsink.Location{}
 	// Permissions by name
 	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.action.S3.GetObject"), drivertop.MakeString(loc, "s3:GetObject"))

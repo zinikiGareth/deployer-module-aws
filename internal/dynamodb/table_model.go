@@ -13,6 +13,8 @@ type tableModel struct {
 	name string
 	coin corebottom.CoinId
 	arn  string
+
+	fields []*DynamoFieldExpr
 }
 
 func (c *tableModel) Loc() *errorsink.Location {
