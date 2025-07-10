@@ -89,6 +89,9 @@ func (tc *tableCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 				dfe, ok := le.(*DynamoFieldExpr)
 				if ok {
 					model.attrs = append(model.attrs, tc.makeDRF(dfe))
+					if dfe.keytype != "" {
+						model.keys = append(model.keys, tc.makeKey(dfe))
+					}
 				} else {
 					panic("field was not a *DynamoFieldExpr")
 				}
@@ -146,7 +149,7 @@ func (tc *tableCreator) UpdateReality() {
 	// 	vm = types.ValidationMethodDns
 	// }
 
-	input := dynamodb.CreateTableInput{TableName: &created.name, AttributeDefinitions: desired.attrs}
+	input := dynamodb.CreateTableInput{TableName: &created.name, AttributeDefinitions: desired.attrs, KeySchema: desired.keys}
 	// if len(desired.sans) > 0 {
 	// 	input.SubjectAlternativeNames = desired.sans
 	// }
@@ -234,6 +237,10 @@ func (tc *tableCreator) makeDRF(dfe *DynamoFieldExpr) types.AttributeDefinition 
 	return types.AttributeDefinition{AttributeName: &dfe.name, AttributeType: tc.figureType(dfe.loc, dfe.ftype)}
 }
 
+func (tc *tableCreator) makeKey(dfe *DynamoFieldExpr) types.KeySchemaElement {
+	return types.KeySchemaElement{AttributeName: &dfe.name, KeyType: tc.figureKeyType(dfe.loc, dfe.keytype)}
+}
+
 func (tc *tableCreator) figureType(loc *errorsink.Location, ty string) types.ScalarAttributeType {
 	switch ty {
 	case "string":
@@ -245,6 +252,18 @@ func (tc *tableCreator) figureType(loc *errorsink.Location, ty string) types.Sca
 	default:
 		tc.tools.Reporter.ReportAtf(loc, "invalid dynamo field type: %s", ty)
 		return types.ScalarAttributeTypeS
+	}
+}
+
+func (tc *tableCreator) figureKeyType(loc *errorsink.Location, ty string) types.KeyType {
+	switch ty {
+	case "hash":
+		return types.KeyTypeHash
+	case "range":
+		return types.KeyTypeRange
+	default:
+		tc.tools.Reporter.ReportAtf(loc, "invalid dynamo field type: %s", ty)
+		return types.KeyTypeRange
 	}
 }
 

@@ -16,6 +16,7 @@ type tableModel struct {
 	arn  string
 
 	attrs []types.AttributeDefinition
+	keys  []types.KeySchemaElement
 }
 
 func (c *tableModel) Loc() *errorsink.Location {
