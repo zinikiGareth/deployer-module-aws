@@ -88,8 +88,9 @@ func (tc *tableCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 			for _, le := range list {
 				dfe, ok := le.(*DynamoFieldExpr)
 				if ok {
-					model.attrs = append(model.attrs, tc.makeDRF(dfe))
 					if dfe.keytype != "" {
+						// it's bizarre, but you *only* specify the attrs ...
+						model.attrs = append(model.attrs, tc.makeDRF(dfe))
 						model.keys = append(model.keys, tc.makeKey(dfe))
 					}
 				} else {
@@ -149,7 +150,7 @@ func (tc *tableCreator) UpdateReality() {
 	// 	vm = types.ValidationMethodDns
 	// }
 
-	input := dynamodb.CreateTableInput{TableName: &created.name, AttributeDefinitions: desired.attrs, KeySchema: desired.keys}
+	input := dynamodb.CreateTableInput{TableName: &created.name, BillingMode: types.BillingModePayPerRequest, AttributeDefinitions: desired.attrs, KeySchema: desired.keys}
 	// if len(desired.sans) > 0 {
 	// 	input.SubjectAlternativeNames = desired.sans
 	// }
