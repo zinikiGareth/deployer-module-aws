@@ -3,6 +3,7 @@ package dynamodb
 import (
 	"fmt"
 
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
@@ -14,7 +15,7 @@ type tableModel struct {
 	coin corebottom.CoinId
 	arn  string
 
-	fields []*DynamoFieldExpr
+	attrs []types.AttributeDefinition
 }
 
 func (c *tableModel) Loc() *errorsink.Location {

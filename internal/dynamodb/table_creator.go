@@ -88,7 +88,7 @@ func (tc *tableCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 			for _, le := range list {
 				dfe, ok := le.(*DynamoFieldExpr)
 				if ok {
-					model.fields = append(model.fields, dfe)
+					model.attrs = append(model.attrs, tc.makeDRF(dfe))
 				} else {
 					panic("field was not a *DynamoFieldExpr")
 				}
@@ -146,7 +146,7 @@ func (tc *tableCreator) UpdateReality() {
 	// 	vm = types.ValidationMethodDns
 	// }
 
-	input := dynamodb.CreateTableInput{TableName: &created.name}
+	input := dynamodb.CreateTableInput{TableName: &created.name, AttributeDefinitions: desired.attrs}
 	// if len(desired.sans) > 0 {
 	// 	input.SubjectAlternativeNames = desired.sans
 	// }
@@ -228,6 +228,24 @@ func tableExists(err error) bool {
 
 func (tc *tableCreator) String() string {
 	return fmt.Sprintf("DynamoTable[%s]", tc.name)
+}
+
+func (tc *tableCreator) makeDRF(dfe *DynamoFieldExpr) types.AttributeDefinition {
+	return types.AttributeDefinition{AttributeName: &dfe.name, AttributeType: tc.figureType(dfe.loc, dfe.ftype)}
+}
+
+func (tc *tableCreator) figureType(loc *errorsink.Location, ty string) types.ScalarAttributeType {
+	switch ty {
+	case "string":
+		return types.ScalarAttributeTypeS
+	case "number":
+		return types.ScalarAttributeTypeN
+	case "bool":
+		return types.ScalarAttributeTypeB
+	default:
+		tc.tools.Reporter.ReportAtf(loc, "invalid dynamo field type: %s", ty)
+		return types.ScalarAttributeTypeS
+	}
 }
 
 var _ corebottom.Ensurable = &tableCreator{}
