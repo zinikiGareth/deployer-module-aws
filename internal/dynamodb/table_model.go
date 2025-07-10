@@ -9,13 +9,10 @@ import (
 )
 
 type tableModel struct {
-	loc              *errorsink.Location
-	name             string
-	coin             corebottom.CoinId
-	validationMethod fmt.Stringer
-	hzid             string
-	arn              string
-	sans             []string
+	loc  *errorsink.Location
+	name string
+	coin corebottom.CoinId
+	arn  string
 }
 
 func (c *tableModel) Loc() *errorsink.Location {
@@ -23,20 +20,13 @@ func (c *tableModel) Loc() *errorsink.Location {
 }
 
 func (c *tableModel) ShortDescription() string {
-	return fmt.Sprintf("acm.Certificate[%s]", c.name)
+	return fmt.Sprintf("dynamo.Table[%s]", c.name)
 }
 
 func (c *tableModel) DumpTo(to driverbottom.IndentWriter) {
-	to.Intro("Certificate[%s]", c.name)
+	to.Intro("dynamo.Table[%s]", c.name)
 	to.AttrsWhere(c)
-	if c.validationMethod != nil {
-		to.TextAttr("validationMethod", c.validationMethod.String())
-	}
-	to.TextAttr("hzid", c.hzid)
 	to.TextAttr("arn", c.arn)
-	for k, s := range c.sans {
-		to.TextAttr(fmt.Sprintf("san%d", k), s)
-	}
 	to.EndAttrs()
 }
 

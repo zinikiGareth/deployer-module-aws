@@ -1,12 +1,19 @@
 package dynamodb
 
 import (
+	"context"
 	"fmt"
 	"log"
 
+	ht "github.com/aws/aws-sdk-go-v2/aws/transport/http"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/aws/smithy-go"
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
+	"ziniki.org/deployer/driver/pkg/utils"
+	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
 type tableCreator struct {
@@ -17,6 +24,8 @@ type tableCreator struct {
 	coin     corebottom.CoinId
 	teardown corebottom.TearDown
 	props    map[driverbottom.Identifier]driverbottom.Expr
+
+	client *dynamodb.Client
 }
 
 func (tc *tableCreator) Loc() *errorsink.Location {
@@ -41,35 +50,35 @@ func (tc *tableCreator) CoinId() corebottom.CoinId {
 func (tc *tableCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 	log.Printf("want to find dynamo table %s", tc.name)
 
-	// ae := acmc.tools.Recall.ObtainDriver("aws.AwsEnv")
-	// awsEnv, ok := ae.(*env.AwsEnv)
-	// if !ok {
-	// 	panic("could not cast env to AwsEnv")
-	// }
-	// acmc.client = awsEnv.ACMClient()
-	// acmc.route53 = awsEnv.Route53Client()
+	ae := tc.tools.Recall.ObtainDriver("aws.AwsEnv")
+	awsEnv, ok := ae.(*env.AwsEnv)
+	if !ok {
+		panic("could not cast env to AwsEnv")
+	}
+	tc.client = awsEnv.DynamoClient()
 
-	// certs := acmc.findCertificatesFor(acmc.name)
-	// if len(certs) == 0 {
-	// 	log.Printf("there were no certs found for %s\n", acmc.name)
-	// 	pres.NotFound()
-	// } else {
-	// 	model := NewCertificateModel(acmc.loc, acmc.coin)
-	// 	model.name = acmc.name
+	table := tc.findTableCalled(tc.name)
+	if table == nil {
+		log.Printf("no dynamo table found called %s\n", tc.name)
+		pres.NotFound()
+	} else {
+		// 	model := NewCertificateModel(tc.loc, tc.coin)
+		// 	model.name = tc.name
 
-	// 	// log.Printf("found %d certs for %s\n", len(certs), acmc.name)
-	// 	model.arn = certs[0]
+		// 	// log.Printf("found %d certs for %s\n", len(certs), tc.name)
+		// 	model.arn = certs[0]
 
-	// 	// acmc.describeCertificate(acmc.arn)
-	// 	// acmc.tools.Storage.Bind(acmc.coin, model)
-	// 	pres.Present(model)
-	// }
+		// 	// tc.describeCertificate(tc.arn)
+		// 	// tc.tools.Storage.Bind(tc.coin, model)
+		pres.Present(table)
+	}
 }
 
 func (tc *tableCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
-	// model := NewCertificateModel(acmc.loc, acmc.coin)
-	// for k, p := range acmc.props {
-	// 	v := acmc.tools.Storage.Eval(p)
+	model := NewTableModel(tc.loc, tc.coin)
+	model.name = tc.name
+	// for k, p := range tc.props {
+	// 	v := tc.tools.Storage.Eval(p)
 	// 	switch k.Id() {
 	// 	case "Domain":
 	// 		domain, ok := v.(myroute53.ExportedDomain)
@@ -100,24 +109,23 @@ func (tc *tableCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 	// 		log.Fatalf("certificate coin does not support a parameter %s\n", k.Id())
 	// 	}
 	// }
-	// // acmc.tools.Storage.Bind(acmc.coin, model)
-	// pres.Present(model)
+	pres.Present(model)
 }
 
 func (tc *tableCreator) UpdateReality() {
-	// tmp := acmc.tools.Storage.GetCoin(acmc.coin, corebottom.DETERMINE_INITIAL_MODE)
+	tmp := tc.tools.Storage.GetCoin(tc.coin, corebottom.DETERMINE_INITIAL_MODE)
 
-	// if tmp != nil {
-	// 	found := tmp.(*certificateModel)
-	// 	log.Printf("certificate %s already existed for %s\n", found.arn, found.name)
-	// 	acmc.tools.Storage.Adopt(acmc.coin, found)
-	// 	return
-	// }
+	if tmp != nil {
+		found := tmp.(*tableModel)
+		log.Printf("table %s already existed for %s\n", found.arn, found.name)
+		tc.tools.Storage.Adopt(tc.coin, found)
+		return
+	}
 
-	// desired := acmc.tools.Storage.GetCoin(acmc.coin, corebottom.DETERMINE_DESIRED_MODE).(*certificateModel)
+	desired := tc.tools.Storage.GetCoin(tc.coin, corebottom.DETERMINE_DESIRED_MODE).(*tableModel)
 
-	// created := NewCertificateModel(desired.loc, acmc.coin)
-	// created.name = desired.name
+	created := NewTableModel(desired.loc, tc.coin)
+	created.name = desired.name
 	// created.hzid = desired.hzid
 
 	// vm := types.ValidationMethod(desired.validationMethod.String())
@@ -125,47 +133,84 @@ func (tc *tableCreator) UpdateReality() {
 	// 	vm = types.ValidationMethodDns
 	// }
 
-	// input := acm.RequestCertificateInput{DomainName: &acmc.name, ValidationMethod: vm}
+	input := dynamodb.CreateTableInput{TableName: &created.name}
 	// if len(desired.sans) > 0 {
 	// 	input.SubjectAlternativeNames = desired.sans
 	// }
-	// req, err := acmc.client.RequestCertificate(context.TODO(), &input)
-	// if err != nil {
-	// 	log.Printf("failed to request cert %s: %v\n", acmc.name, err)
-	// }
-	// log.Printf("requested cert for %s: %s\n", acmc.name, *req.CertificateArn)
-	// created.arn = *req.CertificateArn
+	table, err := tc.client.CreateTable(context.TODO(), &input)
+	if err != nil {
+		log.Printf("failed to create table %s: %v\n", tc.name, err)
+		panic("table creation failed")
+	}
+	log.Printf("asked to create table for %s: %s\n", tc.name, *table.TableDescription.TableArn)
+	created.arn = *table.TableDescription.TableArn
 
-	// // Check if we still need to validate it ...
+	utils.ExponentialBackoff(func() bool {
+		return tc.waitForTable(tc.name)
+	})
 
-	// // acmc.describeCertificate(*req.CertificateArn)
-
-	// utils.ExponentialBackoff(func() bool {
-	// 	return acmc.tryToValidateCert(created.arn, created.hzid)
-	// })
-
-	// acmc.tools.Storage.Bind(acmc.coin, created)
+	log.Printf("created table %s for %s", created.arn, created.name)
+	tc.tools.Storage.Bind(tc.coin, created)
 }
 
 func (tc *tableCreator) TearDown() {
-	// tmp := acmc.tools.Storage.GetCoin(acmc.coin, corebottom.DETERMINE_INITIAL_MODE)
+	// tmp := tc.tools.Storage.GetCoin(tc.coin, corebottom.DETERMINE_INITIAL_MODE)
 
 	// if tmp == nil {
-	// 	log.Printf("no certificate existed for %s\n", acmc.name)
+	// 	log.Printf("no certificate existed for %s\n", tc.name)
 	// 	return
 	// }
 
 	// found := tmp.(*certificateModel)
-	// log.Printf("you have asked to tear down certificate for %s (arn: %s) with mode %s\n", found.name, found.arn, acmc.teardown.Mode())
-	// switch acmc.teardown.Mode() {
+	// log.Printf("you have asked to tear down certificate for %s (arn: %s) with mode %s\n", found.name, found.arn, tc.teardown.Mode())
+	// switch tc.teardown.Mode() {
 	// case "preserve":
 	// 	log.Printf("not deleting certificate %s because teardown mode is 'preserve'", found.name)
 	// case "delete":
 	// 	log.Printf("deleting certificate for %s with teardown mode 'delete'", found.name)
-	// 	DeleteCertificate(acmc.client, found.arn)
+	// 	DeleteCertificate(tc.client, found.arn)
 	// default:
-	// 	log.Printf("cannot handle teardown mode '%s' for bucket %s", acmc.teardown.Mode(), found.name)
+	// 	log.Printf("cannot handle teardown mode '%s' for bucket %s", tc.teardown.Mode(), found.name)
 	// }
+}
+
+func (tc *tableCreator) findTableCalled(name string) *tableModel {
+	table, err := tc.client.DescribeTable(context.TODO(), &dynamodb.DescribeTableInput{TableName: &name})
+	if !tableExists(err) {
+		return nil
+	}
+	log.Fatalf("table = %T %v\n", table, table)
+	return nil
+}
+
+func (tc *tableCreator) waitForTable(name string) bool {
+	_, err := tc.client.DescribeTable(context.TODO(), &dynamodb.DescribeTableInput{TableName: &name})
+	return tableExists(err)
+}
+
+func tableExists(err error) bool {
+	if err == nil {
+		return true
+	}
+	e1, ok := err.(*smithy.OperationError)
+	if ok {
+		e2, ok := e1.Err.(*ht.ResponseError)
+		if ok {
+			if e2.ResponseError.Response.StatusCode == 400 {
+				switch e4 := e2.Err.(type) {
+				case *types.ResourceNotFoundException:
+					return false
+				default:
+					log.Printf("error: %T %v", e4, e4)
+					panic("what error?")
+				}
+			}
+			log.Fatalf("error: %T %v %T %v", e2.Response.Status, e2.Response.Status, e2.ResponseError.Response.StatusCode, e2.ResponseError.Response.StatusCode)
+		}
+		log.Fatalf("error: %T %v", e1.Err, e1.Err)
+	}
+	log.Fatalf("getting clusters failed: %T %v", err, err)
+	panic("failed")
 }
 
 func (tc *tableCreator) String() string {
