@@ -17,16 +17,8 @@ func (b *DomainNameBlank) Find(tools *corebottom.Tools, loc *errorsink.Location,
 	return &domainNameFinder{tools: tools, loc: loc, name: named}
 }
 
-func (b *DomainNameBlank) Loc() *errorsink.Location {
-	panic("not implemented")
-}
-
 func (b *DomainNameBlank) ShortDescription() string {
-	return "test.S3.Bucket[]"
-}
-
-func (b *DomainNameBlank) DumpTo(iw driverbottom.IndentWriter) {
-	panic("not implemented")
+	return "aws.Route53.DomainName"
 }
 
 var _ corebottom.Blank = &DomainNameBlank{}
