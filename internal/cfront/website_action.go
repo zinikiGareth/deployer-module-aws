@@ -250,6 +250,10 @@ func (w *websiteAction) DetermineDesiredState(pres corebottom.ValuePresenter) {
 	pres.Present(mypres.distro)
 }
 
+func (w *websiteAction) ShouldDestroy() bool {
+	return false
+}
+
 func (w *websiteAction) UpdateReality() {
 	w.coins.cachePolicy.UpdateReality()
 	w.coins.originAccessControl.UpdateReality()
