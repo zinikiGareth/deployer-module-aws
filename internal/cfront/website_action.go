@@ -345,6 +345,10 @@ func (c *coinPresenter) Present(value any) {
 	}
 }
 
+func (c *coinPresenter) WantDestruction(loc *errorsink.Location) {
+	panic("need to handle website.@destroy")
+}
+
 func (w *websiteAction) newCoinPresenter() *coinPresenter {
 	// , model: &DistributionModel{name: w.named.Text(), loc: w.loc, coin: w.coins.distribution.coin}
 	return &coinPresenter{main: w}
