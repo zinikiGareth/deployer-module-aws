@@ -55,8 +55,6 @@ func (cc *subnetCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 
 	model := cc.findSubnetsNamed(cc.name)
 
-	log.Printf("subnets = %p\n", model)
-
 	if model == nil {
 		log.Printf("subnet %s not found\n", cc.name)
 		pres.NotFound()

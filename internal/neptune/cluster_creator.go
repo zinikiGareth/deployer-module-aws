@@ -61,8 +61,6 @@ func (cc *clusterCreator) DetermineInitialState(pres corebottom.ValuePresenter) 
 
 	model := cc.findClustersNamed(cc.name)
 
-	log.Printf("clusters = %p\n", model)
-
 	if model == nil {
 		log.Printf("cluster %s not found\n", cc.name)
 		pres.NotFound()
@@ -215,7 +213,6 @@ func (cc *clusterCreator) findClustersNamed(name string) *clusterModel {
 		panic("multiple clusters")
 	} else {
 		c1 := clusters.DBClusters[0]
-		log.Printf("%s %s %p %p", cc.name, *c1.Status, c1.DBClusterIdentifier, c1.DBClusterArn)
 		return NewClusterModel(cc.loc, cc.coin, *c1.DBClusterIdentifier, *c1.DBClusterArn)
 	}
 }

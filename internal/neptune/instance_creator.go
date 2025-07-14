@@ -61,8 +61,6 @@ func (cc *instanceCreator) DetermineInitialState(pres corebottom.ValuePresenter)
 
 	model := cc.findInstancesNamed(cc.name)
 
-	log.Printf("instances = %p\n", model)
-
 	if model == nil {
 		log.Printf("instance %s not found\n", cc.name)
 		pres.NotFound()
@@ -182,7 +180,6 @@ func (cc *instanceCreator) findInstancesNamed(name string) *instanceModel {
 		panic("multiple instances")
 	} else {
 		c1 := instances.DBInstances[0]
-		log.Printf("%s %p %p", cc.name, c1.DBInstanceIdentifier, c1.DBInstanceArn)
 		ret := NewInstanceModel(cc.loc, cc.coin, *c1.DBInstanceIdentifier, *c1.DBInstanceArn)
 		ret.status = *instances.DBInstances[0].DBInstanceStatus
 		return ret
