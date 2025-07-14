@@ -43,6 +43,7 @@ func RegisterWithDriver(deployer driverbottom.Driver) error {
 	tools.Register.Register("blank", "aws.IAM.Policy", &iam.PolicyBlank{})
 	tools.Register.Register("blank", "aws.Neptune.SubnetGroup", &neptune.SubnetBlank{})
 	tools.Register.Register("blank", "aws.Neptune.Cluster", &neptune.ClusterBlank{})
+	tools.Register.Register("blank", "aws.Neptune.Instance", &neptune.InstanceBlank{})
 	tools.Register.Register("blank", "aws.DynamoDB.Table", &dynamodb.TableBlank{})
 
 	tools.Register.Register("prop-interpreter", "aws.DynamoFields", driverbottom.CreateInterpreter(dynamodb.CreateFieldInterpreter))

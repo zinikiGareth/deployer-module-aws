@@ -14,6 +14,8 @@ type clusterModel struct {
 	coin corebottom.CoinId
 
 	subnetGroup string
+	minCapacity float64
+	maxCapacity float64
 
 	arn string
 }

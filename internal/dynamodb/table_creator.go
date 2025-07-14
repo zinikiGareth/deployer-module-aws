@@ -196,8 +196,10 @@ func (tc *tableCreator) findTableCalled(name string) *tableModel {
 	if !tableExists(err) {
 		return nil
 	}
-	log.Fatalf("table = %T %v\n", table, table)
-	return nil
+	model := NewTableModel(tc.loc, tc.coin)
+	model.arn = *table.Table.TableArn
+	model.name = tc.name
+	return model
 }
 
 func (tc *tableCreator) waitForTable(name string) bool {

@@ -7,6 +7,7 @@ import (
 
 	ht "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/service/neptune"
+	"github.com/aws/aws-sdk-go-v2/service/neptune/types"
 	"github.com/aws/smithy-go"
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
@@ -90,7 +91,16 @@ func (cc *clusterCreator) DetermineDesiredState(pres corebottom.ValuePresenter) 
 				log.Fatalf("SubnetGroupName did not point to a subnet model")
 			}
 			model.subnetGroup = subnetGroup.name
-		// 	case "SubjectAlternativeNames":
+		case "MinCapacity":
+			cap, ok := v.(float64)
+			if ok {
+				model.minCapacity = cap
+			}
+		case "MaxCapacity":
+			cap, ok := v.(float64)
+			if ok {
+				model.maxCapacity = cap
+			}
 		// 		san, ok := utils.AsStringList(v)
 		// 		if !ok {
 		// 			justString, ok := v.(string)
@@ -117,6 +127,12 @@ func (cc *clusterCreator) DetermineDesiredState(pres corebottom.ValuePresenter) 
 		cc.tools.Reporter.ReportAtf(cc.loc, "SubnetGroupName required for Neptune Cluster")
 		return
 	}
+	if model.maxCapacity != 0 && model.minCapacity != 0 {
+		// that's fine
+	} else if model.maxCapacity != 0 || model.minCapacity != 0 {
+		cc.tools.Reporter.ReportAtf(cc.loc, "must either specify neither MinCapacity or MaxCapacity or both")
+		return
+	}
 	log.Printf("have desired neptune config for %s\n", model.name)
 	pres.Present(model)
 }
@@ -136,7 +152,14 @@ func (cc *clusterCreator) UpdateReality() {
 	created := NewClusterModel(desired.loc, cc.coin, cc.name, "")
 
 	neptuneName := "neptune" // because of some way that AWS centralizes DB creation
-	create, err := cc.client.CreateDBCluster(context.TODO(), &neptune.CreateDBClusterInput{DBClusterIdentifier: &cc.name, Engine: &neptuneName, DBSubnetGroupName: &desired.subnetGroup})
+	ci := &neptune.CreateDBClusterInput{DBClusterIdentifier: &cc.name, Engine: &neptuneName, DBSubnetGroupName: &desired.subnetGroup}
+	minCap := 1.0
+	maxCap := 1.0
+	if desired.minCapacity != 0 && desired.maxCapacity != 0 {
+		scaling := &types.ServerlessV2ScalingConfiguration{MinCapacity: &minCap, MaxCapacity: &maxCap}
+		ci.ServerlessV2ScalingConfiguration = scaling
+	}
+	create, err := cc.client.CreateDBCluster(context.TODO(), ci)
 	if err != nil {
 		log.Fatalf("failed to create cluster %s: %v\n", cc.name, err)
 	}
