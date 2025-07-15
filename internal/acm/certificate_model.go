@@ -10,13 +10,14 @@ import (
 )
 
 type certificateModel struct {
-	loc              *errorsink.Location
-	name             string
-	coin             corebottom.CoinId
-	validationMethod fmt.Stringer
-	hzid             string
-	arn              string
-	sans             []string
+	loc                *errorsink.Location
+	name               string
+	coin               corebottom.CoinId
+	validationMethod   fmt.Stringer
+	validationProvider fmt.Stringer
+	hzid               string
+	arn                string
+	sans               []string
 }
 
 func (c *certificateModel) Loc() *errorsink.Location {

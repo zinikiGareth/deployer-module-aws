@@ -28,6 +28,8 @@ func RegisterWithDriver(deployer driverbottom.Driver) error {
 
 	mytools := tools.RetrieveOther("coremod").(*corebottom.Tools)
 
+	tools.Register.ExtensionPoint("dns-asserter")
+
 	tools.Register.Register("target", "cloudfront.distribution.fromS3", cfront.NewWebsiteFromS3Handler(mytools))
 
 	tools.Register.Register("blank", "aws.Route53.DomainName", &route53.DomainNameBlank{})

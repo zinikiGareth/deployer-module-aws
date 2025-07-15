@@ -58,6 +58,7 @@ func (ac *aliasCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 			updZone = v
 		default:
 			ac.tools.Reporter.ReportAtf(ac.loc, "invalid property for IAM policy: %s", p.Id())
+			seenErr = true
 		}
 	}
 	if !seenErr && updZone == nil {
@@ -124,6 +125,7 @@ func (ac *aliasCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 			aliasZone = v
 		default:
 			ac.tools.Reporter.ReportAtf(ac.loc, "invalid property for IAM policy: %s", p.Id())
+			seenErr = true
 		}
 	}
 	if !seenErr && updZone == nil {

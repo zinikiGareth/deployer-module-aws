@@ -16,11 +16,10 @@ import (
 type cnameCreator struct {
 	tools *corebottom.Tools
 
-	loc      *errorsink.Location
-	name     string
-	coin     corebottom.CoinId
-	props    map[driverbottom.Identifier]driverbottom.Expr
-	teardown corebottom.TearDown
+	loc   *errorsink.Location
+	name  string
+	coin  corebottom.CoinId
+	props map[driverbottom.Identifier]driverbottom.Expr
 
 	client *route53.Client
 }
@@ -104,6 +103,7 @@ func (cc *cnameCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 			zone = v
 		default:
 			cc.tools.Reporter.ReportAtf(cc.loc, "invalid property for IAM policy: %s", p.Id())
+			seenErr = true
 		}
 	}
 	if !seenErr && zone == nil {
@@ -136,7 +136,7 @@ func (cc *cnameCreator) UpdateReality() {
 	log.Printf("creating CNAME %s\n", cc.name)
 	desired := cc.tools.Storage.GetCoin(cc.coin, corebottom.DETERMINE_DESIRED_MODE).(*cnameModel)
 
-	created := &aliasModel{name: cc.name, loc: cc.loc}
+	created := &cnameModel{name: cc.name, loc: cc.loc}
 
 	var ttl int64 = 300
 	od, ok := desired.pointsTo.(string)

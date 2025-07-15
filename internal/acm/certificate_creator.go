@@ -30,41 +30,41 @@ type certificateCreator struct {
 	route53 *route53.Client
 }
 
-func (acmc *certificateCreator) Loc() *errorsink.Location {
-	return acmc.loc
+func (cc *certificateCreator) Loc() *errorsink.Location {
+	return cc.loc
 }
 
-func (acmc *certificateCreator) ShortDescription() string {
-	return "aws.CertificateManager.Certificate[" + acmc.name + "]"
+func (cc *certificateCreator) ShortDescription() string {
+	return "aws.CertificateManager.Certificate[" + cc.name + "]"
 }
 
-func (acmc *certificateCreator) DumpTo(iw driverbottom.IndentWriter) {
+func (cc *certificateCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.Intro("aws.CertificateManager.Certificate[")
-	iw.AttrsWhere(acmc)
-	iw.TextAttr("named", acmc.name)
+	iw.AttrsWhere(cc)
+	iw.TextAttr("named", cc.name)
 	iw.EndAttrs()
 }
 
-func (acmc *certificateCreator) CoinId() corebottom.CoinId {
-	return acmc.coin
+func (cc *certificateCreator) CoinId() corebottom.CoinId {
+	return cc.coin
 }
 
-func (acmc *certificateCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
-	ae := acmc.tools.Recall.ObtainDriver("aws.AwsEnv")
+func (cc *certificateCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
+	ae := cc.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := ae.(*env.AwsEnv)
 	if !ok {
 		panic("could not cast env to AwsEnv")
 	}
-	acmc.client = awsEnv.ACMClient()
-	acmc.route53 = awsEnv.Route53Client()
+	cc.client = awsEnv.ACMClient()
+	cc.route53 = awsEnv.Route53Client()
 
-	certs := acmc.findCertificatesFor(acmc.name)
+	certs := cc.findCertificatesFor(cc.name)
 	if len(certs) == 0 {
-		log.Printf("there were no certs found for %s\n", acmc.name)
+		log.Printf("there were no certs found for %s\n", cc.name)
 		pres.NotFound()
 	} else {
-		model := NewCertificateModel(acmc.loc, acmc.coin)
-		model.name = acmc.name
+		model := NewCertificateModel(cc.loc, cc.coin)
+		model.name = cc.name
 
 		// log.Printf("found %d certs for %s\n", len(certs), acmc.name)
 		model.arn = certs[0]
@@ -75,10 +75,10 @@ func (acmc *certificateCreator) DetermineInitialState(pres corebottom.ValuePrese
 	}
 }
 
-func (acmc *certificateCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
-	model := NewCertificateModel(acmc.loc, acmc.coin)
-	for k, p := range acmc.props {
-		v := acmc.tools.Storage.Eval(p)
+func (cc *certificateCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
+	model := NewCertificateModel(cc.loc, cc.coin)
+	for k, p := range cc.props {
+		v := cc.tools.Storage.Eval(p)
 		switch k.Id() {
 		case "Domain":
 			domain, ok := v.(myroute53.ExportedDomain)
@@ -105,82 +105,105 @@ func (acmc *certificateCreator) DetermineDesiredState(pres corebottom.ValuePrese
 				return
 			}
 			model.validationMethod = meth
+		case "ValidationProvider":
+			meth, ok := utils.AsStringer(v)
+			if !ok {
+				log.Fatalf("ValidationProvider must be a string")
+				return
+			}
+			model.validationProvider = meth
 		default:
 			log.Fatalf("certificate coin does not support a parameter %s\n", k.Id())
 		}
 	}
-	// acmc.tools.Storage.Bind(acmc.coin, model)
 	pres.Present(model)
 }
 
-func (acmc *certificateCreator) UpdateReality() {
-	tmp := acmc.tools.Storage.GetCoin(acmc.coin, corebottom.DETERMINE_INITIAL_MODE)
+func (cc *certificateCreator) UpdateReality() {
+	found := cc.tools.Storage.GetCoin(cc.coin, corebottom.DETERMINE_INITIAL_MODE)
 
-	if tmp != nil {
-		found := tmp.(*certificateModel)
-		log.Printf("certificate %s already existed for %s\n", found.arn, found.name)
-		acmc.tools.Storage.Adopt(acmc.coin, found)
-		return
-	}
-
-	desired := acmc.tools.Storage.GetCoin(acmc.coin, corebottom.DETERMINE_DESIRED_MODE).(*certificateModel)
-
-	created := NewCertificateModel(desired.loc, acmc.coin)
-	created.name = desired.name
-	created.hzid = desired.hzid
+	desired := cc.tools.Storage.GetCoin(cc.coin, corebottom.DETERMINE_DESIRED_MODE).(*certificateModel)
 
 	vm := types.ValidationMethod(desired.validationMethod.String())
 	if vm == "" {
 		vm = types.ValidationMethodDns
 	}
-
-	input := acm.RequestCertificateInput{DomainName: &acmc.name, ValidationMethod: vm}
-	if len(desired.sans) > 0 {
-		input.SubjectAlternativeNames = desired.sans
+	vp := desired.validationProvider.String()
+	var dnsAsserter func(string, string, string) error
+	if vp == "" || vp == "Route53" {
+		dnsAsserter = func(zone, key, value string) error {
+			return cc.insertCheckRecords(desired, zone, key, value)
+		}
+	} else {
+		tmp := cc.tools.Recall.Find("dns-asserter", vp)
+		if tmp == nil {
+			panic("no dns-asserter for " + vp + " was found")
+		}
+		var ok bool
+		dnsAsserter, ok = tmp.(func(string, string, string) error)
+		if !ok {
+			panic(vp + " was not a dns-asserter")
+		}
 	}
-	req, err := acmc.client.RequestCertificate(context.TODO(), &input)
-	if err != nil {
-		log.Printf("failed to request cert %s: %v\n", acmc.name, err)
+
+	var created *certificateModel
+	if found != nil {
+		foundCert := found.(*certificateModel)
+		log.Printf("certificate %s already existed for %s\n", foundCert.arn, foundCert.name)
+		cc.tools.Storage.Adopt(cc.coin, foundCert)
+		created = foundCert
+	} else {
+		created = NewCertificateModel(desired.loc, cc.coin)
+		created.name = desired.name
+		created.hzid = desired.hzid
+
+		input := acm.RequestCertificateInput{DomainName: &cc.name, ValidationMethod: vm}
+		if len(desired.sans) > 0 {
+			input.SubjectAlternativeNames = desired.sans
+		}
+		req, err := cc.client.RequestCertificate(context.TODO(), &input)
+		if err != nil {
+			log.Printf("failed to request cert %s: %v\n", cc.name, err)
+		}
+		log.Printf("requested cert for %s: %s\n", cc.name, *req.CertificateArn)
+		created.arn = *req.CertificateArn
 	}
-	log.Printf("requested cert for %s: %s\n", acmc.name, *req.CertificateArn)
-	created.arn = *req.CertificateArn
 
-	// Check if we still need to validate it ...
-
-	// acmc.describeCertificate(*req.CertificateArn)
-
+	// Either way, may sure it is validated ...
 	utils.ExponentialBackoff(func() bool {
-		return acmc.tryToValidateCert(created.arn, created.hzid)
+		return cc.tryToValidateCert(created.arn, dnsAsserter)
 	})
 
-	acmc.tools.Storage.Bind(acmc.coin, created)
+	if found == nil {
+		cc.tools.Storage.Bind(cc.coin, created)
+	}
 }
 
-func (acmc *certificateCreator) TearDown() {
-	tmp := acmc.tools.Storage.GetCoin(acmc.coin, corebottom.DETERMINE_INITIAL_MODE)
+func (cc *certificateCreator) TearDown() {
+	tmp := cc.tools.Storage.GetCoin(cc.coin, corebottom.DETERMINE_INITIAL_MODE)
 
 	if tmp == nil {
-		log.Printf("no certificate existed for %s\n", acmc.name)
+		log.Printf("no certificate existed for %s\n", cc.name)
 		return
 	}
 
 	found := tmp.(*certificateModel)
-	log.Printf("you have asked to tear down certificate for %s (arn: %s) with mode %s\n", found.name, found.arn, acmc.teardown.Mode())
-	switch acmc.teardown.Mode() {
+	log.Printf("you have asked to tear down certificate for %s (arn: %s) with mode %s\n", found.name, found.arn, cc.teardown.Mode())
+	switch cc.teardown.Mode() {
 	case "preserve":
 		log.Printf("not deleting certificate %s because teardown mode is 'preserve'", found.name)
 	case "delete":
 		log.Printf("deleting certificate for %s with teardown mode 'delete'", found.name)
-		DeleteCertificate(acmc.client, found.arn)
+		DeleteCertificate(cc.client, found.arn)
 	default:
-		log.Printf("cannot handle teardown mode '%s' for bucket %s", acmc.teardown.Mode(), found.name)
+		log.Printf("cannot handle teardown mode '%s' for bucket %s", cc.teardown.Mode(), found.name)
 	}
 }
 
-func (acmc *certificateCreator) findCertificatesFor(name string) []string {
+func (cc *certificateCreator) findCertificatesFor(name string) []string {
 	ret := make([]string, 0)
 	// TODO: need a loop on "NextToken"
-	certs, err := acmc.client.ListCertificates(context.TODO(), &acm.ListCertificatesInput{})
+	certs, err := cc.client.ListCertificates(context.TODO(), &acm.ListCertificatesInput{})
 	if err != nil {
 		log.Fatalf("Failed to get certificates: %v\n", err)
 	}
@@ -194,8 +217,8 @@ func (acmc *certificateCreator) findCertificatesFor(name string) []string {
 	return ret
 }
 
-func (acmc *certificateCreator) DescribeCertificate(arn string) {
-	cert, err := acmc.client.DescribeCertificate(context.TODO(), &acm.DescribeCertificateInput{CertificateArn: &arn})
+func (cc *certificateCreator) DescribeCertificate(arn string) {
+	cert, err := cc.client.DescribeCertificate(context.TODO(), &acm.DescribeCertificateInput{CertificateArn: &arn})
 	if err != nil {
 		log.Fatalf("Failed to describe certificate %s: %v\n", arn, err)
 	}
@@ -214,8 +237,8 @@ func (acmc *certificateCreator) DescribeCertificate(arn string) {
 	}
 }
 
-func (acmc *certificateCreator) tryToValidateCert(arn string, hzid string) bool {
-	cert, err := acmc.client.DescribeCertificate(context.TODO(), &acm.DescribeCertificateInput{CertificateArn: &arn})
+func (cc *certificateCreator) tryToValidateCert(arn string, asserter func(string, string, string) error) bool {
+	cert, err := cc.client.DescribeCertificate(context.TODO(), &acm.DescribeCertificateInput{CertificateArn: &arn})
 	if err != nil {
 		log.Fatalf("Failed to describe certificate %s: %v\n", arn, err)
 	}
@@ -228,44 +251,46 @@ func (acmc *certificateCreator) tryToValidateCert(arn string, hzid string) bool 
 		log.Printf("certificate issued until: %s\n", *cert.Certificate.NotAfter)
 		return true
 	case types.CertificateStatusPendingValidation:
-		dns := make(map[string]string, 0)
+		// dns := make(map[string]string, 0)
 		for _, x := range cert.Certificate.DomainValidationOptions {
 			if x.ResourceRecord != nil && x.ResourceRecord.Name != nil && x.ResourceRecord.Value != nil {
 				log.Printf("need %s => %s\n", *x.ResourceRecord.Name, *x.ResourceRecord.Value)
-				dns[*x.ResourceRecord.Name] = *x.ResourceRecord.Value
-			}
-		}
-		rrs, err := acmc.route53.ListResourceRecordSets(context.TODO(), &route53.ListResourceRecordSetsInput{HostedZoneId: &hzid})
-		if err != nil {
-			panic(err)
-		}
-		for _, r := range rrs.ResourceRecordSets {
-			if r.Type == "CNAME" {
-				log.Printf("already have %s %v\n", *r.Name, *r.ResourceRecords[0].Value)
-				dns[*r.Name] = ""
-			}
-		}
-		for k, v := range dns {
-			if v != "" {
-				log.Printf("creating %s to %s\n", k, v)
-				var ttl int64 = 300
-				changes := r53types.ResourceRecordSet{Name: &k, Type: "CNAME", TTL: &ttl, ResourceRecords: []r53types.ResourceRecord{{Value: &v}}}
-				cb := r53types.ChangeBatch{Changes: []r53types.Change{{Action: "CREATE", ResourceRecordSet: &changes}}}
-				_, err := acmc.route53.ChangeResourceRecordSets(context.TODO(), &route53.ChangeResourceRecordSetsInput{HostedZoneId: &hzid, ChangeBatch: &cb})
+				// dns[*x.ResourceRecord.Name] = *x.ResourceRecord.Value
+				err := asserter(cc.name, *x.ResourceRecord.Name, *x.ResourceRecord.Value)
 				if err != nil {
 					panic(err)
 				}
 			}
 		}
-
 		return false
 	default:
 		panic("what is this? " + cert.Certificate.Status)
 	}
 }
 
-func (acmc *certificateCreator) String() string {
-	return fmt.Sprintf("EnsureBucket[%s:%s]", "" /* eacm.env.Region */, acmc.name)
+func (cc *certificateCreator) insertCheckRecords(model *certificateModel, _, key, value string) error {
+	rrs, err := cc.route53.ListResourceRecordSets(context.TODO(), &route53.ListResourceRecordSetsInput{HostedZoneId: &model.hzid})
+	if err != nil {
+		return err
+	}
+	for _, r := range rrs.ResourceRecordSets {
+		if r.Type == "CNAME" {
+			if *r.Name == key && *r.ResourceRecords[0].Value == value {
+				log.Printf("already have %s %v\n", *r.Name, *r.ResourceRecords[0].Value)
+				return nil
+			}
+		}
+	}
+	log.Printf("creating %s to %s\n", key, value)
+	var ttl int64 = 300
+	changes := r53types.ResourceRecordSet{Name: &key, Type: "CNAME", TTL: &ttl, ResourceRecords: []r53types.ResourceRecord{{Value: &value}}}
+	cb := r53types.ChangeBatch{Changes: []r53types.Change{{Action: "CREATE", ResourceRecordSet: &changes}}}
+	_, err = cc.route53.ChangeResourceRecordSets(context.TODO(), &route53.ChangeResourceRecordSetsInput{HostedZoneId: &model.hzid, ChangeBatch: &cb})
+	return err
+}
+
+func (cc *certificateCreator) String() string {
+	return fmt.Sprintf("CreateCert[%s]", cc.name)
 }
 
 func DeleteCertificate(client *acm.Client, arn string) {
@@ -273,7 +298,6 @@ func DeleteCertificate(client *acm.Client, arn string) {
 	if err != nil {
 		panic(err)
 	}
-	log.Printf("I think the certificate was deleted because no error was reported")
 }
 
 var _ corebottom.Ensurable = &certificateCreator{}
