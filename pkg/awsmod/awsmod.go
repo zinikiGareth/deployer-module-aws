@@ -31,6 +31,7 @@ func RegisterWithDriver(deployer driverbottom.Driver) error {
 	tools.Register.ExtensionPoint("dns-asserter")
 
 	tools.Register.Register("target", "cloudfront.distribution.fromS3", cfront.NewWebsiteFromS3Handler(mytools))
+	tools.Register.Register("target", "cloudfront.invalidate", cfront.NewInvalidateHandler(mytools))
 
 	tools.Register.Register("blank", "aws.Route53.DomainName", &route53.DomainNameBlank{})
 	tools.Register.Register("blank", "aws.Route53.ALIAS", &route53.ALIASBlank{})
