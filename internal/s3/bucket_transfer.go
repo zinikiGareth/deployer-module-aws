@@ -7,22 +7,31 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"ziniki.org/deployer/coremod/pkg/corebottom"
 )
 
 type bucketTransfer struct {
 	client *s3.Client
 	bucket string
+	path   string
 }
 
 func (b *bucketTransfer) PourInto(key string, contents io.Reader) {
-	log.Printf("want to pour %s into %s", key, b.bucket)
+	log.Printf("want to pour %s into %s:%s", key, b.bucket, b.path+key)
 	b.client.PutObject(context.TODO(), &s3.PutObjectInput{
 		Bucket: aws.String(b.bucket),
-		Key:    aws.String(key),
+		Key:    aws.String(b.path + key),
 		Body:   contents,
 	})
+}
+
+func (b *bucketTransfer) Relative(name string) (corebottom.FileDest, error) {
+	nested := &bucketTransfer{client: b.client, bucket: b.bucket, path: b.path + name + "/"}
+	return nested, nil
 }
 
 func NewBucketTransfer(client *s3.Client, bucket string) *bucketTransfer {
 	return &bucketTransfer{client: client, bucket: bucket}
 }
+
+var _ corebottom.FileDest = &bucketTransfer{}
