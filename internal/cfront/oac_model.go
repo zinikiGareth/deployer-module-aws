@@ -26,7 +26,7 @@ func (m *oacModel) Loc() *errorsink.Location {
 }
 
 func (m *oacModel) ShortDescription() string {
-	return fmt.Sprintf("OACModel[" + m.name + "]")
+	return fmt.Sprintf("OACModel[%s]", m.name)
 }
 
 func (m *oacModel) DumpTo(iw driverbottom.IndentWriter) {

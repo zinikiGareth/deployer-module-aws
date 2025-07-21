@@ -156,10 +156,10 @@ func (w *websiteAction) Resolve(r driverbottom.Resolver) driverbottom.BindingReq
 		}
 		cbcoin := corebottom.CoinId(w.tools.Storage.NewObjId(w.named.Loc()))
 		cbOpts := w.useProps(r, notused, "TargetOriginId")
-		cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "CachePolicy")] = coretop.MakeInvokeExpr(getcp, drivertop.NewIdentifierToken(w.named.Loc(), "id"))
+		cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "CachePolicy")] = drivertop.MakeInvokeExpr(getcp, drivertop.NewIdentifierToken(w.named.Loc(), "id"))
 		cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "PathPattern")] = drivertop.MakeString(w.named.Loc(), "*.html")
 		getrhp := coretop.MakeGetCoinMethod(w.named.Loc(), rhp.coin)
-		cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "ResponseHeadersPolicy")] = coretop.MakeInvokeExpr(getrhp, drivertop.NewIdentifierToken(w.named.Loc(), "id"))
+		cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "ResponseHeadersPolicy")] = drivertop.MakeInvokeExpr(getrhp, drivertop.NewIdentifierToken(w.named.Loc(), "id"))
 		w.coins.cbs = append(w.coins.cbs, &CacheBehaviorCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: cbcoin, name: cbName, props: cbOpts, rhp: rhp})
 		getcb := coretop.MakeGetCoinMethod(w.named.Loc(), cbcoin)
 		cbcoins = append(cbcoins, getcb)
@@ -167,9 +167,9 @@ func (w *websiteAction) Resolve(r driverbottom.Resolver) driverbottom.BindingReq
 
 	dprops := w.useProps(r, notused, "Certificate", "Comment", "Domain", "TargetOriginId")
 	dprops[drivertop.NewIdentifierToken(w.named.Loc(), "CacheBehaviors")] = drivertop.NewListExpr(w.named.Loc(), cbcoins)
-	dprops[drivertop.NewIdentifierToken(w.named.Loc(), "CachePolicy")] = coretop.MakeInvokeExpr(getcp, drivertop.NewIdentifierToken(w.named.Loc(), "id"))
-	dprops[drivertop.NewIdentifierToken(w.named.Loc(), "OriginDNS")] = coretop.MakeInvokeExpr(bucket, drivertop.NewIdentifierToken(w.named.Loc(), "dnsName"))
-	dprops[drivertop.NewIdentifierToken(w.named.Loc(), "OriginAccessControl")] = coretop.MakeInvokeExpr(getoac, drivertop.NewIdentifierToken(w.named.Loc(), "id"))
+	dprops[drivertop.NewIdentifierToken(w.named.Loc(), "CachePolicy")] = drivertop.MakeInvokeExpr(getcp, drivertop.NewIdentifierToken(w.named.Loc(), "id"))
+	dprops[drivertop.NewIdentifierToken(w.named.Loc(), "OriginDNS")] = drivertop.MakeInvokeExpr(bucket, drivertop.NewIdentifierToken(w.named.Loc(), "dnsName"))
+	dprops[drivertop.NewIdentifierToken(w.named.Loc(), "OriginAccessControl")] = drivertop.MakeInvokeExpr(getoac, drivertop.NewIdentifierToken(w.named.Loc(), "id"))
 
 	w.coins.distribution = &distributionCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: discoin, name: w.named.Text(), props: dprops}
 
@@ -267,7 +267,7 @@ func (w *websiteAction) UpdateReality() {
 }
 
 func (w *websiteAction) makePolicy() corebottom.PolicyDocument {
-	allResources, ok := w.tools.Storage.EvalAsStringer(coretop.MakeInvokeExpr(w.bucket, drivertop.NewIdentifierToken(w.loc, "allResources")))
+	allResources, ok := w.tools.Storage.EvalAsStringer(drivertop.MakeInvokeExpr(w.bucket, drivertop.NewIdentifierToken(w.loc, "allResources")))
 	if !ok {
 		log.Fatalf("allResources failed")
 	}
