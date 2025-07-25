@@ -10,6 +10,7 @@ import (
 	"ziniki.org/deployer/modules/aws/internal/dynamodb"
 	"ziniki.org/deployer/modules/aws/internal/env"
 	"ziniki.org/deployer/modules/aws/internal/iam"
+	"ziniki.org/deployer/modules/aws/internal/lambda"
 	"ziniki.org/deployer/modules/aws/internal/neptune"
 	"ziniki.org/deployer/modules/aws/internal/route53"
 	"ziniki.org/deployer/modules/aws/internal/s3"
@@ -33,6 +34,8 @@ func RegisterWithDriver(deployer driverbottom.Driver) error {
 	tools.Register.Register("target", "cloudfront.distribution.fromS3", cfront.NewWebsiteFromS3Handler(mytools))
 	tools.Register.Register("target", "cloudfront.invalidate", cfront.NewInvalidateHandler(mytools))
 
+	tools.Register.Register("target", "lambda.function", lambda.NewLambdaFunction(mytools))
+
 	tools.Register.Register("blank", "aws.Route53.DomainName", &route53.DomainNameBlank{})
 	tools.Register.Register("blank", "aws.Route53.ALIAS", &route53.ALIASBlank{})
 	tools.Register.Register("blank", "aws.Route53.CNAME", &route53.CNAMEBlank{})
@@ -50,6 +53,8 @@ func RegisterWithDriver(deployer driverbottom.Driver) error {
 	tools.Register.Register("blank", "aws.DynamoDB.Table", &dynamodb.TableBlank{})
 
 	tools.Register.Register("prop-interpreter", "aws.DynamoFields", driverbottom.CreateInterpreter(dynamodb.CreateFieldInterpreter))
+	tools.Register.Register("prop-interpreter", "aws.S3.Location", driverbottom.CreateInterpreter(s3.CreateLocationInterpreter))
+	tools.Register.Register("prop-interpreter", "aws.IAM.WithRole", driverbottom.CreateInterpreter(iam.CreateWithRoleInterpreter))
 
 	loc := &errorsink.Location{}
 	// Permissions by name
