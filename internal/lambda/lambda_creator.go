@@ -198,18 +198,22 @@ func (lc *lambdaCreator) UpdateReality() {
 	*/
 
 	if tmp != nil {
-		// found := tmp.(*DistributionModel)
-		panic("case not handled")
+		found := tmp.(*LambdaAWSModel)
 		/*
 			created.arn = found.arn
 			created.distroId = found.distroId
 			created.domainName = found.domainName
+		*/
+		log.Printf("lambda %s already existed for %s\n", *found.found.Configuration.FunctionArn, found.name)
+		/*
 
-			log.Printf("distribution %s already existed for %s (%s %s)\n", found.arn, found.name, found.distroId, found.domainName)
 			diffs := figureDiffs(lc.tools, found, desired)
 			if diffs == nil {
-				lc.tools.Storage.Adopt(lc.coin, found)
-				return
+		*/
+		log.Printf("not handling diffs yet, so just adopting ...")
+		lc.tools.Storage.Adopt(lc.coin, found)
+		return
+		/*
 			} else {
 				curr, err := lc.client.GetDistributionConfig(context.TODO(), &cloudfront.GetDistributionConfigInput{Id: &found.distroId})
 				if err != nil {
