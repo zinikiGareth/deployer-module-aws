@@ -21,11 +21,13 @@ type DistributionModel struct {
 	viewerCert  driverbottom.Expr
 	oac         driverbottom.Expr
 	cachePolicy driverbottom.Expr
+	defRootExpr driverbottom.Expr
 	behaviors   driverbottom.List
 
-	distroId       string
-	arn            string
-	domainName     string
+	distroId   string
+	arn        string
+	domainName string
+	// defaultRoot    string
 	foundBehaviors []*cbModel
 }
 

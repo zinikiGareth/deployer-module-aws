@@ -173,7 +173,7 @@ func (w *websiteAction) Resolve(r driverbottom.Resolver) driverbottom.BindingReq
 		cbcoins = append(cbcoins, getcb)
 	}
 
-	dprops := w.useProps(r, notused, "Certificate", "Comment", "Domain", "TargetOriginId")
+	dprops := w.useProps(r, notused, "Certificate", "Comment", "DefaultRoot", "Domain", "TargetOriginId")
 	dprops[drivertop.NewIdentifierToken(w.named.Loc(), "CacheBehaviors")] = drivertop.NewListExpr(w.named.Loc(), cbcoins)
 	dprops[drivertop.NewIdentifierToken(w.named.Loc(), "CachePolicy")] = drivertop.MakeInvokeExpr(getcp, drivertop.NewIdentifierToken(w.named.Loc(), "id"))
 	dprops[drivertop.NewIdentifierToken(w.named.Loc(), "OriginDNS")] = drivertop.MakeInvokeExpr(bucket, drivertop.NewIdentifierToken(w.named.Loc(), "dnsName"))

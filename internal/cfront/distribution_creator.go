@@ -91,6 +91,7 @@ func (cfdc *distributionCreator) DetermineInitialState(pres corebottom.ValuePres
 func (cfdc *distributionCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 	var cert driverbottom.Expr
 	var domain driverbottom.List
+	var defaultRoot driverbottom.Expr
 	var oac driverbottom.Expr
 	var cbs driverbottom.List
 	var cp driverbottom.Expr
@@ -105,6 +106,8 @@ func (cfdc *distributionCreator) DetermineDesiredState(pres corebottom.ValuePres
 			src = v
 		case "Comment":
 			comment = v
+		case "DefaultRoot":
+			defaultRoot = v
 		case "Domain":
 			le, isList := v.(driverbottom.List)
 			if isList {
@@ -139,7 +142,7 @@ func (cfdc *distributionCreator) DetermineDesiredState(pres corebottom.ValuePres
 		cfdc.tools.Reporter.ReportAtf(cfdc.loc, "TargetOriginId was not defined")
 	}
 
-	model := &DistributionModel{name: cfdc.name, loc: cfdc.loc, coin: cfdc.coin, comment: comment, origindns: src, oac: oac, behaviors: cbs, cachePolicy: cp, domains: domain, viewerCert: cert, toid: toid}
+	model := &DistributionModel{name: cfdc.name, loc: cfdc.loc, coin: cfdc.coin, comment: comment, origindns: src, oac: oac, defRootExpr: defaultRoot, behaviors: cbs, cachePolicy: cp, domains: domain, viewerCert: cert, toid: toid}
 	pres.Present(model)
 }
 
@@ -148,8 +151,23 @@ func (cfdc *distributionCreator) UpdateReality() {
 	desired := cfdc.tools.Storage.GetCoin(cfdc.coin, corebottom.DETERMINE_DESIRED_MODE).(*DistributionModel)
 	created := &DistributionModel{name: cfdc.name, loc: cfdc.loc, coin: cfdc.coin}
 
+	var defRootObj *string = nil
+	if desired.defRootExpr != nil {
+		tmp, ok := cfdc.tools.Storage.EvalAsStringer(desired.defRootExpr)
+		if !ok {
+			log.Fatalf("failed to evaluate DefaultRoot")
+		}
+		ts := tmp.String()
+		defRootObj = &ts
+	}
+
 	if tmp != nil {
 		found := tmp.(*DistributionModel)
+
+		created.arn = found.arn
+		created.distroId = found.distroId
+		created.domainName = found.domainName
+
 		log.Printf("distribution %s already existed for %s (%s %s)\n", found.arn, found.name, found.distroId, found.domainName)
 		diffs := figureDiffs(cfdc.tools, found, desired)
 		if diffs == nil {
@@ -164,8 +182,11 @@ func (cfdc *distributionCreator) UpdateReality() {
 			curr.ETag = nil
 			config := curr.DistributionConfig
 
-			// TODO: should allow other things to be updated too ...
 			config.CacheBehaviors = diffs.apply(cfdc.tools, cfdc.client, created)
+			if config.DefaultRootObject != nil && *config.DefaultRootObject != *defRootObj {
+				config.DefaultRootObject = defRootObj
+			}
+			// TODO: should allow other things to be updated too ...
 
 			log.Printf("updating distribution")
 			_, err = cfdc.client.UpdateDistribution(context.TODO(), &cloudfront.UpdateDistributionInput{Id: &found.distroId, IfMatch: etag, DistributionConfig: config})
@@ -188,7 +209,7 @@ func (cfdc *distributionCreator) UpdateReality() {
 	dcb := types.DefaultCacheBehavior{TargetOriginId: &toidS, ViewerProtocolPolicy: types.ViewerProtocolPolicyRedirectToHttps, CachePolicyId: &cpIdS}
 	origins := cfdc.FigureOrigins(desired, toidS)
 	behaviors := cfdc.FigureCacheBehaviors(desired)
-	config := cfdc.BuildConfig(desired, &dcb, behaviors, origins)
+	config := cfdc.BuildConfig(desired, &dcb, behaviors, origins, defRootObj)
 
 	if desired.viewerCert != nil {
 		cfdc.AttachViewerCert(desired, config)
@@ -325,7 +346,7 @@ func (cfdc *distributionCreator) FigureCacheBehaviors(desired *DistributionModel
 	return &types.CacheBehaviors{Quantity: &cbl, Items: cbs}
 }
 
-func (cfdc *distributionCreator) BuildConfig(desired *DistributionModel, dcb *types.DefaultCacheBehavior, behaviors *types.CacheBehaviors, origins *types.Origins) *types.DistributionConfig {
+func (cfdc *distributionCreator) BuildConfig(desired *DistributionModel, dcb *types.DefaultCacheBehavior, behaviors *types.CacheBehaviors, origins *types.Origins, defRootObject *string) *types.DistributionConfig {
 	comment, ok := cfdc.tools.Storage.EvalAsStringer(desired.comment)
 	if !ok {
 		log.Fatalf("!ok, %T", comment)
@@ -342,8 +363,7 @@ func (cfdc *distributionCreator) BuildConfig(desired *DistributionModel, dcb *ty
 		log.Fatalf("needs to be list of strings")
 	}
 	nAliases := int32(len(aliases))
-	rootObject := "index.html"
-	return &types.DistributionConfig{CallerReference: &cfdc.name, Comment: &commentS, DefaultCacheBehavior: dcb, CacheBehaviors: behaviors, Enabled: &e, DefaultRootObject: &rootObject, Origins: origins, Aliases: &types.Aliases{Items: aliases, Quantity: &nAliases}}
+	return &types.DistributionConfig{CallerReference: &cfdc.name, Comment: &commentS, DefaultCacheBehavior: dcb, CacheBehaviors: behaviors, Enabled: &e, DefaultRootObject: defRootObject, Origins: origins, Aliases: &types.Aliases{Items: aliases, Quantity: &nAliases}}
 }
 
 func (cfdc *distributionCreator) AttachViewerCert(desired *DistributionModel, config *types.DistributionConfig) {
