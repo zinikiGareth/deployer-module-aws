@@ -107,46 +107,28 @@ func (w *websiteAction) Resolve(r driverbottom.Resolver) driverbottom.BindingReq
 		log.Fatalf("was %T", cbe)
 	}
 	cbcoins := []driverbottom.Expr{}
-	for n, cb := range cbs {
-		cbName := fmt.Sprintf("%s-cb-%d", w.named.Text(), n)
-		rhpName := fmt.Sprintf("%s-cb-%d-rh", w.named.Text(), n)
+	for _, cb := range cbs {
 		cbi := cb.(map[string]interface{})
 		pp := ""
-		var rhp *RHPCreator
+		var rhs map[string]interface{}
+		subName := ""
 		for k, v := range cbi {
 			switch k {
+			case "SubName":
+				subName = v.(string)
 			case "PathPattern":
 				pp = v.(string)
 			case "ResponseHeaders":
-				m := v.(map[string]interface{})
-				header := ""
-				value := ""
-				for a, b := range m {
-					switch a {
-					case "Header":
-						header = b.(string)
-					case "Value":
-						value = b.(string)
-					default:
-						log.Printf("no such RH property %s\n", k)
-					}
-				}
-				if header == "" {
-					w.tools.Reporter.ReportAtf(cblist.Loc(), "ResponseHeaders requires Header")
-				}
-				if value == "" {
-					w.tools.Reporter.ReportAtf(cblist.Loc(), "ResponseHeaders requires Value")
-				}
-				rhpOpts := make(map[driverbottom.Identifier]driverbottom.Expr)
-				rhpOpts[drivertop.NewIdentifierToken(w.named.Loc(), "Header")] = drivertop.MakeString(w.named.Loc(), header)
-				rhpOpts[drivertop.NewIdentifierToken(w.named.Loc(), "Value")] = drivertop.MakeString(w.named.Loc(), value)
-				rhpcoin := corebottom.CoinId(w.tools.Storage.NewObjId(w.named.Loc()))
-				rhp = &RHPCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: rhpcoin, name: rhpName, props: rhpOpts}
+				rhs = v.(map[string]interface{})
 			default:
 				w.tools.Reporter.ReportAtf(cblist.Loc(), "No CacheBehavior parameter %s", k)
 			}
 		}
-		if rhp == nil {
+		if subName == "" {
+			w.tools.Reporter.ReportAtf(cblist.Loc(), "CacheBehaviors requires SubName")
+			continue
+		}
+		if rhs == nil {
 			w.tools.Reporter.ReportAtf(cblist.Loc(), "CacheBehaviors requires ResponseHeaders")
 			continue
 		}
@@ -154,10 +136,36 @@ func (w *websiteAction) Resolve(r driverbottom.Resolver) driverbottom.BindingReq
 			w.tools.Reporter.ReportAtf(cblist.Loc(), "CacheBehaviors requires PathPattern")
 			continue
 		}
+		cbName := fmt.Sprintf("%s-cb-%s", w.named.Text(), subName)
+		rhpName := fmt.Sprintf("%s-cb-%s-rh", w.named.Text(), subName)
+		header := ""
+		value := ""
+		for a, b := range rhs {
+			switch a {
+			case "Header":
+				header = b.(string)
+			case "Value":
+				value = b.(string)
+			default:
+				log.Printf("no such RH property %s\n", a)
+			}
+		}
+		if header == "" {
+			w.tools.Reporter.ReportAtf(cblist.Loc(), "ResponseHeaders requires Header")
+		}
+		if value == "" {
+			w.tools.Reporter.ReportAtf(cblist.Loc(), "ResponseHeaders requires Value")
+		}
+		rhpOpts := make(map[driverbottom.Identifier]driverbottom.Expr)
+		rhpOpts[drivertop.NewIdentifierToken(w.named.Loc(), "Header")] = drivertop.MakeString(w.named.Loc(), header)
+		rhpOpts[drivertop.NewIdentifierToken(w.named.Loc(), "Value")] = drivertop.MakeString(w.named.Loc(), value)
+		rhpcoin := corebottom.CoinId(w.tools.Storage.NewObjId(w.named.Loc()))
+		rhp := &RHPCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: rhpcoin, name: rhpName, props: rhpOpts}
+
 		cbcoin := corebottom.CoinId(w.tools.Storage.NewObjId(w.named.Loc()))
 		cbOpts := w.useProps(r, notused, "TargetOriginId")
 		cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "CachePolicy")] = drivertop.MakeInvokeExpr(getcp, drivertop.NewIdentifierToken(w.named.Loc(), "id"))
-		cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "PathPattern")] = drivertop.MakeString(w.named.Loc(), "*.html")
+		cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "PathPattern")] = drivertop.MakeString(w.named.Loc(), pp)
 		getrhp := coretop.MakeGetCoinMethod(w.named.Loc(), rhp.coin)
 		cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "ResponseHeadersPolicy")] = drivertop.MakeInvokeExpr(getrhp, drivertop.NewIdentifierToken(w.named.Loc(), "id"))
 		w.coins.cbs = append(w.coins.cbs, &CacheBehaviorCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: cbcoin, name: cbName, props: cbOpts, rhp: rhp})

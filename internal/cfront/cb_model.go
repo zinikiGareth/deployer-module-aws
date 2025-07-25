@@ -42,7 +42,14 @@ func (d *cbModel) Complete() types.CacheBehavior {
 	pp := utils.AsString(d.pp)
 	rhp := utils.AsString(d.rhp)
 	cpId := d.cpId.String()
-	return types.CacheBehavior{TargetOriginId: &toi, PathPattern: &pp, ViewerProtocolPolicy: types.ViewerProtocolPolicyRedirectToHttps, CachePolicyId: &cpId, ResponseHeadersPolicyId: &rhp}
+	no := false
+	empty := ""
+	var zero int32 = 0
+	var two int32 = 2
+	allowed := &types.AllowedMethods{Quantity: &two, Items: []types.Method{"GET", "HEAD"}, CachedMethods: &types.CachedMethods{Quantity: &two, Items: []types.Method{"GET", "HEAD"}}}
+	lfa := &types.LambdaFunctionAssociations{Quantity: &zero, Items: []types.LambdaFunctionAssociation{}}
+	return types.CacheBehavior{TargetOriginId: &toi, PathPattern: &pp, ViewerProtocolPolicy: types.ViewerProtocolPolicyRedirectToHttps, CachePolicyId: &cpId, ResponseHeadersPolicyId: &rhp,
+		SmoothStreaming: &no, Compress: &no, FieldLevelEncryptionId: &empty, AllowedMethods: allowed, LambdaFunctionAssociations: lfa}
 }
 
 var _ driverbottom.Describable = &cbModel{}

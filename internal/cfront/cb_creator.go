@@ -82,7 +82,7 @@ func (cbc *CacheBehaviorCreator) Create(pres corebottom.ValuePresenter) {
 		panic("not a string")
 	}
 
-	model := &cbModel{pp: ppEval, rhp: rhpEval, targetOriginId: targetOriginId, cpId: cpId}
+	model := &cbModel{name: cbc.name, pp: ppEval, rhp: rhpEval, targetOriginId: targetOriginId, cpId: cpId}
 	// log.Printf("presenting CB %p\n", model)
 	pres.Present(model)
 }

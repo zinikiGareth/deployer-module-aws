@@ -23,9 +23,10 @@ type DistributionModel struct {
 	cachePolicy driverbottom.Expr
 	behaviors   driverbottom.List
 
-	distroId   string
-	arn        string
-	domainName string
+	distroId       string
+	arn            string
+	domainName     string
+	foundBehaviors []*cbModel
 }
 
 func (model *DistributionModel) ObtainMethod(name string) driverbottom.Method {

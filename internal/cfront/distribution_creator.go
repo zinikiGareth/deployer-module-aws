@@ -70,6 +70,14 @@ func (cfdc *distributionCreator) DetermineInitialState(pres corebottom.ValuePres
 				model.arn = *p.ARN
 				model.distroId = *p.Id
 				model.domainName = *p.DomainName
+				for _, cb := range p.CacheBehaviors.Items {
+					cpid, ok := utils.AsStringer(*cb.CachePolicyId)
+					if !ok {
+						panic("ugh")
+					}
+					cbm := &cbModel{targetOriginId: *cb.TargetOriginId, pp: *cb.PathPattern, cpId: cpid, rhp: *cb.ResponseHeadersPolicyId}
+					model.foundBehaviors = append(model.foundBehaviors, cbm)
+				}
 				log.Printf("found distro %s: %s %s %s\n", model.name, model.arn, model.distroId, model.domainName)
 
 				pres.Present(model)
@@ -137,16 +145,38 @@ func (cfdc *distributionCreator) DetermineDesiredState(pres corebottom.ValuePres
 
 func (cfdc *distributionCreator) UpdateReality() {
 	tmp := cfdc.tools.Storage.GetCoin(cfdc.coin, corebottom.DETERMINE_INITIAL_MODE)
+	desired := cfdc.tools.Storage.GetCoin(cfdc.coin, corebottom.DETERMINE_DESIRED_MODE).(*DistributionModel)
+	created := &DistributionModel{name: cfdc.name, loc: cfdc.loc, coin: cfdc.coin}
 
 	if tmp != nil {
 		found := tmp.(*DistributionModel)
 		log.Printf("distribution %s already existed for %s (%s %s)\n", found.arn, found.name, found.distroId, found.domainName)
-		cfdc.tools.Storage.Adopt(cfdc.coin, found)
-		return
-	}
+		diffs := figureDiffs(cfdc.tools, found, desired)
+		if diffs == nil {
+			cfdc.tools.Storage.Adopt(cfdc.coin, found)
+			return
+		} else {
+			curr, err := cfdc.client.GetDistributionConfig(context.TODO(), &cloudfront.GetDistributionConfigInput{Id: &found.distroId})
+			if err != nil {
+				panic(err)
+			}
+			etag := curr.ETag
+			curr.ETag = nil
+			config := curr.DistributionConfig
 
-	desired := cfdc.tools.Storage.GetCoin(cfdc.coin, corebottom.DETERMINE_DESIRED_MODE).(*DistributionModel)
-	created := &DistributionModel{name: cfdc.name, loc: cfdc.loc, coin: cfdc.coin}
+			// TODO: should allow other things to be updated too ...
+			config.CacheBehaviors = diffs.apply(cfdc.tools, cfdc.client, created)
+
+			log.Printf("updating distribution")
+			_, err = cfdc.client.UpdateDistribution(context.TODO(), &cloudfront.UpdateDistributionInput{Id: &found.distroId, IfMatch: etag, DistributionConfig: config})
+			if err != nil {
+				panic(err)
+			}
+
+			cfdc.tools.Storage.Bind(cfdc.coin, created)
+			return
+		}
+	}
 
 	cpId, ok1 := cfdc.tools.Storage.EvalAsStringer(desired.cachePolicy)
 	toid, ok2 := cfdc.tools.Storage.EvalAsStringer(desired.toid)
