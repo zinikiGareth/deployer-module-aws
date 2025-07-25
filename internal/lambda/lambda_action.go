@@ -277,6 +277,7 @@ type coinPresenter struct {
 	// oac      *oacModel
 	// rhpCount int
 	// cbms     []*cbModel
+	lambdaFound *LambdaAWSModel
 	lambda *LambdaModel
 }
 
@@ -305,6 +306,9 @@ func (c *coinPresenter) Present(value any) {
 	*/
 	case *LambdaModel:
 		c.lambda = value
+		l.tools.Storage.Bind(l.coins.lambda.coin, value)
+	case *LambdaAWSModel:
+		c.lambdaFound = value
 		l.tools.Storage.Bind(l.coins.lambda.coin, value)
 	default:
 		log.Fatalf("need to handle present(%T %v)\n", value, value)

@@ -1,6 +1,7 @@
 package lambda
 
 import (
+	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
@@ -31,6 +32,14 @@ type LambdaModel struct {
 		foundBehaviors []*cbModel
 	*/
 	arn string
+}
+
+type LambdaAWSModel struct {
+	name string
+	coin corebottom.CoinId
+
+	found   *lambda.GetFunctionOutput
+	created *lambda.CreateFunctionOutput
 }
 
 func (model *LambdaModel) ObtainMethod(name string) driverbottom.Method {

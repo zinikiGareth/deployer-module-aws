@@ -4,8 +4,10 @@ import (
 	"context"
 	"log"
 
+	"github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/lambda/types"
+	"github.com/aws/smithy-go"
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
@@ -52,6 +54,20 @@ func (lc *lambdaCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 	}
 	lc.client = awsEnv.LambdaClient()
 
+	req, err := lc.client.GetFunction(context.TODO(), &lambda.GetFunctionInput{FunctionName: &lc.name})
+	if err != nil {
+		if !lambdaExists(err) {
+			pres.NotFound()
+			return
+		}
+		log.Fatalf("could not recover function %s: %v\n", lc.name, err)
+	}
+	if req == nil {
+		pres.NotFound()
+		return
+	}
+	model := &LambdaAWSModel{name: lc.name, found: req}
+	pres.Present(model)
 	/*
 		distros, err := lc.client.ListDistributions(context.TODO(), &cloudfront.ListDistributionsInput{})
 		if err != nil {
@@ -85,7 +101,6 @@ func (lc *lambdaCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 			}
 		}
 	*/
-	pres.NotFound()
 }
 
 func (lc *lambdaCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
@@ -280,19 +295,45 @@ func (lc *lambdaCreator) UpdateReality() {
 }
 
 func (lc *lambdaCreator) TearDown() {
-	/*
-		tmp := lc.tools.Storage.GetCoin(lc.coin, corebottom.DETERMINE_INITIAL_MODE)
+	tmp := lc.tools.Storage.GetCoin(lc.coin, corebottom.DETERMINE_INITIAL_MODE)
 
-		if tmp != nil {
-			found := tmp.(*DistributionModel)
-			log.Printf("you have asked to tear down distribution %s (id: %s, arn: %s) with mode %s\n", lc.name, found.distroId, found.arn, lc.teardown.Mode())
+	if tmp != nil {
+		found := tmp.(*LambdaAWSModel)
+		log.Printf("you have asked to tear down lambda %s with mode %s\n", found.name, lc.teardown.Mode())
 
-			lc.DisableIt(found)
-			lc.DeleteIt(found)
-		} else {
-			log.Printf("no distribution existed for %s\n", lc.name)
+		req, err := lc.client.DeleteFunction(context.TODO(), &lambda.DeleteFunctionInput{FunctionName: &found.name})
+		if err != nil {
+			log.Fatalf("failed to delete lambda %s: %v\n", found.name, err)
 		}
-	*/
+		log.Printf("returned %v\n", req)
+	} else {
+		log.Printf("no distribution existed for %s\n", lc.name)
+	}
+}
+
+func lambdaExists(err error) bool {
+	if err == nil {
+		return true
+	}
+	e1, ok := err.(*smithy.OperationError)
+	if ok {
+		e2, ok := e1.Err.(*http.ResponseError)
+		if ok {
+			if e2.ResponseError.Response.StatusCode == 404 {
+				switch e4 := e2.Err.(type) {
+				case *types.ResourceNotFoundException:
+					return false
+				default:
+					log.Printf("error: %T %v", e4, e4)
+					panic("what error?")
+				}
+			}
+			log.Fatalf("error: %T %v %T %v", e2.Response.Status, e2.Response.Status, e2.ResponseError.Response.StatusCode, e2.ResponseError.Response.StatusCode)
+		}
+		log.Fatalf("error: %T %v", e1.Err, e1.Err)
+	}
+	log.Fatalf("getting lambda failed: %T %v", err, err)
+	panic("failed")
 }
 
 var _ corebottom.Ensurable = &lambdaCreator{}
