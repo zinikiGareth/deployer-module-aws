@@ -82,7 +82,7 @@ func (s *S3Location) String() string {
 	return fmt.Sprintf("S3[%s:%s]", s.Bucket.String(), s.Key.String())
 }
 
-func CreateLocationInterpreter(tools *driverbottom.CoreTools, parent driverbottom.PropertyParent, prop driverbottom.Identifier) driverbottom.Interpreter {
+func CreateLocationInterpreter(tools *driverbottom.CoreTools, scope driverbottom.Scope, parent driverbottom.PropertyParent, prop driverbottom.Identifier, tokens []driverbottom.Token) driverbottom.Interpreter {
 	s3loc := &S3Location{Locatable: prop}
 	parent.AddProperty(prop, s3loc)
 	return drivertop.NewPropertiesInnerScope(tools, s3loc)

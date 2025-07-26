@@ -8,6 +8,7 @@ import (
 	"ziniki.org/deployer/driver/pkg/drivertop"
 	"ziniki.org/deployer/driver/pkg/errorsink"
 	"ziniki.org/deployer/driver/pkg/utils"
+	"ziniki.org/deployer/modules/aws/internal/iam"
 )
 
 type lambdaAction struct {
@@ -49,6 +50,9 @@ func (l *lambdaAction) AddAdverb(adv driverbottom.Adverb, tokens []driverbottom.
 }
 
 func (l *lambdaAction) AddProperty(name driverbottom.Identifier, value driverbottom.Expr) {
+	if l.coins == nil {
+		l.coins = &lambdaCoins{}
+	}
 	if name.Id() == "name" {
 		if l.named != nil {
 			l.tools.Reporter.Report(name.Loc().Offset, "duplicate definition of name")
@@ -65,6 +69,11 @@ func (l *lambdaAction) AddProperty(name driverbottom.Identifier, value driverbot
 			l.tools.Reporter.Reportf(name.Loc().Offset, "duplicate definition of %s", name.Id())
 			return
 		}
+		switch v := value.(type) {
+		case *iam.WithRole:
+			log.Printf("we have a withrole which I think we need to add a coin for, etc")
+			l.coins.withRole = v
+		}
 		l.props[name] = value
 	}
 }
@@ -73,7 +82,9 @@ func (l *lambdaAction) Completed() {
 }
 
 func (l *lambdaAction) Resolve(r driverbottom.Resolver) driverbottom.BindingRequirement {
-	l.coins = &lambdaCoins{}
+	if l.coins == nil {
+		l.coins = &lambdaCoins{}
+	}
 	notused := utils.PropsMap(l.props)
 
 	// runtime := utils.FindProp(r, l.props, notused, "Runtime")
@@ -179,6 +190,11 @@ func (l *lambdaAction) Resolve(r driverbottom.Resolver) driverbottom.BindingRequ
 
 		l.coins.distribution = &distributionCreator{tools: l.tools, teardown: teardown, loc: l.loc, coin: discoin, name: l.named.Text(), props: dprops}
 	*/
+
+	if l.coins.withRole != nil {
+		roleCoin := corebottom.CoinId(l.tools.Storage.NewObjId(l.coins.withRole.Loc()))
+		l.coins.roleCreator = (&iam.RoleBlank{}).Mint(l.tools, l.coins.withRole.Loc(), roleCoin, l.coins.withRole.Name(), l.coins.withRole.Props(), teardown)
+	}
 
 	funcProps := utils.UseProps(r, l.props, notused, "Code", "Handler", "Role", "Runtime")
 	l.coins.lambda = &lambdaCreator{tools: l.tools, teardown: teardown, loc: l.loc, coin: lambdaCoin, name: l.named.Text(), props: funcProps}
