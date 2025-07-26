@@ -2,7 +2,6 @@ package s3
 
 import (
 	"fmt"
-	"log"
 
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
@@ -84,7 +83,6 @@ func (s *S3Location) String() string {
 }
 
 func CreateLocationInterpreter(tools *driverbottom.CoreTools, parent driverbottom.PropertyParent, prop driverbottom.Identifier) driverbottom.Interpreter {
-	log.Printf("have %T %v %s\n", parent, parent, prop.Id())
 	s3loc := &S3Location{Locatable: prop}
 	parent.AddProperty(prop, s3loc)
 	return drivertop.NewPropertiesInnerScope(tools, s3loc)

@@ -47,6 +47,7 @@ func RegisterWithDriver(deployer driverbottom.Driver) error {
 	tools.Register.Register("blank", "aws.CloudFront.Distribution", &cfront.DistributionBlank{})
 	tools.Register.Register("blank", "aws.S3.Bucket", &s3.BucketBlank{})
 	tools.Register.Register("blank", "aws.IAM.Policy", &iam.PolicyBlank{})
+	tools.Register.Register("blank", "aws.IAM.Role", &iam.RoleBlank{})
 	tools.Register.Register("blank", "aws.Neptune.SubnetGroup", &neptune.SubnetBlank{})
 	tools.Register.Register("blank", "aws.Neptune.Cluster", &neptune.ClusterBlank{})
 	tools.Register.Register("blank", "aws.Neptune.Instance", &neptune.InstanceBlank{})

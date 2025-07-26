@@ -180,7 +180,7 @@ func (l *lambdaAction) Resolve(r driverbottom.Resolver) driverbottom.BindingRequ
 		l.coins.distribution = &distributionCreator{tools: l.tools, teardown: teardown, loc: l.loc, coin: discoin, name: l.named.Text(), props: dprops}
 	*/
 
-	funcProps := utils.UseProps(r, l.props, notused, "Code", "Handler", "Runtime")
+	funcProps := utils.UseProps(r, l.props, notused, "Code", "Handler", "Role", "Runtime")
 	l.coins.lambda = &lambdaCreator{tools: l.tools, teardown: teardown, loc: l.loc, coin: lambdaCoin, name: l.named.Text(), props: funcProps}
 	iserr := false
 	for k, id := range notused {
@@ -278,7 +278,7 @@ type coinPresenter struct {
 	// rhpCount int
 	// cbms     []*cbModel
 	lambdaFound *LambdaAWSModel
-	lambda *LambdaModel
+	lambda      *LambdaModel
 }
 
 func (c *coinPresenter) NotFound() {

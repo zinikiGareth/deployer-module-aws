@@ -16,22 +16,8 @@ type LambdaModel struct {
 	code    *s3.S3Location
 	runtime driverbottom.Expr
 	handler driverbottom.Expr
-	/*
-		origindns   driverbottom.Expr
-		toid        driverbottom.Expr
-		domains     driverbottom.List
-		comment     driverbottom.Expr
-		viewerCert  driverbottom.Expr
-		oac         driverbottom.Expr
-		cachePolicy driverbottom.Expr
-		defRootExpr driverbottom.Expr
-		behaviors   driverbottom.List
+	role    driverbottom.Expr
 
-		distroId   string
-		domainName string
-		// defaultRoot    string
-		foundBehaviors []*cbModel
-	*/
 	arn string
 }
 

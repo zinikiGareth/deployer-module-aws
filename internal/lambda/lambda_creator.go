@@ -106,18 +106,8 @@ func (lc *lambdaCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 func (lc *lambdaCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 	var runtime driverbottom.Expr
 	var handler driverbottom.Expr
+	var role driverbottom.Expr
 	var code *s3.S3Location
-	/*
-		var cert driverbottom.Expr
-		var domain driverbottom.List
-		var defaultRoot driverbottom.Expr
-		var oac driverbottom.Expr
-		var cbs driverbottom.List
-		var cp driverbottom.Expr
-		var comment driverbottom.Expr
-		var src driverbottom.Expr
-		var toid driverbottom.Expr
-	*/
 	for p, v := range lc.props {
 		switch p.Id() {
 		case "Runtime":
@@ -126,36 +116,8 @@ func (lc *lambdaCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 			code = v.(*s3.S3Location)
 		case "Handler":
 			handler = v
-		/*
-			case "Certificate":
-				cert = v
-			case "OriginDNS":
-				src = v
-			case "Comment":
-				comment = v
-			case "DefaultRoot":
-				defaultRoot = v
-			case "Domain":
-				le, isList := v.(driverbottom.List)
-				if isList {
-					domain = le
-				} else {
-					domain = drivertop.NewListExpr(le.Loc(), []driverbottom.Expr{v})
-				}
-			case "OriginAccessControl":
-				oac = v
-			case "CacheBehaviors":
-				le, isList := v.(driverbottom.List)
-				if isList {
-					cbs = le
-				} else {
-					cbs = drivertop.NewListExpr(le.Loc(), []driverbottom.Expr{v})
-				}
-			case "CachePolicy":
-				cp = v
-			case "TargetOriginId":
-				toid = v
-		*/
+		case "Role":
+			role = v
 		default:
 			log.Printf("%v", v)
 			lc.tools.Reporter.ReportAtf(lc.loc, "invalid property for Lambda: %s", p.Id())
@@ -167,19 +129,11 @@ func (lc *lambdaCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 	if runtime == nil {
 		lc.tools.Reporter.ReportAtf(lc.loc, "Runtime was not defined")
 	}
-	/*
-		if comment == nil {
-			lc.tools.Reporter.ReportAtf(lc.loc, "Comment was not defined")
-		}
-		if src == nil {
-			lc.tools.Reporter.ReportAtf(lc.loc, "OriginDNS was not defined")
-		}
-		if toid == nil {
-			lc.tools.Reporter.ReportAtf(lc.loc, "TargetOriginId was not defined")
-		}
-	*/
+	if role == nil {
+		lc.tools.Reporter.ReportAtf(lc.loc, "Role was not defined")
+	}
 
-	model := &LambdaModel{name: lc.name, loc: lc.loc, coin: lc.coin, code: code, handler: handler, runtime: runtime}
+	model := &LambdaModel{name: lc.name, loc: lc.loc, coin: lc.coin, code: code, handler: handler, runtime: runtime, role: role}
 	pres.Present(model)
 }
 
@@ -187,62 +141,6 @@ func (lc *lambdaCreator) UpdateReality() {
 	tmp := lc.tools.Storage.GetCoin(lc.coin, corebottom.DETERMINE_INITIAL_MODE)
 	desired := lc.tools.Storage.GetCoin(lc.coin, corebottom.DETERMINE_DESIRED_MODE).(*LambdaModel)
 	created := &LambdaModel{name: lc.name, loc: lc.loc, coin: lc.coin}
-	/*
-
-		var defRootObj *string = nil
-		if desired.defRootExpr != nil {
-			tmp, ok := lc.tools.Storage.EvalAsStringer(desired.defRootExpr)
-			if !ok {
-				log.Fatalf("failed to evaluate DefaultRoot")
-			}
-			ts := tmp.String()
-			defRootObj = &ts
-		}
-	*/
-
-	if tmp != nil {
-		found := tmp.(*LambdaAWSModel)
-		/*
-			created.arn = found.arn
-			created.distroId = found.distroId
-			created.domainName = found.domainName
-		*/
-		log.Printf("lambda %s already existed for %s\n", *found.found.Configuration.FunctionArn, found.name)
-		/*
-
-			diffs := figureDiffs(lc.tools, found, desired)
-			if diffs == nil {
-		*/
-		log.Printf("not handling diffs yet, so just adopting ...")
-		lc.tools.Storage.Adopt(lc.coin, found)
-		return
-		/*
-			} else {
-				curr, err := lc.client.GetDistributionConfig(context.TODO(), &cloudfront.GetDistributionConfigInput{Id: &found.distroId})
-				if err != nil {
-					panic(err)
-				}
-				etag := curr.ETag
-				curr.ETag = nil
-				config := curr.DistributionConfig
-
-				config.CacheBehaviors = diffs.apply(lc.tools, lc.client, created)
-				if config.DefaultRootObject != nil && *config.DefaultRootObject != *defRootObj {
-					config.DefaultRootObject = defRootObj
-				}
-				// TODO: should allow other things to be updated too ...
-
-				log.Printf("updating distribution")
-				_, err = lc.client.UpdateDistribution(context.TODO(), &cloudfront.UpdateDistributionInput{Id: &found.distroId, IfMatch: etag, DistributionConfig: config})
-				if err != nil {
-					panic(err)
-				}
-
-				lc.tools.Storage.Bind(lc.coin, created)
-				return
-			}
-		*/
-	}
 
 	/*
 		cpId, ok1 := lc.tools.Storage.EvalAsStringer(desired.cachePolicy)
@@ -307,14 +205,62 @@ func (lc *lambdaCreator) UpdateReality() {
 	bucket := b1.String()
 	key := b2.String()
 
-	hackRole := "arn:aws:iam::331358773365:role/aws-ziniki-staging-Role-11P80DK9U9T9L"
+	roleArn, ok := lc.tools.Storage.EvalAsStringer(desired.role)
+	if !ok {
+		log.Fatalf("Failed to evaluate role")
+	}
+	role := roleArn.String()
 
 	if handler == "" {
 		lc.tools.Reporter.ReportAtf(lc.loc, "must specify Handler for Runtime %s", rt.String())
 		return
 	}
 
-	req, err := lc.client.CreateFunction(context.TODO(), &lambda.CreateFunctionInput{FunctionName: &lc.name, Runtime: runtime, Handler: &handler, Code: &types.FunctionCode{S3Bucket: &bucket, S3Key: &key}, Role: &hackRole})
+	if tmp != nil {
+		found := tmp.(*LambdaAWSModel)
+		/*
+			created.arn = found.arn
+			created.distroId = found.distroId
+			created.domainName = found.domainName
+		*/
+		log.Printf("lambda %s already existed for %s\n", *found.found.Configuration.FunctionArn, found.name)
+		/*
+
+			diffs := figureDiffs(lc.tools, found, desired)
+			if diffs == nil {
+		*/
+		log.Printf("not handling diffs yet, so just adopting ...")
+		lc.tools.Storage.Adopt(lc.coin, found)
+		return
+		/*
+			} else {
+				curr, err := lc.client.GetDistributionConfig(context.TODO(), &cloudfront.GetDistributionConfigInput{Id: &found.distroId})
+				if err != nil {
+					panic(err)
+				}
+				etag := curr.ETag
+				curr.ETag = nil
+				config := curr.DistributionConfig
+
+				config.CacheBehaviors = diffs.apply(lc.tools, lc.client, created)
+				if config.DefaultRootObject != nil && *config.DefaultRootObject != *defRootObj {
+					config.DefaultRootObject = defRootObj
+				}
+				// TODO: should allow other things to be updated too ...
+
+				log.Printf("updating distribution")
+				_, err = lc.client.UpdateDistribution(context.TODO(), &cloudfront.UpdateDistributionInput{Id: &found.distroId, IfMatch: etag, DistributionConfig: config})
+				if err != nil {
+					panic(err)
+				}
+
+				lc.tools.Storage.Bind(lc.coin, created)
+				return
+			}
+		*/
+	}
+
+	req, err := lc.client.CreateFunction(context.TODO(), &lambda.CreateFunctionInput{FunctionName: &lc.name, Runtime: runtime, Handler: &handler, Code: &types.FunctionCode{S3Bucket: &bucket, S3Key: &key}, Role: &role})
 	if err != nil {
 		log.Fatalf("failed to create lambda %s: %v\n", lc.name, err)
 	}

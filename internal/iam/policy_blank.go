@@ -26,7 +26,7 @@ func (b *PolicyBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id 
 }
 
 func (b *PolicyBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) corebottom.FindCoin {
-	return &policyFinder{tools: tools, loc: loc, name: named, coin: id}
+	return &policyCreator{tools: tools, loc: loc, name: named, coin: id}
 }
 
 func (b *PolicyBlank) Loc() *errorsink.Location {

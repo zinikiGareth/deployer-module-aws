@@ -48,6 +48,13 @@ func (b *policyCreator) CoinId() corebottom.CoinId {
 }
 
 func (p *policyCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
+	eq := p.tools.Recall.ObtainDriver("aws.AwsEnv")
+	awsEnv, ok := eq.(*env.AwsEnv)
+	if !ok {
+		panic("could not cast env to AwsEnv")
+	}
+
+	p.client = awsEnv.IAMClient()
 }
 
 func (p *policyCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
@@ -78,13 +85,6 @@ func (p *policyCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 	}
 
 	p.policyDoc = pi
-	eq := p.tools.Recall.ObtainDriver("aws.AwsEnv")
-	awsEnv, ok := eq.(*env.AwsEnv)
-	if !ok {
-		panic("could not cast env to AwsEnv")
-	}
-
-	p.client = awsEnv.IAMClient()
 	/*
 		_, err := p.client.HeadBucket(context.TODO(), &s3.HeadBucketInput{
 			Bucket: aws.String(p.name),
