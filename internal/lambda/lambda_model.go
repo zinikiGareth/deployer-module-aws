@@ -15,6 +15,7 @@ type LambdaModel struct {
 
 	code    *s3.S3Location
 	runtime driverbottom.Expr
+	handler driverbottom.Expr
 	/*
 		origindns   driverbottom.Expr
 		toid        driverbottom.Expr

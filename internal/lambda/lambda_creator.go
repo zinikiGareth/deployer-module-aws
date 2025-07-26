@@ -105,6 +105,7 @@ func (lc *lambdaCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 
 func (lc *lambdaCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 	var runtime driverbottom.Expr
+	var handler driverbottom.Expr
 	var code *s3.S3Location
 	/*
 		var cert driverbottom.Expr
@@ -123,6 +124,8 @@ func (lc *lambdaCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 			runtime = v
 		case "Code":
 			code = v.(*s3.S3Location)
+		case "Handler":
+			handler = v
 		/*
 			case "Certificate":
 				cert = v
@@ -176,7 +179,7 @@ func (lc *lambdaCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 		}
 	*/
 
-	model := &LambdaModel{name: lc.name, loc: lc.loc, coin: lc.coin, code: code, runtime: runtime}
+	model := &LambdaModel{name: lc.name, loc: lc.loc, coin: lc.coin, code: code, handler: handler, runtime: runtime}
 	pres.Present(model)
 }
 
@@ -261,6 +264,15 @@ func (lc *lambdaCreator) UpdateReality() {
 		tags := types.Tags{Items: []types.Tag{{Key: &tagkey, Value: &lc.name}}}
 	*/
 
+	var handler string
+	if desired.handler != nil {
+		h, ok := lc.tools.Storage.EvalAsStringer(desired.handler)
+		if !ok {
+			log.Fatalf("Failed to get handler")
+		}
+		handler = h.String()
+	}
+
 	rt, ok := lc.tools.Storage.EvalAsStringer(desired.runtime)
 	if !ok {
 		log.Fatalf("Failed to get runtime")
@@ -269,6 +281,20 @@ func (lc *lambdaCreator) UpdateReality() {
 	switch rt.String() {
 	case "go":
 		runtime = types.RuntimeProvidedal2023
+		if handler == "" {
+			handler = "main-point"
+		}
+	default:
+		for _, r := range types.RuntimeProvided.Values() {
+			if string(r) == rt.String() {
+				runtime = types.Runtime(rt.String())
+				break
+			}
+		}
+		if runtime == "" {
+			lc.tools.Reporter.ReportAtf(lc.loc, "invalid runtime: %s", rt.String())
+			return
+		}
 	}
 	b1, ok := lc.tools.Storage.EvalAsStringer(desired.code.Bucket)
 	if !ok {
@@ -282,9 +308,13 @@ func (lc *lambdaCreator) UpdateReality() {
 	key := b2.String()
 
 	hackRole := "arn:aws:iam::331358773365:role/aws-ziniki-staging-Role-11P80DK9U9T9L"
-	fakeHandler := "main-point"
 
-	req, err := lc.client.CreateFunction(context.TODO(), &lambda.CreateFunctionInput{FunctionName: &lc.name, Runtime: runtime, Handler: &fakeHandler, Code: &types.FunctionCode{S3Bucket: &bucket, S3Key: &key}, Role: &hackRole})
+	if handler == "" {
+		lc.tools.Reporter.ReportAtf(lc.loc, "must specify Handler for Runtime %s", rt.String())
+		return
+	}
+
+	req, err := lc.client.CreateFunction(context.TODO(), &lambda.CreateFunctionInput{FunctionName: &lc.name, Runtime: runtime, Handler: &handler, Code: &types.FunctionCode{S3Bucket: &bucket, S3Key: &key}, Role: &hackRole})
 	if err != nil {
 		log.Fatalf("failed to create lambda %s: %v\n", lc.name, err)
 	}
