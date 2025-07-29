@@ -20,7 +20,7 @@ type bucketCreator struct {
 	tools *corebottom.Tools
 
 	loc      *errorsink.Location
-	coin     driverbottom.Holder
+	coin     driverbottom.ResolvableHolder
 	teardown corebottom.TearDown
 	name     string // name is here (as well as?) the model because it's core to who we are
 	props    map[driverbottom.Identifier]driverbottom.Expr

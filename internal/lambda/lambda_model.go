@@ -23,10 +23,10 @@ type LambdaModel struct {
 
 type LambdaAWSModel struct {
 	name string
-	coin corebottom.CoinId
+	// coin corebottom.CoinId
 
-	found   *lambda.GetFunctionOutput
-	created *lambda.CreateFunctionOutput
+	found *lambda.GetFunctionOutput
+	// created *lambda.CreateFunctionOutput
 }
 
 func (model *LambdaModel) ObtainMethod(name string) driverbottom.Method {

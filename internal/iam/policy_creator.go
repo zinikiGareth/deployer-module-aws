@@ -20,7 +20,7 @@ type policyCreator struct {
 	name     string
 	coin     corebottom.CoinId
 	teardown corebottom.TearDown
-	policy   driverbottom.Expr
+	props    map[driverbottom.Identifier]driverbottom.Expr
 
 	policyDoc corebottom.PolicyDocument
 
@@ -72,8 +72,23 @@ func (p *policyCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 		log.Printf("storage = %v", tools.Storage)
 		tools.Storage.DumpTo(os.Stdout)
 	*/
-	loc := p.policy.Loc()
-	pv := p.policy.Eval(p.tools.Storage)
+
+	var policy driverbottom.Expr
+	seenErr := false
+	for prop, v := range p.props {
+		switch prop.Id() {
+		case "Policy":
+			policy = v
+		default:
+			p.tools.Reporter.ReportAtf(prop.Loc(), "invalid property for IAM policy: %s", prop.Id())
+		}
+	}
+	if !seenErr && policy == nil {
+		p.tools.Reporter.ReportAtf(p.Loc(), "no Policy property was specified for %s", p.name)
+	}
+
+	loc := policy.Loc()
+	pv := policy.Eval(p.tools.Storage)
 	if pv == nil {
 		p.tools.Reporter.ReportAtf(loc, "policy was nil")
 		return
@@ -85,30 +100,6 @@ func (p *policyCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 	}
 
 	p.policyDoc = pi
-	/*
-		_, err := p.client.HeadBucket(context.TODO(), &s3.HeadBucketInput{
-			Bucket: aws.String(p.name),
-		})
-		if err != nil {
-			var api smithy.APIError
-			if e.As(err, &api) {
-				// log.Printf("code: %s", api.ErrorCode())
-				if api.ErrorCode() == "NotFound" {
-					log.Printf("bucket does not exist: %s", p.name)
-				} else {
-					log.Fatal(err)
-				}
-			} else {
-				log.Fatal(err)
-			}
-		} else {
-			log.Printf("bucket exists: %s", p.name)
-			p.alreadyExists = true
-		}
-
-		// TODO: do we need to capture something here?
-		pres.Present(p)
-	*/
 }
 
 func (p *policyCreator) UpdateReality() {
@@ -133,24 +124,6 @@ func (p *policyCreator) UpdateReality() {
 
 func (p *policyCreator) TearDown() {
 	log.Printf("Need to delete the policy for %s on AWS\n", p.name)
-	/*
-		if !p.alreadyExists {
-			log.Printf("bucket %s does not exist\n", p.name)
-			return
-		}
-		log.Printf("you have asked to tear down bucket %s %s\n", p.name, p.teardown.Mode())
-		switch p.teardown.Mode() {
-		case "preserve":
-			log.Printf("not deleting bucket %s because teardown mode is 'preserve'", p.name)
-			// case "empty" seems like it might be a reasonable option
-		case "delete":
-			log.Printf("deleting bucket %s with teardown mode 'delete'", p.name)
-			EmptyBucket(p.client, p.name)
-			DeleteBucket(p.client, p.name)
-		default:
-			log.Printf("cannot handle teardown mode '%s' for bucket %s", p.teardown.Mode(), p.name)
-		}
-	*/
 }
 
 func (p *policyCreator) String() string {

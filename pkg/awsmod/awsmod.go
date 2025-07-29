@@ -61,10 +61,14 @@ func RegisterWithDriver(deployer driverbottom.Driver) error {
 	// Permissions by name
 	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.action.S3.GetObject"), drivertop.MakeString(loc, "s3:GetObject"))
 	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.action.S3.PutObject"), drivertop.MakeString(loc, "s3:PutObject"))
+	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.action.APIGateway.GET"), drivertop.MakeString(loc, "apigateway:GET"))
 
 	// Principals
 	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.principal.AWS"), drivertop.MakeString(loc, "AWS"))
 	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.principal.Service"), drivertop.MakeString(loc, "Service"))
+
+	// Generic Resource ARN patterns
+	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.resource.APIGatewayV2"), drivertop.MakeString(loc, "arn:aws:apigateway:us-east-1::/apis"))
 
 	// Service Principals
 	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.principal.CloudFront"), drivertop.MakeString(loc, "cloudfront.amazonaws.com"))

@@ -5,8 +5,16 @@ import (
 	"log"
 
 	"github.com/aws/aws-sdk-go-v2/service/iam/types"
+	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 )
+
+type RoleModel struct {
+	name string
+
+	managed []driverbottom.Expr
+	inline  []corebottom.PolicyActionList
+}
 
 type RoleAWSModel struct {
 	role *types.Role

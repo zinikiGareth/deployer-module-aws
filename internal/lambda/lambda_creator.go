@@ -287,7 +287,7 @@ func (lc *lambdaCreator) TearDown() {
 		}
 		log.Printf("returned %v\n", req)
 	} else {
-		log.Printf("no distribution existed for %s\n", lc.name)
+		log.Printf("no lambda existed for %s\n", lc.name)
 	}
 }
 

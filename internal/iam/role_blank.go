@@ -9,21 +9,6 @@ import (
 type RoleBlank struct{}
 
 func (b *RoleBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) corebottom.Ensurable {
-	// var policy driverbottom.Expr
-	// seenErr := false
-	/*
-		for p, v := range props {
-			switch p.Id() {
-			// case "Policy":
-			// 	policy = v
-			default:
-				tools.Reporter.ReportAtf(loc, "invalid property for IAM policy: %s", p.Id())
-			}
-		}
-	*/
-	// if !seenErr && policy == nil {
-	// 	tools.Reporter.ReportAtf(loc, "no Policy property was specified for %s", named)
-	// }
 	return &roleCreator{tools: tools, teardown: teardown, loc: loc, name: named, coin: id}
 }
 

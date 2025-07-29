@@ -79,7 +79,7 @@ func (w *websiteAction) Completed() {
 func (w *websiteAction) Resolve(r driverbottom.Resolver) driverbottom.BindingRequirement {
 	notused := w.propsMap()
 
-	bucket := w.findProp(r, notused, "Bucket")
+	bucket := w.findProp(notused, "Bucket")
 	w.bucket = bucket
 
 	w.coins = &websiteCoins{}
@@ -91,7 +91,7 @@ func (w *websiteAction) Resolve(r driverbottom.Resolver) driverbottom.BindingReq
 	getcp := coretop.MakeGetCoinMethod(w.named.Loc(), cpcoin)
 	getoac := coretop.MakeGetCoinMethod(w.named.Loc(), oaccoin)
 
-	cpcProps := w.useProps(r, notused, "MinTTL")
+	cpcProps := w.useProps(notused, "MinTTL")
 	w.coins.cachePolicy = &CachePolicyCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: cpcoin, name: w.named.Text() + "-cpc", props: cpcProps}
 
 	oacOpts := make(map[driverbottom.Identifier]driverbottom.Expr)
@@ -100,7 +100,7 @@ func (w *websiteAction) Resolve(r driverbottom.Resolver) driverbottom.BindingReq
 	oacOpts[drivertop.NewIdentifierToken(w.named.Loc(), "SigningProtocol")] = drivertop.MakeString(w.named.Loc(), "sigv4")
 	w.coins.originAccessControl = &OACCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: oaccoin, name: w.named.Text() + "-oac", props: oacOpts}
 
-	cblist := w.findProp(r, notused, "CacheBehaviors")
+	cblist := w.findProp(notused, "CacheBehaviors")
 	cbe := w.tools.Storage.Eval(cblist)
 	cbs, ok := cbe.([]any)
 	if !ok {
@@ -163,7 +163,7 @@ func (w *websiteAction) Resolve(r driverbottom.Resolver) driverbottom.BindingReq
 		rhp := &RHPCreator{tools: w.tools, teardown: teardown, loc: w.loc, coin: rhpcoin, name: rhpName, props: rhpOpts}
 
 		cbcoin := corebottom.CoinId(w.tools.Storage.NewObjId(w.named.Loc()))
-		cbOpts := w.useProps(r, notused, "TargetOriginId")
+		cbOpts := w.useProps(notused, "TargetOriginId")
 		cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "CachePolicy")] = drivertop.MakeInvokeExpr(getcp, drivertop.NewIdentifierToken(w.named.Loc(), "id"))
 		cbOpts[drivertop.NewIdentifierToken(w.named.Loc(), "PathPattern")] = drivertop.MakeString(w.named.Loc(), pp)
 		getrhp := coretop.MakeGetCoinMethod(w.named.Loc(), rhp.coin)
@@ -173,7 +173,7 @@ func (w *websiteAction) Resolve(r driverbottom.Resolver) driverbottom.BindingReq
 		cbcoins = append(cbcoins, getcb)
 	}
 
-	dprops := w.useProps(r, notused, "Certificate", "Comment", "DefaultRoot", "Domain", "TargetOriginId")
+	dprops := w.useProps(notused, "Certificate", "Comment", "DefaultRoot", "Domain", "TargetOriginId")
 	dprops[drivertop.NewIdentifierToken(w.named.Loc(), "CacheBehaviors")] = drivertop.NewListExpr(w.named.Loc(), cbcoins)
 	dprops[drivertop.NewIdentifierToken(w.named.Loc(), "CachePolicy")] = drivertop.MakeInvokeExpr(getcp, drivertop.NewIdentifierToken(w.named.Loc(), "id"))
 	dprops[drivertop.NewIdentifierToken(w.named.Loc(), "OriginDNS")] = drivertop.MakeInvokeExpr(bucket, drivertop.NewIdentifierToken(w.named.Loc(), "dnsName"))
@@ -202,13 +202,12 @@ func (w *websiteAction) propsMap() map[string]driverbottom.Identifier {
 	return ret
 }
 
-func (w *websiteAction) useProps(r driverbottom.Resolver, notused map[string]driverbottom.Identifier, which ...string) map[driverbottom.Identifier]driverbottom.Expr {
+func (w *websiteAction) useProps(notused map[string]driverbottom.Identifier, which ...string) map[driverbottom.Identifier]driverbottom.Expr {
 	ret := make(map[driverbottom.Identifier]driverbottom.Expr)
 	for _, s := range which {
 		for k, v := range w.props {
 			if k.Id() == s {
 				ret[k] = v
-				v.Resolve(r)
 				notused[s] = nil
 				break
 			}
@@ -217,10 +216,9 @@ func (w *websiteAction) useProps(r driverbottom.Resolver, notused map[string]dri
 	return ret
 }
 
-func (w *websiteAction) findProp(r driverbottom.Resolver, notused map[string]driverbottom.Identifier, which string) driverbottom.Expr {
+func (w *websiteAction) findProp(notused map[string]driverbottom.Identifier, which string) driverbottom.Expr {
 	for k, v := range w.props {
 		if k.Id() == which {
-			v.Resolve(r)
 			notused[which] = nil
 			return v
 		}

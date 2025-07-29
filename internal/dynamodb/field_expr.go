@@ -37,7 +37,8 @@ func (f *DynamoFieldExpr) DumpTo(to driverbottom.IndentWriter) {
 	to.EndAttrs()
 }
 
-func (f *DynamoFieldExpr) Resolve(r driverbottom.Resolver) {
+func (f *DynamoFieldExpr) Resolve(r driverbottom.Resolver) driverbottom.BindingRequirement {
+	return driverbottom.MAY_BE_BOUND
 }
 
 func (f *DynamoFieldExpr) Eval(s driverbottom.RuntimeStorage) any {

@@ -67,9 +67,11 @@ func (s *S3Location) Loc() *errorsink.Location {
 }
 
 // Resolve implements driverbottom.Expr.
-func (s *S3Location) Resolve(r driverbottom.Resolver) {
+func (s *S3Location) Resolve(r driverbottom.Resolver) driverbottom.BindingRequirement {
+	ret	:= driverbottom.MAY_BE_BOUND
 	s.Bucket.Resolve(r)
 	s.Key.Resolve(r)
+	return ret
 }
 
 // ShortDescription implements driverbottom.Expr.

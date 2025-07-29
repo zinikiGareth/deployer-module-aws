@@ -32,7 +32,7 @@ type stmtJson struct {
 }
 
 func makeStmtJson(policyName string, k int, item corebottom.PolicyEffect) stmtJson {
-	ret := stmtJson{Sid: fmt.Sprintf("%sSID%d", policyName, k), Effect: item.Effect()}
+	ret := stmtJson{Sid: fmt.Sprintf("%sSid%d", policyName, k), Effect: item.Effect()}
 	as := item.Actions()
 	if len(as) == 0 {
 		ret.Action = "*"
