@@ -41,14 +41,44 @@ func (v *lambdaVersioner) Resolve(r driverbottom.Resolver) driverbottom.BindingR
 }
 
 func (v *lambdaVersioner) DetermineInitialState(pres corebottom.ValuePresenter) {
-	log.Printf("I can't really say what should happen here yet, but maybe nothing")
 	eq := v.tools.Recall.ObtainDriver("aws.AwsEnv")
 	awsEnv, ok := eq.(*env.AwsEnv)
 	if !ok {
 		panic("could not cast env to AwsEnv")
 	}
 	v.client = awsEnv.LambdaClient()
-	// I think we probably want to find the current list of aliases and versions
+
+	alias := ""
+	if utils.HasProp(v.props, "Alias") {
+		prop := utils.FindProp(v.props, nil, "Alias")
+		s, ok := v.tools.Storage.EvalAsStringer(prop)
+		if !ok {
+			v.tools.Reporter.ReportAtf(prop.Loc(), "Alias must be a string, not %T", prop)
+			return
+		}
+		alias = s.String()
+	}
+
+	prop := utils.FindProp(v.props, nil, "Name")
+	name, ok := v.tools.Storage.EvalAsStringer(prop)
+	if !ok {
+		v.tools.Reporter.ReportAtf(prop.Loc(), "Name must be a string, not %T", prop)
+		return
+	}
+	fname := name.String()
+
+	out, err := v.client.GetAlias(context.TODO(), &lambda.GetAliasInput{FunctionName: &fname, Name: &alias})
+	if err != nil {
+		if !lambdaExists(err) {
+			pres.NotFound()
+			return
+		}
+		log.Fatalf("failed to get alias %s:%s: %v\n", fname, alias, err)
+	}
+
+	log.Printf("found alias %s\n", *out.FunctionVersion)
+	model := &publishVersionAWS{aliasVersion: *out.FunctionVersion, aliasRevId: *out.RevisionId}
+	pres.Present(model)
 }
 
 func (v *lambdaVersioner) DetermineDesiredState(pres corebottom.ValuePresenter) {
@@ -81,15 +111,34 @@ func (v *lambdaVersioner) ShouldDestroy() bool {
 }
 
 func (v *lambdaVersioner) UpdateReality() {
+	tmp := v.tools.Storage.GetCoin(v.coin, corebottom.DETERMINE_INITIAL_MODE)
+	var found *publishVersionAWS
+	if tmp != nil {
+		found = tmp.(*publishVersionAWS)
+	}
 	desired := v.tools.Storage.GetCoin(v.coin, corebottom.DETERMINE_DESIRED_MODE).(*publishVersionModel)
+	created := &publishVersionAWS{}
+	name := desired.name.String()
 	if desired.publish.F64() != 0 {
-		name := desired.name.String()
 		out, err := v.client.PublishVersion(context.TODO(), &lambda.PublishVersionInput{FunctionName: &name})
 		if err != nil {
 			log.Fatalf("failed to publish new version of %s: %v", name, err)
 		}
 		log.Printf("publish returned %s\n", *out.Version)
+		created.publishedVersion = *out.Version
 	}
+	if alias := desired.asAlias.String(); alias != "" {
+		if found == nil || found.aliasVersion == "" {
+			out, err := v.client.CreateAlias(context.TODO(), &lambda.CreateAliasInput{FunctionName: &name, Name: &alias, FunctionVersion: &created.publishedVersion})
+			if err != nil {
+				log.Fatalf("failed to create alias %s:%s %v", name, alias, err)
+			}
+			log.Printf("alias returned %s\n", *out.AliasArn)
+			created.aliasVersion = *out.FunctionVersion
+			created.aliasRevId = *out.RevisionId
+		}
+	}
+	v.tools.Storage.Bind(v.coin, created)
 }
 
 func (v *lambdaVersioner) TearDown() {
