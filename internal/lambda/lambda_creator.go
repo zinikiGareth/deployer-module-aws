@@ -66,41 +66,8 @@ func (lc *lambdaCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 		pres.NotFound()
 		return
 	}
-	model := &LambdaAWSModel{name: lc.name, found: req}
+	model := &LambdaAWSModel{name: lc.name, config: req.Configuration}
 	pres.Present(model)
-	/*
-		distros, err := lc.client.ListDistributions(context.TODO(), &cloudfront.ListDistributionsInput{})
-		if err != nil {
-			log.Fatalf("could not list OACs")
-		}
-		for _, p := range distros.DistributionList.Items {
-			tags, err := lc.client.ListTagsForResource(context.TODO(), &cloudfront.ListTagsForResourceInput{Resource: p.ARN})
-			if err != nil {
-				log.Fatalf("error trying to obtain tags for %s\n", *p.ARN)
-			}
-			for _, q := range tags.Tags.Items {
-				if q.Key != nil && *q.Key == "deployer-name" && q.Value != nil && *q.Value == lc.name {
-					model := &DistributionModel{name: lc.name, loc: lc.loc, coin: lc.coin /*comment: comment, origindns: src, oac: oac, behaviors: cbs, cachePolicy: cp, domains: domain, viewerCert: cert, toid: toid* /}
-
-					model.arn = *p.ARN
-					model.distroId = *p.Id
-					model.domainName = *p.DomainName
-					for _, cb := range p.CacheBehaviors.Items {
-						cpid, ok := utils.AsStringer(*cb.CachePolicyId)
-						if !ok {
-							panic("ugh")
-						}
-						cbm := &cbModel{targetOriginId: *cb.TargetOriginId, pp: *cb.PathPattern, cpId: cpid, rhp: *cb.ResponseHeadersPolicyId}
-						model.foundBehaviors = append(model.foundBehaviors, cbm)
-					}
-					log.Printf("found distro %s: %s %s %s\n", model.name, model.arn, model.distroId, model.domainName)
-
-					pres.Present(model)
-					return
-				}
-			}
-		}
-	*/
 }
 
 func (lc *lambdaCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
@@ -140,27 +107,7 @@ func (lc *lambdaCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 func (lc *lambdaCreator) UpdateReality() {
 	tmp := lc.tools.Storage.GetCoin(lc.coin, corebottom.DETERMINE_INITIAL_MODE)
 	desired := lc.tools.Storage.GetCoin(lc.coin, corebottom.DETERMINE_DESIRED_MODE).(*LambdaModel)
-	created := &LambdaModel{name: lc.name, loc: lc.loc, coin: lc.coin}
-
-	/*
-		cpId, ok1 := lc.tools.Storage.EvalAsStringer(desired.cachePolicy)
-		toid, ok2 := lc.tools.Storage.EvalAsStringer(desired.toid)
-		if !ok1 || !ok2 {
-			panic("!ok")
-		}
-		toidS := toid.String()
-		cpIdS := cpId.String()
-		dcb := types.DefaultCacheBehavior{TargetOriginId: &toidS, ViewerProtocolPolicy: types.ViewerProtocolPolicyRedirectToHttps, CachePolicyId: &cpIdS}
-		origins := lc.FigureOrigins(desired, toidS)
-		behaviors := lc.FigureCacheBehaviors(desired)
-		config := lc.BuildConfig(desired, &dcb, behaviors, origins, defRootObj)
-
-		if desired.viewerCert != nil {
-			lc.AttachViewerCert(desired, config)
-		}
-		tagkey := "deployer-name"
-		tags := types.Tags{Items: []types.Tag{{Key: &tagkey, Value: &lc.name}}}
-	*/
+	created := &LambdaAWSModel{name: lc.name}
 
 	var handler string
 	if desired.handler != nil {
@@ -218,46 +165,11 @@ func (lc *lambdaCreator) UpdateReality() {
 
 	if tmp != nil {
 		found := tmp.(*LambdaAWSModel)
-		/*
-			created.arn = found.arn
-			created.distroId = found.distroId
-			created.domainName = found.domainName
-		*/
-		log.Printf("lambda %s already existed for %s\n", *found.found.Configuration.FunctionArn, found.name)
-		/*
-
-			diffs := figureDiffs(lc.tools, found, desired)
-			if diffs == nil {
-		*/
-		log.Printf("not handling diffs yet, so just adopting ...")
-		lc.tools.Storage.Adopt(lc.coin, found)
+		created.config = found.config
+		log.Printf("lambda %s already existed for %s\n", *found.config.FunctionArn, found.name)
+		log.Printf("not handling diffs yet; just copying ...")
+		lc.tools.Storage.Bind(lc.coin, created)
 		return
-		/*
-			} else {
-				curr, err := lc.client.GetDistributionConfig(context.TODO(), &cloudfront.GetDistributionConfigInput{Id: &found.distroId})
-				if err != nil {
-					panic(err)
-				}
-				etag := curr.ETag
-				curr.ETag = nil
-				config := curr.DistributionConfig
-
-				config.CacheBehaviors = diffs.apply(lc.tools, lc.client, created)
-				if config.DefaultRootObject != nil && *config.DefaultRootObject != *defRootObj {
-					config.DefaultRootObject = defRootObj
-				}
-				// TODO: should allow other things to be updated too ...
-
-				log.Printf("updating distribution")
-				_, err = lc.client.UpdateDistribution(context.TODO(), &cloudfront.UpdateDistributionInput{Id: &found.distroId, IfMatch: etag, DistributionConfig: config})
-				if err != nil {
-					panic(err)
-				}
-
-				lc.tools.Storage.Bind(lc.coin, created)
-				return
-			}
-		*/
 	}
 
 	req, err := lc.client.CreateFunction(context.TODO(), &lambda.CreateFunctionInput{FunctionName: &lc.name, Runtime: runtime, Handler: &handler, Code: &types.FunctionCode{S3Bucket: &bucket, S3Key: &key}, Role: &role})
@@ -265,11 +177,7 @@ func (lc *lambdaCreator) UpdateReality() {
 		log.Fatalf("failed to create lambda %s: %v\n", lc.name, err)
 	}
 	log.Printf("created lambda %s: %s\n", lc.name, *req.FunctionArn)
-	created.arn = *req.FunctionArn
-	/*
-		created.distroId = *req.Distribution.Id
-		created.domainName = *req.Distribution.DomainName
-	*/
+	created.config = &types.FunctionConfiguration{FunctionArn: req.FunctionArn}
 
 	lc.tools.Storage.Bind(lc.coin, created)
 }

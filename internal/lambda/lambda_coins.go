@@ -6,8 +6,9 @@ import (
 )
 
 type lambdaCoins struct {
-	roleCoin    corebottom.CoinId
-	withRole    *iam.WithRole
-	roleCreator corebottom.Ensurable
-	lambda      *lambdaCreator
+	roleCoin      corebottom.CoinId
+	withRole      *iam.WithRole
+	roleCreator   corebottom.Ensurable
+	versioner     *lambdaVersioner
+	lambda        *lambdaCreator
 }

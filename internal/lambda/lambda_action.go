@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"ziniki.org/deployer/coremod/pkg/corebottom"
+	"ziniki.org/deployer/coremod/pkg/coretop"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/drivertop"
 	"ziniki.org/deployer/driver/pkg/errorsink"
@@ -89,6 +90,18 @@ func (l *lambdaAction) Completed() {
 
 	funcProps := utils.UseProps(l.props, notused, "Code", "Handler", "Role", "Runtime")
 	l.coins.lambda = &lambdaCreator{tools: l.tools, teardown: teardown, loc: l.loc, coin: lambdaCoin, name: l.named.Text(), props: funcProps}
+
+	if utils.HasProp(l.props, "PublishVersion", "Alias") {
+		versionerCoin := corebottom.CoinId(l.tools.Storage.PendingObjId(l.loc))
+		props := utils.UseProps(l.props, notused, "PublishVersion", "Alias")
+		nameId := drivertop.NewIdentifierToken(l.named.Loc(), "Name")
+		getLambda := coretop.MakeGetCoinMethod(l.named.Loc(), l.coins.lambda.coin)
+		arnId := drivertop.NewIdentifierToken(l.named.Loc(), "arn")
+		props[nameId] = drivertop.MakeInvokeExpr(getLambda, arnId)
+		l.coins.versioner = &lambdaVersioner{tools: l.tools, coin: versionerCoin, props: props}
+	}
+
+	// check all properties specified have been used
 	for k, id := range notused {
 		if id != nil {
 			l.tools.Reporter.ReportAtf(id.Loc(), "no such property %s on lambda.function", k)
@@ -100,6 +113,10 @@ func (l *lambdaAction) Resolve(r driverbottom.Resolver) driverbottom.BindingRequ
 	l.coins.lambda.coin.Resolve(l.tools.Storage)
 	l.coins.roleCoin.Resolve(l.tools.Storage)
 	l.coins.withRole.Resolve(r)
+	if l.coins.versioner != nil {
+		l.coins.versioner.coin.Resolve(l.tools.Storage)
+		l.coins.versioner.Resolve(r)
+	}
 	return driverbottom.MAY_BE_BOUND
 }
 
@@ -109,6 +126,9 @@ func (l *lambdaAction) DetermineInitialState(pres corebottom.ValuePresenter) {
 		l.coins.roleCreator.DetermineInitialState(mypres)
 	}
 	l.coins.lambda.DetermineInitialState(mypres)
+	if l.coins.versioner != nil {
+		l.coins.versioner.DetermineInitialState(mypres)
+	}
 	pres.Present(mypres.lambda)
 }
 
@@ -118,6 +138,9 @@ func (l *lambdaAction) DetermineDesiredState(pres corebottom.ValuePresenter) {
 		l.coins.roleCreator.DetermineDesiredState(mypres)
 	}
 	l.coins.lambda.DetermineDesiredState(mypres)
+	if l.coins.versioner != nil {
+		l.coins.versioner.DetermineDesiredState(mypres)
+	}
 	pres.Present(mypres.lambda)
 }
 
@@ -130,9 +153,15 @@ func (l *lambdaAction) UpdateReality() {
 		l.coins.roleCreator.UpdateReality()
 	}
 	l.coins.lambda.UpdateReality()
+	if l.coins.versioner != nil {
+		l.coins.versioner.UpdateReality()
+	}
 }
 
 func (l *lambdaAction) TearDown() {
+	if l.coins.versioner != nil {
+		l.coins.versioner.TearDown()
+	}
 	l.coins.lambda.TearDown()
 	if l.coins.roleCreator != nil {
 		l.coins.roleCreator.TearDown()
@@ -156,11 +185,12 @@ var _ corebottom.RealityShifter = &lambdaAction{}
 // could switch on model type - let's try that first
 // We need to bind them to their coin names in Storage
 type coinPresenter struct {
-	main        *lambdaAction
-	roleFound   *iam.RoleAWSModel
-	role        *iam.RoleModel
-	lambdaFound *LambdaAWSModel
-	lambda      *LambdaModel
+	main           *lambdaAction
+	roleFound      *iam.RoleAWSModel
+	role           *iam.RoleModel
+	lambdaFound    *LambdaAWSModel
+	lambda         *LambdaModel
+	publishVersion *publishVersionModel
 }
 
 func (c *coinPresenter) NotFound() {
@@ -182,6 +212,9 @@ func (c *coinPresenter) Present(value any) {
 	case *LambdaModel:
 		c.lambda = value
 		l.tools.Storage.Bind(l.coins.lambda.coin, value)
+	case *publishVersionModel:
+		c.publishVersion = value
+		l.tools.Storage.Bind(l.coins.versioner.coin, value)
 	default:
 		log.Fatalf("need to handle present(%T %v)\n", value, value)
 	}
