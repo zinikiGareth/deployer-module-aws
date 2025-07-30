@@ -92,7 +92,7 @@ func (a *apiAction) Completed() {
 		}
 
 	*/
-	funcProps := utils.UseProps(a.props, notused, "Code", "Handler", "Role", "Runtime")
+	funcProps := utils.UseProps(a.props, notused, "Protocol")
 	a.coins.api = &apiCreator{tools: a.tools, teardown: a.teardown, loc: a.loc, coin: apiCoin, name: a.named.Text(), props: funcProps}
 
 	/*
@@ -105,14 +105,14 @@ func (a *apiAction) Completed() {
 			props[nameId] = drivertop.MakeInvokeExpr(getLambda, arnId)
 			a.coins.versioner = &lambdaVersioner{tools: a.tools, coin: versionerCoin, props: props}
 		}
-
-		// check all properties specified have been used
-		for k, id := range notused {
-			if id != nil {
-				a.tools.Reporter.ReportAtf(id.Loc(), "no such property %s on lambda.function", k)
-			}
-		}
 	*/
+
+	// check all properties specified have been used
+	for k, id := range notused {
+		if id != nil {
+			a.tools.Reporter.ReportAtf(id.Loc(), "no such property %s on api.gatewayV2", k)
+		}
+	}
 }
 
 func (a *apiAction) Resolve(r driverbottom.Resolver) driverbottom.BindingRequirement {
@@ -138,22 +138,22 @@ func (a *apiAction) DetermineInitialState(pres corebottom.ValuePresenter) {
 		if a.coins.versioner != nil {
 			a.coins.versioner.DetermineInitialState(mypres)
 		}
-		pres.Present(mypres.lambda)
 	*/
+	pres.Present(mypres)
 }
 
 func (a *apiAction) DetermineDesiredState(pres corebottom.ValuePresenter) {
+	mypres := a.newCoinPresenter()
+	a.coins.api.DetermineDesiredState(mypres)
 	/*
-		mypres := a.newCoinPresenter()
 		if a.coins.roleCreator != nil {
 			a.coins.roleCreator.DetermineDesiredState(mypres)
 		}
-		a.coins.lambda.DetermineDesiredState(mypres)
 		if a.coins.versioner != nil {
 			a.coins.versioner.DetermineDesiredState(mypres)
 		}
-		pres.Present(mypres.lambda)
 	*/
+	pres.Present(mypres)
 }
 
 func (a *apiAction) ShouldDestroy() bool {
@@ -200,7 +200,7 @@ type coinPresenter struct {
 	// roleFound      *iam.RoleAWSModel
 	// role           *iam.RoleModel
 	apiFound *ApiAWSModel
-	// lambda         *LambdaModel
+	api      *ApiModel
 	// publishAWS     *publishVersionAWS
 	// publishVersion *publishVersionModel
 }
@@ -221,9 +221,9 @@ func (c *coinPresenter) Present(value any) {
 	case *ApiAWSModel:
 		c.apiFound = value
 		a.tools.Storage.Bind(a.coins.api.coin, value)
-	// case *LambdaModel:
-	// 	c.lambda = value
-	// 	l.tools.Storage.Bind(l.coins.lambda.coin, value)
+	case *ApiModel:
+		c.api = value
+		a.tools.Storage.Bind(a.coins.api.coin, value)
 	// case *publishVersionAWS:
 	// 	c.publishAWS = value
 	// 	l.tools.Storage.Bind(l.coins.versioner.coin, value)

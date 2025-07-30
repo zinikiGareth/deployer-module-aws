@@ -87,7 +87,6 @@ func (lc *lambdaCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 		case "Role":
 			role = v
 		default:
-			log.Printf("%v", v)
 			lc.tools.Reporter.ReportAtf(lc.loc, "invalid property for Lambda: %s", p.Id())
 		}
 	}
@@ -183,7 +182,7 @@ func (lc *lambdaCreator) UpdateReality() {
 			panic(err)
 		}
 		if stat.Configuration.State == "Active" {
-			return true;
+			return true
 		}
 		log.Printf("waiting for lambda to be active, stat = %v\n", stat.Configuration.State)
 		return false

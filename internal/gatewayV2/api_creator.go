@@ -72,75 +72,86 @@ outer:
 	log.Printf("found %s\n", *wanted.ApiId)
 	model := &ApiAWSModel{api: wanted}
 	/*
-		req, err := lc.client.GetFunction(context.TODO(), &lambda.GetFunctionInput{FunctionName: &lc.name})
+		req, err := ac.client.GetFunction(context.TODO(), &lambda.GetFunctionInput{FunctionName: &ac.name})
 		if err != nil {
 			if !lambdaExists(err) {
 				pres.NotFound()
 				return
 			}
-			log.Fatalf("could not recover function %s: %v\n", lc.name, err)
+			log.Fatalf("could not recover function %s: %v\n", ac.name, err)
 		}
 		if req == nil {
 			pres.NotFound()
 			return
 		}
-		model := &LambdaAWSModel{name: lc.name, config: req.Configuration}
+		model := &LambdaAWSModel{name: ac.name, config: req.Configuration}
 	*/
 	pres.Present(model)
 }
 
 func (ac *apiCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
+	var protocol driverbottom.Expr
 	/*
-		var runtime driverbottom.Expr
 		var handler driverbottom.Expr
 		var role driverbottom.Expr
 		var code *s3.S3Location
-		for p, v := range lc.props {
-			switch p.Id() {
-			case "Runtime":
-				runtime = v
-			case "Code":
-				code = v.(*s3.S3Location)
-			case "Handler":
-				handler = v
-			case "Role":
-				role = v
-			default:
-				log.Printf("%v", v)
-				lc.tools.Reporter.ReportAtf(lc.loc, "invalid property for Lambda: %s", p.Id())
-			}
-		}
-		if code == nil {
-			lc.tools.Reporter.ReportAtf(lc.loc, "Code was not defined")
-		}
-		if runtime == nil {
-			lc.tools.Reporter.ReportAtf(lc.loc, "Runtime was not defined")
-		}
-		if role == nil {
-			lc.tools.Reporter.ReportAtf(lc.loc, "Role was not defined")
-		}
-
-		model := &LambdaModel{name: lc.name, loc: lc.loc, coin: lc.coin, code: code, handler: handler, runtime: runtime, role: role}
-		pres.Present(model)
 	*/
+	for p, v := range ac.props {
+		switch p.Id() {
+		case "Protocol":
+			protocol = v
+			/*
+				case "Code":
+					code = v.(*s3.S3Location)
+				case "Handler":
+					handler = v
+				case "Role":
+					role = v
+			*/
+		default:
+			ac.tools.Reporter.ReportAtf(ac.loc, "invalid property for Lambda: %s", p.Id())
+		}
+	}
+	if protocol == nil {
+		ac.tools.Reporter.ReportAtf(ac.loc, "Protocol was not defined")
+	}
+
+	prot, ok := ac.tools.Storage.EvalAsStringer(protocol)
+	if !ok {
+		panic("not ok")
+	}
+
+	var pt types.ProtocolType
+	switch prot.String() {
+	case "http":
+		pt = types.ProtocolTypeHttp
+	case "websocket":
+		pt = types.ProtocolTypeWebsocket
+	default:
+		ac.tools.Reporter.ReportAtf(ac.loc, "invalid protocol type %s", prot.String())
+		return
+	}
+
+	model := &ApiModel{name: ac.name, loc: ac.loc, coin: ac.coin, protocol: pt}
+	pres.Present(model)
 }
 
 func (ac *apiCreator) UpdateReality() {
 	tmp := ac.tools.Storage.GetCoin(ac.coin, corebottom.DETERMINE_INITIAL_MODE)
+	desired := ac.tools.Storage.GetCoin(ac.coin, corebottom.DETERMINE_DESIRED_MODE).(*ApiModel)
+	created := &ApiAWSModel{}
 	/*
-		desired := lc.tools.Storage.GetCoin(lc.coin, corebottom.DETERMINE_DESIRED_MODE).(*LambdaModel)
-		created := &LambdaAWSModel{name: lc.name}
 
 		var handler string
 		if desired.handler != nil {
-			h, ok := lc.tools.Storage.EvalAsStringer(desired.handler)
+			h, ok := ac.tools.Storage.EvalAsStringer(desired.handler)
 			if !ok {
 				log.Fatalf("Failed to get handler")
 			}
 			handler = h.String()
 		}
 
-		rt, ok := lc.tools.Storage.EvalAsStringer(desired.runtime)
+		rt, ok := ac.tools.Storage.EvalAsStringer(desired.runtime)
 		if !ok {
 			log.Fatalf("Failed to get runtime")
 		}
@@ -159,29 +170,29 @@ func (ac *apiCreator) UpdateReality() {
 				}
 			}
 			if runtime == "" {
-				lc.tools.Reporter.ReportAtf(lc.loc, "invalid runtime: %s", rt.String())
+				ac.tools.Reporter.ReportAtf(ac.loc, "invalid runtime: %s", rt.String())
 				return
 			}
 		}
-		b1, ok := lc.tools.Storage.EvalAsStringer(desired.code.Bucket)
+		b1, ok := ac.tools.Storage.EvalAsStringer(desired.code.Bucket)
 		if !ok {
 			log.Fatalf("Failed to get bucket")
 		}
-		b2, ok := lc.tools.Storage.EvalAsStringer(desired.code.Key)
+		b2, ok := ac.tools.Storage.EvalAsStringer(desired.code.Key)
 		if !ok {
 			log.Fatalf("Failed to get key")
 		}
 		bucket := b1.String()
 		key := b2.String()
 
-		roleArn, ok := lc.tools.Storage.EvalAsStringer(desired.role)
+		roleArn, ok := ac.tools.Storage.EvalAsStringer(desired.role)
 		if !ok {
 			log.Fatalf("Failed to evaluate role")
 		}
 		role := roleArn.String()
 
 		if handler == "" {
-			lc.tools.Reporter.ReportAtf(lc.loc, "must specify Handler for Runtime %s", rt.String())
+			ac.tools.Reporter.ReportAtf(ac.loc, "must specify Handler for Runtime %s", rt.String())
 			return
 		}
 	*/
@@ -194,29 +205,14 @@ func (ac *apiCreator) UpdateReality() {
 		// ac.tools.Storage.Bind(ac.coin, created)
 		return
 	}
-	pt := types.ProtocolTypeHttp
-	out, err := ac.client.CreateApi(context.TODO(), &apigatewayv2.CreateApiInput{Name: &ac.name, ProtocolType: pt})
+
+	out, err := ac.client.CreateApi(context.TODO(), &apigatewayv2.CreateApiInput{Name: &ac.name, ProtocolType: desired.protocol})
 	if err != nil {
 		log.Fatalf("failed to create lambda %s: %v\n", ac.name, err)
 	}
-	log.Printf("have api %s %s\n", *out.ApiId, *out.ApiEndpoint)
-	/*
-		utils.ExponentialBackoff(func() bool {
-			stat, err := lc.client.GetFunction(context.TODO(), &lambda.GetFunctionInput{FunctionName: &lc.name})
-			if err != nil {
-				panic(err)
-			}
-			if stat.Configuration.State == "Active" {
-				return true
-			}
-			log.Printf("waiting for lambda to be active, stat = %v\n", stat.Configuration.State)
-			return false
-		})
-		log.Printf("created lambda %s: %s\n", lc.name, *req.FunctionArn)
-		created.config = &types.FunctionConfiguration{FunctionArn: req.FunctionArn}
-
-		lc.tools.Storage.Bind(lc.coin, created)
-	*/
+	log.Printf("created api %s %s\n", *out.ApiId, *out.ApiEndpoint)
+	created.api = &types.Api{Name: out.Name, ApiId: out.ApiId, ApiEndpoint: out.ApiEndpoint}
+	ac.tools.Storage.Bind(ac.coin, created)
 }
 
 func (ac *apiCreator) TearDown() {
