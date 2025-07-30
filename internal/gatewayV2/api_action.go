@@ -1,6 +1,8 @@
 package gatewayV2
 
 import (
+	"log"
+
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/drivertop"
@@ -114,8 +116,8 @@ func (a *apiAction) Completed() {
 }
 
 func (a *apiAction) Resolve(r driverbottom.Resolver) driverbottom.BindingRequirement {
+	a.coins.api.coin.Resolve(a.tools.Storage)
 	/*
-		a.coins.lambda.coin.Resolve(a.tools.Storage)
 		a.coins.roleCoin.Resolve(a.tools.Storage)
 		a.coins.withRole.Resolve(r)
 		if a.coins.versioner != nil {
@@ -127,12 +129,12 @@ func (a *apiAction) Resolve(r driverbottom.Resolver) driverbottom.BindingRequire
 }
 
 func (a *apiAction) DetermineInitialState(pres corebottom.ValuePresenter) {
+	mypres := a.newCoinPresenter()
+	a.coins.api.DetermineInitialState(mypres)
 	/*
-		mypres := a.newCoinPresenter()
 		if a.coins.roleCreator != nil {
 			a.coins.roleCreator.DetermineInitialState(mypres)
 		}
-		a.coins.lambda.DetermineInitialState(mypres)
 		if a.coins.versioner != nil {
 			a.coins.versioner.DetermineInitialState(mypres)
 		}
@@ -159,6 +161,7 @@ func (a *apiAction) ShouldDestroy() bool {
 }
 
 func (a *apiAction) UpdateReality() {
+	a.coins.api.UpdateReality()
 	/*
 		if a.coins.roleCreator != nil {
 			a.coins.roleCreator.UpdateReality()
@@ -171,11 +174,11 @@ func (a *apiAction) UpdateReality() {
 }
 
 func (a *apiAction) TearDown() {
+	a.coins.api.TearDown()
 	/*
 		if a.coins.versioner != nil {
 			a.coins.versioner.TearDown()
 		}
-		a.coins.lambda.TearDown()
 		if a.coins.roleCreator != nil {
 			a.coins.roleCreator.TearDown()
 		}
@@ -192,15 +195,14 @@ func (m *ApiTearDown) Mode() string {
 
 var _ corebottom.RealityShifter = &apiAction{}
 
-/*
 type coinPresenter struct {
-	main           *apiAction
-	roleFound      *iam.RoleAWSModel
-	role           *iam.RoleModel
-	lambdaFound    *LambdaAWSModel
-	lambda         *LambdaModel
-	publishAWS     *publishVersionAWS
-	publishVersion *publishVersionModel
+	main *apiAction
+	// roleFound      *iam.RoleAWSModel
+	// role           *iam.RoleModel
+	apiFound *ApiAWSModel
+	// lambda         *LambdaModel
+	// publishAWS     *publishVersionAWS
+	// publishVersion *publishVersionModel
 }
 
 func (c *coinPresenter) NotFound() {
@@ -208,26 +210,26 @@ func (c *coinPresenter) NotFound() {
 }
 
 func (c *coinPresenter) Present(value any) {
-	l := c.main
+	a := c.main
 	switch value := value.(type) {
-	case *iam.RoleAWSModel:
-		c.roleFound = value
-		l.tools.Storage.Bind(l.coins.roleCoin, value)
-	case *iam.RoleModel:
-		c.role = value
-		l.tools.Storage.Bind(l.coins.roleCoin, value)
-	case *LambdaAWSModel:
-		c.lambdaFound = value
-		l.tools.Storage.Bind(l.coins.lambda.coin, value)
-	case *LambdaModel:
-		c.lambda = value
-		l.tools.Storage.Bind(l.coins.lambda.coin, value)
-	case *publishVersionAWS:
-		c.publishAWS = value
-		l.tools.Storage.Bind(l.coins.versioner.coin, value)
-	case *publishVersionModel:
-		c.publishVersion = value
-		l.tools.Storage.Bind(l.coins.versioner.coin, value)
+	// case *iam.RoleAWSModel:
+	// 	c.roleFound = value
+	// 	l.tools.Storage.Bind(l.coins.roleCoin, value)
+	// case *iam.RoleModel:
+	// 	c.role = value
+	// 	l.tools.Storage.Bind(l.coins.roleCoin, value)
+	case *ApiAWSModel:
+		c.apiFound = value
+		a.tools.Storage.Bind(a.coins.api.coin, value)
+	// case *LambdaModel:
+	// 	c.lambda = value
+	// 	l.tools.Storage.Bind(l.coins.lambda.coin, value)
+	// case *publishVersionAWS:
+	// 	c.publishAWS = value
+	// 	l.tools.Storage.Bind(l.coins.versioner.coin, value)
+	// case *publishVersionModel:
+	// 	c.publishVersion = value
+	// 	l.tools.Storage.Bind(l.coins.versioner.coin, value)
 	default:
 		log.Fatalf("need to handle present(%T %v)\n", value, value)
 	}
@@ -242,4 +244,3 @@ func (a *apiAction) newCoinPresenter() *coinPresenter {
 }
 
 var _ corebottom.ValuePresenter = &coinPresenter{}
-*/

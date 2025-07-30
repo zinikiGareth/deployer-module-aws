@@ -1,7 +1,11 @@
 package gatewayV2
 
 import (
+	"context"
+	"log"
+
 	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2"
+	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2/types"
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
@@ -46,6 +50,27 @@ func (ac *apiCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 	}
 	ac.client = awsEnv.ApiGatewayV2Client()
 
+	var nextTok *string
+	var wanted *types.Api
+outer:
+	for {
+		curr, err := ac.client.GetApis(context.TODO(), &apigatewayv2.GetApisInput{NextToken: nextTok})
+		if err != nil {
+			log.Fatalf("could not recover api list: %v\n", err)
+		}
+		for _, api := range curr.Items {
+			if *api.Name == ac.name {
+				wanted = &api
+				break outer
+			}
+		}
+		if curr.NextToken == nil {
+			pres.NotFound()
+			return
+		}
+	}
+	log.Printf("found %s\n", *wanted.ApiId)
+	model := &ApiAWSModel{api: wanted}
 	/*
 		req, err := lc.client.GetFunction(context.TODO(), &lambda.GetFunctionInput{FunctionName: &lc.name})
 		if err != nil {
@@ -60,8 +85,8 @@ func (ac *apiCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 			return
 		}
 		model := &LambdaAWSModel{name: lc.name, config: req.Configuration}
-		pres.Present(model)
 	*/
+	pres.Present(model)
 }
 
 func (ac *apiCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
@@ -101,8 +126,8 @@ func (ac *apiCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 }
 
 func (ac *apiCreator) UpdateReality() {
+	tmp := ac.tools.Storage.GetCoin(ac.coin, corebottom.DETERMINE_INITIAL_MODE)
 	/*
-		tmp := lc.tools.Storage.GetCoin(lc.coin, corebottom.DETERMINE_INITIAL_MODE)
 		desired := lc.tools.Storage.GetCoin(lc.coin, corebottom.DETERMINE_DESIRED_MODE).(*LambdaModel)
 		created := &LambdaAWSModel{name: lc.name}
 
@@ -159,20 +184,23 @@ func (ac *apiCreator) UpdateReality() {
 			lc.tools.Reporter.ReportAtf(lc.loc, "must specify Handler for Runtime %s", rt.String())
 			return
 		}
+	*/
 
-		if tmp != nil {
-			found := tmp.(*LambdaAWSModel)
-			created.config = found.config
-			log.Printf("lambda %s already existed for %s\n", *found.config.FunctionArn, found.name)
-			log.Printf("not handling diffs yet; just copying ...")
-			lc.tools.Storage.Bind(lc.coin, created)
-			return
-		}
-
-		req, err := lc.client.CreateFunction(context.TODO(), &lambda.CreateFunctionInput{FunctionName: &lc.name, Runtime: runtime, Handler: &handler, Code: &types.FunctionCode{S3Bucket: &bucket, S3Key: &key}, Role: &role})
-		if err != nil {
-			log.Fatalf("failed to create lambda %s: %v\n", lc.name, err)
-		}
+	if tmp != nil {
+		found := tmp.(*ApiAWSModel)
+		// created.config = found.config
+		log.Printf("api %s already existed for %s\n", *found.api.ApiId, *found.api.Name)
+		log.Printf("not handling diffs yet; just copying ...")
+		// ac.tools.Storage.Bind(ac.coin, created)
+		return
+	}
+	pt := types.ProtocolTypeHttp
+	out, err := ac.client.CreateApi(context.TODO(), &apigatewayv2.CreateApiInput{Name: &ac.name, ProtocolType: pt})
+	if err != nil {
+		log.Fatalf("failed to create lambda %s: %v\n", ac.name, err)
+	}
+	log.Printf("have api %s %s\n", *out.ApiId, *out.ApiEndpoint)
+	/*
 		utils.ExponentialBackoff(func() bool {
 			stat, err := lc.client.GetFunction(context.TODO(), &lambda.GetFunctionInput{FunctionName: &lc.name})
 			if err != nil {
@@ -192,21 +220,19 @@ func (ac *apiCreator) UpdateReality() {
 }
 
 func (ac *apiCreator) TearDown() {
-	/*
-		tmp := lc.tools.Storage.GetCoin(lc.coin, corebottom.DETERMINE_INITIAL_MODE)
+	tmp := ac.tools.Storage.GetCoin(ac.coin, corebottom.DETERMINE_INITIAL_MODE)
 
-		if tmp != nil {
-			found := tmp.(*LambdaAWSModel)
-			log.Printf("you have asked to tear down lambda %s with mode %s\n", found.name, lc.teardown.Mode())
+	if tmp != nil {
+		found := tmp.(*ApiAWSModel)
+		log.Printf("you have asked to tear down lambda %s with mode %s\n", ac.name, ac.teardown.Mode())
 
-			_, err := lc.client.DeleteFunction(context.TODO(), &lambda.DeleteFunctionInput{FunctionName: &found.name})
-			if err != nil {
-				log.Fatalf("failed to delete lambda %s: %v\n", found.name, err)
-			}
-		} else {
-			log.Printf("no lambda existed for %s\n", lc.name)
+		_, err := ac.client.DeleteApi(context.TODO(), &apigatewayv2.DeleteApiInput{ApiId: found.api.ApiId})
+		if err != nil {
+			log.Fatalf("failed to delete lambda %s: %v\n", ac.name, err)
 		}
-	*/
+	} else {
+		log.Printf("no api existed called %s\n", ac.name)
+	}
 }
 
 /*
