@@ -126,7 +126,14 @@ func (r *roleCreator) UpdateReality() {
 }
 
 func (r *roleCreator) TearDown() {
-	log.Printf("Need to delete the role for %s on AWS\n", r.name)
+	tmp := r.tools.Storage.GetCoin(r.coin, corebottom.DETERMINE_INITIAL_MODE)
+	if tmp == nil {
+		log.Printf("there was no role %s\n", r.name)
+		return
+	}
+
+	// found := tmp.(*RoleAWSModel)
+	r.client.DeleteRole(context.TODO(), &iam.DeleteRoleInput{RoleName: &r.name})
 }
 
 func (r *roleCreator) String() string {

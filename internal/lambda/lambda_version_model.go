@@ -7,6 +7,9 @@ import (
 )
 
 type publishVersionAWS struct {
+	functionName string
+	aliasName    string
+
 	publishedVersion string
 	aliasVersion     string
 	aliasRevId       string

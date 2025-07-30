@@ -67,6 +67,11 @@ func (v *lambdaVersioner) DetermineInitialState(pres corebottom.ValuePresenter) 
 	}
 	fname := name.String()
 
+	if fname == "" { // if the function name is nil, that's probably because it hasn't been created (or has been destroyed), so we don't stand a chance of finding it ...
+		pres.NotFound()
+		return
+	}
+
 	out, err := v.client.GetAlias(context.TODO(), &lambda.GetAliasInput{FunctionName: &fname, Name: &alias})
 	if err != nil {
 		if !lambdaExists(err) {
@@ -77,7 +82,7 @@ func (v *lambdaVersioner) DetermineInitialState(pres corebottom.ValuePresenter) 
 	}
 
 	log.Printf("found alias %s\n", *out.FunctionVersion)
-	model := &publishVersionAWS{aliasVersion: *out.FunctionVersion, aliasRevId: *out.RevisionId}
+	model := &publishVersionAWS{functionName: fname, aliasName: alias, aliasVersion: *out.FunctionVersion, aliasRevId: *out.RevisionId}
 	pres.Present(model)
 }
 
@@ -142,7 +147,19 @@ func (v *lambdaVersioner) UpdateReality() {
 }
 
 func (v *lambdaVersioner) TearDown() {
-	log.Printf("What would it mean to tear down a version?  I think deleting old versions is a separate op")
+	tmp := v.tools.Storage.GetCoin(v.coin, corebottom.DETERMINE_INITIAL_MODE)
+	var found *publishVersionAWS
+	if tmp != nil {
+		found = tmp.(*publishVersionAWS)
+		_, err := v.client.DeleteAlias(context.TODO(), &lambda.DeleteAliasInput{FunctionName: &found.functionName, Name: &found.aliasName})
+		if err != nil {
+			log.Fatalf("failed to create alias %s:%s %v", found.functionName, found.aliasName, err)
+		}
+		log.Printf("deleted alias %s:%s\n", found.functionName, found.aliasName)
+	} else {
+		log.Printf("no lambda alias to tear down")
+	}
+	log.Printf("What would it mean to tear down a version?  I think cleaning up old versions is a separate op")
 }
 
 var _ corebottom.RealityShifter = &lambdaVersioner{}
