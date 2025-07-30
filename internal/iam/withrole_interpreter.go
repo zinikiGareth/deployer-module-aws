@@ -76,14 +76,13 @@ type WithRole struct {
 }
 
 func (w *WithRole) Attach(item any) error {
-	log.Printf("attaching %v of type %T", item, item)
+	// log.Printf("attaching %v of type %T", item, item)
 	pra, ok := item.(corebottom.PolicyActionList)
 	if !ok {
 		return fmt.Errorf("cannot attach %T to WithRole, not a PolicyDocument", item)
 	}
 
 	w.Inline = append(w.Inline, pra)
-	log.Printf("have %d policies", len(w.Inline))
 	return nil
 }
 

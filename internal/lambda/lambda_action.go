@@ -190,6 +190,7 @@ type coinPresenter struct {
 	role           *iam.RoleModel
 	lambdaFound    *LambdaAWSModel
 	lambda         *LambdaModel
+	publishAWS     *publishVersionAWS
 	publishVersion *publishVersionModel
 }
 
@@ -212,6 +213,9 @@ func (c *coinPresenter) Present(value any) {
 	case *LambdaModel:
 		c.lambda = value
 		l.tools.Storage.Bind(l.coins.lambda.coin, value)
+	case *publishVersionAWS:
+		c.publishAWS = value
+		l.tools.Storage.Bind(l.coins.versioner.coin, value)
 	case *publishVersionModel:
 		c.publishVersion = value
 		l.tools.Storage.Bind(l.coins.versioner.coin, value)

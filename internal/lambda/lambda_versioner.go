@@ -75,13 +75,14 @@ func (v *lambdaVersioner) DetermineInitialState(pres corebottom.ValuePresenter) 
 	out, err := v.client.GetAlias(context.TODO(), &lambda.GetAliasInput{FunctionName: &fname, Name: &alias})
 	if err != nil {
 		if !lambdaExists(err) {
+			log.Printf("no alias found for %s:%s\n", fname, name)
 			pres.NotFound()
 			return
 		}
 		log.Fatalf("failed to get alias %s:%s: %v\n", fname, alias, err)
 	}
 
-	log.Printf("found alias %s\n", *out.FunctionVersion)
+	log.Printf("found alias version %s for %s\n", *out.FunctionVersion, *out.Name)
 	model := &publishVersionAWS{functionName: fname, aliasName: alias, aliasVersion: *out.FunctionVersion, aliasRevId: *out.RevisionId}
 	pres.Present(model)
 }
@@ -120,6 +121,7 @@ func (v *lambdaVersioner) UpdateReality() {
 	var found *publishVersionAWS
 	if tmp != nil {
 		found = tmp.(*publishVersionAWS)
+		log.Printf("have found version %p %T %v\n", found, found, found)
 	}
 	desired := v.tools.Storage.GetCoin(v.coin, corebottom.DETERMINE_DESIRED_MODE).(*publishVersionModel)
 	created := &publishVersionAWS{}
@@ -129,7 +131,7 @@ func (v *lambdaVersioner) UpdateReality() {
 		if err != nil {
 			log.Fatalf("failed to publish new version of %s: %v", name, err)
 		}
-		log.Printf("publish returned %s\n", *out.Version)
+		log.Printf("published version %s of %s\n", *out.Version, name)
 		created.publishedVersion = *out.Version
 	}
 	if alias := desired.asAlias.String(); alias != "" {

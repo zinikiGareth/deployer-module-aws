@@ -17,7 +17,8 @@ type RoleModel struct {
 }
 
 type RoleAWSModel struct {
-	role *types.Role
+	role     *types.Role
+	policies []string
 }
 
 func (r *RoleAWSModel) ObtainMethod(name string) driverbottom.Method {

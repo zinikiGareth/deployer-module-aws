@@ -11,6 +11,7 @@ import (
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
+	"ziniki.org/deployer/driver/pkg/utils"
 	"ziniki.org/deployer/modules/aws/internal/env"
 	"ziniki.org/deployer/modules/aws/internal/s3"
 )
@@ -176,6 +177,17 @@ func (lc *lambdaCreator) UpdateReality() {
 	if err != nil {
 		log.Fatalf("failed to create lambda %s: %v\n", lc.name, err)
 	}
+	utils.ExponentialBackoff(func() bool {
+		stat, err := lc.client.GetFunction(context.TODO(), &lambda.GetFunctionInput{FunctionName: &lc.name})
+		if err != nil {
+			panic(err)
+		}
+		if stat.Configuration.State == "Active" {
+			return true;
+		}
+		log.Printf("waiting for lambda to be active, stat = %v\n", stat.Configuration.State)
+		return false
+	})
 	log.Printf("created lambda %s: %s\n", lc.name, *req.FunctionArn)
 	created.config = &types.FunctionConfiguration{FunctionArn: req.FunctionArn}
 
@@ -189,11 +201,10 @@ func (lc *lambdaCreator) TearDown() {
 		found := tmp.(*LambdaAWSModel)
 		log.Printf("you have asked to tear down lambda %s with mode %s\n", found.name, lc.teardown.Mode())
 
-		req, err := lc.client.DeleteFunction(context.TODO(), &lambda.DeleteFunctionInput{FunctionName: &found.name})
+		_, err := lc.client.DeleteFunction(context.TODO(), &lambda.DeleteFunctionInput{FunctionName: &found.name})
 		if err != nil {
 			log.Fatalf("failed to delete lambda %s: %v\n", found.name, err)
 		}
-		log.Printf("returned %v\n", req)
 	} else {
 		log.Printf("no lambda existed for %s\n", lc.name)
 	}

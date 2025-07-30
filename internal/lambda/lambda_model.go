@@ -81,7 +81,7 @@ func (a *arnMethod) Invoke(s driverbottom.RuntimeStorage, on driverbottom.Expr, 
 		panic("invalid number of arguments")
 	}
 	if *model.config.FunctionArn != "" {
-		return model.config.FunctionArn
+		return *model.config.FunctionArn
 	} else {
 		return getArnLater(s, model.coin)
 	}

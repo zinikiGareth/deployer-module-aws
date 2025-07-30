@@ -56,7 +56,6 @@ func (r *roleCreator) CoinId() corebottom.CoinId {
 }
 
 func (r *roleCreator) AddPolicies(managed []driverbottom.Expr, inline []corebottom.PolicyActionList) {
-	log.Printf("Adding %d policies to roleCreator\n", len(inline))
 	r.managed = managed
 	r.inline = inline
 }
@@ -78,21 +77,26 @@ func (r *roleCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 		}
 		log.Fatalf("failed to recover role %s", r.name)
 	}
-	pres.Present(&RoleAWSModel{role: resp.Role})
+
+	policies, err := r.client.ListRolePolicies(context.TODO(), &iam.ListRolePoliciesInput{RoleName: &r.name})
+	if err != nil {
+		log.Fatalf("failed to recover role %s", r.name)
+	}
+
+	pres.Present(&RoleAWSModel{role: resp.Role, policies: policies.PolicyNames})
 }
 
 func (r *roleCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
-	log.Printf("presenting %d policies in model\n", len(r.inline))
 	pres.Present(&RoleModel{name: r.name, inline: r.inline, managed: r.managed})
 }
 
 func (r *roleCreator) UpdateReality() {
 	log.Printf("updating role %s\n", r.name)
-	found := r.tools.Storage.GetCoin(r.coin, corebottom.DETERMINE_INITIAL_MODE).(*RoleAWSModel)
+	tmp := r.tools.Storage.GetCoin(r.coin, corebottom.DETERMINE_INITIAL_MODE)
 	desired := r.tools.Storage.GetCoin(r.coin, corebottom.DETERMINE_DESIRED_MODE).(*RoleModel)
 
 	created := &RoleAWSModel{}
-	if found == nil {
+	if tmp == nil {
 		var assumeJson string
 		log.Printf("need to actually create the role for %s on AWS\n", r.name)
 		assumeJson = `{"Version": "2012-10-17", "Statement": [ { "Effect" : "Allow", "Principal" : { "Service": "lambda.amazonaws.com" }, "Action": [ "sts:AssumeRole" ]}]}`
@@ -103,20 +107,18 @@ func (r *roleCreator) UpdateReality() {
 		log.Printf("have %v\n", out.Role)
 		created.role = out.Role
 	} else {
+		found := tmp.(*RoleAWSModel)
 		created.role = found.role
 	}
 
-	log.Printf("attaching %d policies ...\n", len(desired.inline))
 	for k, ip := range desired.inline {
 		policy := coretop.NewPolicyDocument(ip.Loc())
 		ip.ApplyTo(policy)
-		log.Printf("attaching policy %d\n", k)
 		pname := fmt.Sprintf("%s-%d", desired.name, k)
 		ps, err := policyjson.BuildFrom(strings.ReplaceAll(pname, "-", ""), policy)
 		if err != nil {
 			log.Fatalf("could not generate policy: %v", err)
 		}
-		log.Printf("%s", ps)
 		pout, err := r.client.PutRolePolicy(context.TODO(), &iam.PutRolePolicyInput{RoleName: &r.name, PolicyName: &pname, PolicyDocument: &ps})
 		if err != nil {
 			log.Fatalf("could not generate policy: %v", err)
@@ -132,8 +134,18 @@ func (r *roleCreator) TearDown() {
 		return
 	}
 
-	// found := tmp.(*RoleAWSModel)
-	r.client.DeleteRole(context.TODO(), &iam.DeleteRoleInput{RoleName: &r.name})
+	found := tmp.(*RoleAWSModel)
+	for _, p := range found.policies {
+		_, err := r.client.DeleteRolePolicy(context.TODO(), &iam.DeleteRolePolicyInput{RoleName: &r.name, PolicyName: &p})
+		if err != nil {
+			log.Fatalf("failed to delete role policy %s %s: %v", r.name, p, err)
+		}
+	}
+	_, err := r.client.DeleteRole(context.TODO(), &iam.DeleteRoleInput{RoleName: &r.name})
+	if err != nil {
+		log.Fatalf("failed to delete role %s: %v", r.name, err)
+	}
+	log.Printf("deleted role %s\n", r.name)
 }
 
 func (r *roleCreator) String() string {
