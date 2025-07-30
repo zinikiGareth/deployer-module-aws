@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/acm"
+	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
@@ -20,6 +21,7 @@ import (
 type AwsEnv struct {
 	cfg                  aws.Config
 	acmclient            *acm.Client
+	apiGatewayV2Client   *apigatewayv2.Client
 	cfclient             *cloudfront.Client
 	dynamoClient         *dynamodb.Client
 	iamclient            *iam.Client
@@ -37,6 +39,7 @@ func (a *AwsEnv) Init() {
 		log.Fatal(err)
 	}
 	a.acmclient = acm.NewFromConfig(a.cfg)
+	a.apiGatewayV2Client = apigatewayv2.NewFromConfig(a.cfg)
 	a.cfclient = cloudfront.NewFromConfig(a.cfg)
 	a.dynamoClient = dynamodb.NewFromConfig(a.cfg)
 	a.iamclient = iam.NewFromConfig(a.cfg)
@@ -49,6 +52,10 @@ func (a *AwsEnv) Init() {
 
 func (a *AwsEnv) ACMClient() *acm.Client {
 	return a.acmclient
+}
+
+func (a *AwsEnv) ApiGatewayV2Client() *apigatewayv2.Client {
+	return a.apiGatewayV2Client
 }
 
 func (a *AwsEnv) CFClient() *cloudfront.Client {

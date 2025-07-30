@@ -28,11 +28,11 @@ func (l *lambdaAction) Loc() *errorsink.Location {
 }
 
 func (l *lambdaAction) ShortDescription() string {
-	return "WebsiteAction[" + l.named.String() + "]"
+	return "LambdaAction[" + l.named.String() + "]"
 }
 
 func (l *lambdaAction) DumpTo(iw driverbottom.IndentWriter) {
-	iw.Intro("WebsiteAction")
+	iw.Intro("LambdaAction %s", l.named)
 	iw.AttrsWhere(l)
 	iw.EndAttrs()
 }
@@ -45,7 +45,9 @@ func (l *lambdaAction) AddAdverb(adv driverbottom.Adverb, tokens []driverbottom.
 		if len(tokens) != 1 {
 			panic("invalid tokens")
 		}
-		// l.teardown = &CFS3TearDown{mode: tokens[0].(driverbottom.Identifier).Id()}
+		l.teardown = &LambdaTearDown{mode: tokens[0].(driverbottom.Identifier).Id()}
+	} else {
+		l.tools.Reporter.ReportAtf(adv.Loc(), "there is no adverb %s", adv.Name())
 	}
 	return drivertop.NewDisallowInnerScope(l.tools.CoreTools)
 }
@@ -72,11 +74,15 @@ func (l *lambdaAction) AddProperty(name driverbottom.Identifier, value driverbot
 }
 
 func (l *lambdaAction) Completed() {
+	if l.teardown == nil {
+		l.tools.Reporter.ReportAtf(l.loc, "no teardown specified")
+		return
+	}
+
 	l.coins = &lambdaCoins{}
 	notused := utils.PropsMap(l.props)
 
 	lambdaCoin := corebottom.CoinId(l.tools.Storage.PendingObjId(l.named.Loc()))
-	teardown := &LambdaTearDown{mode: "delete"}
 
 	role := utils.FindProp(l.props, notused, "Role")
 	switch v := role.(type) {
@@ -84,12 +90,12 @@ func (l *lambdaAction) Completed() {
 		l.coins.withRole = v
 		roleCoin := corebottom.CoinId(l.tools.Storage.PendingObjId(l.coins.withRole.Loc()))
 		l.coins.roleCoin = roleCoin
-		l.coins.roleCreator = (&iam.RoleBlank{}).Mint(l.tools, l.coins.withRole.Loc(), roleCoin, l.coins.withRole.Name(), nil, teardown)
+		l.coins.roleCreator = (&iam.RoleBlank{}).Mint(l.tools, l.coins.withRole.Loc(), roleCoin, l.coins.withRole.Name(), nil, l.teardown)
 		l.coins.roleCreator.(iam.AcceptPolicies).AddPolicies(v.Managed, v.Inline)
 	}
 
 	funcProps := utils.UseProps(l.props, notused, "Code", "Handler", "Role", "Runtime")
-	l.coins.lambda = &lambdaCreator{tools: l.tools, teardown: teardown, loc: l.loc, coin: lambdaCoin, name: l.named.Text(), props: funcProps}
+	l.coins.lambda = &lambdaCreator{tools: l.tools, teardown: l.teardown, loc: l.loc, coin: lambdaCoin, name: l.named.Text(), props: funcProps}
 
 	if utils.HasProp(l.props, "PublishVersion", "Alias") {
 		versionerCoin := corebottom.CoinId(l.tools.Storage.PendingObjId(l.loc))
@@ -178,12 +184,6 @@ func (m *LambdaTearDown) Mode() string {
 
 var _ corebottom.RealityShifter = &lambdaAction{}
 
-// This needs to capture all the things as they come in
-// We have one of these for discovery and one for desired
-// We will probably also create one for "updateReality"
-// It needs some kind of OOB info to know who is presenting what, although it's possible we
-// could switch on model type - let's try that first
-// We need to bind them to their coin names in Storage
 type coinPresenter struct {
 	main           *lambdaAction
 	roleFound      *iam.RoleAWSModel

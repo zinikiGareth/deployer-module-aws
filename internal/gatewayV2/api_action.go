@@ -1,0 +1,245 @@
+package gatewayV2
+
+import (
+	"ziniki.org/deployer/coremod/pkg/corebottom"
+	"ziniki.org/deployer/driver/pkg/driverbottom"
+	"ziniki.org/deployer/driver/pkg/drivertop"
+	"ziniki.org/deployer/driver/pkg/errorsink"
+	"ziniki.org/deployer/driver/pkg/utils"
+)
+
+type apiAction struct {
+	tools *corebottom.Tools
+	loc   *errorsink.Location
+
+	named    driverbottom.String
+	props    map[driverbottom.Identifier]driverbottom.Expr
+	teardown corebottom.TearDown
+
+	coins *apiCoins
+}
+
+func (a *apiAction) Loc() *errorsink.Location {
+	return a.loc
+}
+
+func (a *apiAction) ShortDescription() string {
+	return "ApiAction[" + a.named.String() + "]"
+}
+
+func (a *apiAction) DumpTo(iw driverbottom.IndentWriter) {
+	iw.Intro("ApiAction %s", a.named)
+	iw.AttrsWhere(a)
+	iw.EndAttrs()
+}
+
+func (a *apiAction) AddAdverb(adv driverbottom.Adverb, tokens []driverbottom.Token) driverbottom.Interpreter {
+	if adv.Name() == "teardown" {
+		if a.teardown != nil {
+			panic("duplicate teardown")
+		}
+		if len(tokens) != 1 {
+			panic("invalid tokens")
+		}
+		a.teardown = &ApiTearDown{mode: tokens[0].(driverbottom.Identifier).Id()}
+	} else {
+		a.tools.Reporter.ReportAtf(adv.Loc(), "there is no adverb %s", adv.Name())
+	}
+	return drivertop.NewDisallowInnerScope(a.tools.CoreTools)
+}
+
+func (a *apiAction) AddProperty(name driverbottom.Identifier, value driverbottom.Expr) {
+	if name.Id() == "name" {
+		if a.named != nil {
+			a.tools.Reporter.Report(name.Loc().Offset, "duplicate definition of name")
+			return
+		}
+		str, ok := value.(driverbottom.String)
+		if !ok {
+			a.tools.Reporter.Report(value.Loc().Offset, "name must be a string")
+			return
+		}
+		a.named = str
+	} else {
+		if a.props[name] != nil {
+			a.tools.Reporter.Reportf(name.Loc().Offset, "duplicate definition of %s", name.Id())
+			return
+		}
+		a.props[name] = value
+	}
+}
+
+func (a *apiAction) Completed() {
+	if a.teardown == nil {
+		a.tools.Reporter.ReportAtf(a.loc, "no teardown specified")
+		return
+	}
+	a.coins = &apiCoins{}
+	notused := utils.PropsMap(a.props)
+	apiCoin := corebottom.CoinId(a.tools.Storage.PendingObjId(a.named.Loc()))
+
+	/*
+		role := utils.FindProp(a.props, notused, "Role")
+		switch v := role.(type) {
+		case *iam.WithRole:
+			a.coins.withRole = v
+			roleCoin := corebottom.CoinId(a.tools.Storage.PendingObjId(a.coins.withRole.Loc()))
+			a.coins.roleCoin = roleCoin
+			a.coins.roleCreator = (&iam.RoleBlank{}).Mint(a.tools, a.coins.withRole.Loc(), roleCoin, a.coins.withRole.Name(), nil, teardown)
+			a.coins.roleCreator.(iam.AcceptPolicies).AddPolicies(v.Managed, v.Inline)
+		}
+
+	*/
+	funcProps := utils.UseProps(a.props, notused, "Code", "Handler", "Role", "Runtime")
+	a.coins.api = &apiCreator{tools: a.tools, teardown: a.teardown, loc: a.loc, coin: apiCoin, name: a.named.Text(), props: funcProps}
+
+	/*
+		if utils.HasProp(a.props, "PublishVersion", "Alias") {
+			versionerCoin := corebottom.CoinId(a.tools.Storage.PendingObjId(a.loc))
+			props := utils.UseProps(a.props, notused, "PublishVersion", "Alias")
+			nameId := drivertop.NewIdentifierToken(a.named.Loc(), "Name")
+			getLambda := coretop.MakeGetCoinMethod(a.named.Loc(), a.coins.lambda.coin)
+			arnId := drivertop.NewIdentifierToken(a.named.Loc(), "arn")
+			props[nameId] = drivertop.MakeInvokeExpr(getLambda, arnId)
+			a.coins.versioner = &lambdaVersioner{tools: a.tools, coin: versionerCoin, props: props}
+		}
+
+		// check all properties specified have been used
+		for k, id := range notused {
+			if id != nil {
+				a.tools.Reporter.ReportAtf(id.Loc(), "no such property %s on lambda.function", k)
+			}
+		}
+	*/
+}
+
+func (a *apiAction) Resolve(r driverbottom.Resolver) driverbottom.BindingRequirement {
+	/*
+		a.coins.lambda.coin.Resolve(a.tools.Storage)
+		a.coins.roleCoin.Resolve(a.tools.Storage)
+		a.coins.withRole.Resolve(r)
+		if a.coins.versioner != nil {
+			a.coins.versioner.coin.Resolve(a.tools.Storage)
+			a.coins.versioner.Resolve(r)
+		}
+	*/
+	return driverbottom.MAY_BE_BOUND
+}
+
+func (a *apiAction) DetermineInitialState(pres corebottom.ValuePresenter) {
+	/*
+		mypres := a.newCoinPresenter()
+		if a.coins.roleCreator != nil {
+			a.coins.roleCreator.DetermineInitialState(mypres)
+		}
+		a.coins.lambda.DetermineInitialState(mypres)
+		if a.coins.versioner != nil {
+			a.coins.versioner.DetermineInitialState(mypres)
+		}
+		pres.Present(mypres.lambda)
+	*/
+}
+
+func (a *apiAction) DetermineDesiredState(pres corebottom.ValuePresenter) {
+	/*
+		mypres := a.newCoinPresenter()
+		if a.coins.roleCreator != nil {
+			a.coins.roleCreator.DetermineDesiredState(mypres)
+		}
+		a.coins.lambda.DetermineDesiredState(mypres)
+		if a.coins.versioner != nil {
+			a.coins.versioner.DetermineDesiredState(mypres)
+		}
+		pres.Present(mypres.lambda)
+	*/
+}
+
+func (a *apiAction) ShouldDestroy() bool {
+	return false
+}
+
+func (a *apiAction) UpdateReality() {
+	/*
+		if a.coins.roleCreator != nil {
+			a.coins.roleCreator.UpdateReality()
+		}
+		a.coins.lambda.UpdateReality()
+		if a.coins.versioner != nil {
+			a.coins.versioner.UpdateReality()
+		}
+	*/
+}
+
+func (a *apiAction) TearDown() {
+	/*
+		if a.coins.versioner != nil {
+			a.coins.versioner.TearDown()
+		}
+		a.coins.lambda.TearDown()
+		if a.coins.roleCreator != nil {
+			a.coins.roleCreator.TearDown()
+		}
+	*/
+}
+
+type ApiTearDown struct {
+	mode string
+}
+
+func (m *ApiTearDown) Mode() string {
+	return m.mode
+}
+
+var _ corebottom.RealityShifter = &apiAction{}
+
+/*
+type coinPresenter struct {
+	main           *apiAction
+	roleFound      *iam.RoleAWSModel
+	role           *iam.RoleModel
+	lambdaFound    *LambdaAWSModel
+	lambda         *LambdaModel
+	publishAWS     *publishVersionAWS
+	publishVersion *publishVersionModel
+}
+
+func (c *coinPresenter) NotFound() {
+	log.Printf("not found\n")
+}
+
+func (c *coinPresenter) Present(value any) {
+	l := c.main
+	switch value := value.(type) {
+	case *iam.RoleAWSModel:
+		c.roleFound = value
+		l.tools.Storage.Bind(l.coins.roleCoin, value)
+	case *iam.RoleModel:
+		c.role = value
+		l.tools.Storage.Bind(l.coins.roleCoin, value)
+	case *LambdaAWSModel:
+		c.lambdaFound = value
+		l.tools.Storage.Bind(l.coins.lambda.coin, value)
+	case *LambdaModel:
+		c.lambda = value
+		l.tools.Storage.Bind(l.coins.lambda.coin, value)
+	case *publishVersionAWS:
+		c.publishAWS = value
+		l.tools.Storage.Bind(l.coins.versioner.coin, value)
+	case *publishVersionModel:
+		c.publishVersion = value
+		l.tools.Storage.Bind(l.coins.versioner.coin, value)
+	default:
+		log.Fatalf("need to handle present(%T %v)\n", value, value)
+	}
+}
+
+func (c *coinPresenter) WantDestruction(loc *errorsink.Location) {
+	panic("need to handle lambda.@destroy")
+}
+
+func (a *apiAction) newCoinPresenter() *coinPresenter {
+	return &coinPresenter{main: a}
+}
+
+var _ corebottom.ValuePresenter = &coinPresenter{}
+*/

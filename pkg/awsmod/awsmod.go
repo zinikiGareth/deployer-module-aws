@@ -9,6 +9,7 @@ import (
 	"ziniki.org/deployer/modules/aws/internal/cfront"
 	"ziniki.org/deployer/modules/aws/internal/dynamodb"
 	"ziniki.org/deployer/modules/aws/internal/env"
+	"ziniki.org/deployer/modules/aws/internal/gatewayV2"
 	"ziniki.org/deployer/modules/aws/internal/iam"
 	"ziniki.org/deployer/modules/aws/internal/lambda"
 	"ziniki.org/deployer/modules/aws/internal/neptune"
@@ -35,6 +36,8 @@ func RegisterWithDriver(deployer driverbottom.Driver) error {
 	tools.Register.Register("target", "cloudfront.invalidate", cfront.NewInvalidateHandler(mytools))
 
 	tools.Register.Register("target", "lambda.function", lambda.NewLambdaFunction(mytools))
+
+	tools.Register.Register("target", "api.gatewayV2", gatewayV2.NewAPI(mytools))
 
 	tools.Register.Register("blank", "aws.Route53.DomainName", &route53.DomainNameBlank{})
 	tools.Register.Register("blank", "aws.Route53.ALIAS", &route53.ALIASBlank{})
