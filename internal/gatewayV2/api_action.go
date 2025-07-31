@@ -92,7 +92,7 @@ func (a *apiAction) Completed() {
 		}
 
 	*/
-	funcProps := utils.UseProps(a.props, notused, "Protocol")
+	funcProps := utils.UseProps(a.props, notused, "Protocol", "RouteSelectionExpression")
 	a.coins.api = &apiCreator{tools: a.tools, teardown: a.teardown, loc: a.loc, coin: apiCoin, name: a.named.Text(), props: funcProps}
 
 	/*

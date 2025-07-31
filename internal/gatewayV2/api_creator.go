@@ -2,6 +2,7 @@ package gatewayV2
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2"
@@ -91,25 +92,15 @@ outer:
 
 func (ac *apiCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 	var protocol driverbottom.Expr
-	/*
-		var handler driverbottom.Expr
-		var role driverbottom.Expr
-		var code *s3.S3Location
-	*/
+	var rse driverbottom.Expr
 	for p, v := range ac.props {
 		switch p.Id() {
 		case "Protocol":
 			protocol = v
-			/*
-				case "Code":
-					code = v.(*s3.S3Location)
-				case "Handler":
-					handler = v
-				case "Role":
-					role = v
-			*/
+		case "RouteSelectionExpression":
+			rse = v
 		default:
-			ac.tools.Reporter.ReportAtf(ac.loc, "invalid property for Lambda: %s", p.Id())
+			ac.tools.Reporter.ReportAtf(ac.loc, "invalid property for ApiGateway: %s", p.Id())
 		}
 	}
 	if protocol == nil {
@@ -127,12 +118,24 @@ func (ac *apiCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 		pt = types.ProtocolTypeHttp
 	case "websocket":
 		pt = types.ProtocolTypeWebsocket
+		if rse == nil {
+			ac.tools.Reporter.ReportAtf(ac.loc, "websocket protocol requires RouteSelectionExpression")
+			return
+		}
 	default:
 		ac.tools.Reporter.ReportAtf(ac.loc, "invalid protocol type %s", prot.String())
 		return
 	}
 
-	model := &ApiModel{name: ac.name, loc: ac.loc, coin: ac.coin, protocol: pt}
+	var route fmt.Stringer
+	if rse != nil {
+		route, ok = ac.tools.Storage.EvalAsStringer(rse)
+		if !ok {
+			panic("not ok")
+		}
+	}
+
+	model := &ApiModel{name: ac.name, loc: ac.loc, coin: ac.coin, protocol: pt, rse: route}
 	pres.Present(model)
 }
 
@@ -206,7 +209,14 @@ func (ac *apiCreator) UpdateReality() {
 		return
 	}
 
-	out, err := ac.client.CreateApi(context.TODO(), &apigatewayv2.CreateApiInput{Name: &ac.name, ProtocolType: desired.protocol})
+	input := &apigatewayv2.CreateApiInput{Name: &ac.name, ProtocolType: desired.protocol}
+	if desired.rse != nil {
+		s := desired.rse.String()
+		if s != "" {
+			input.RouteSelectionExpression = &s
+		}
+	}
+	out, err := ac.client.CreateApi(context.TODO(), input)
 	if err != nil {
 		log.Fatalf("failed to create lambda %s: %v\n", ac.name, err)
 	}

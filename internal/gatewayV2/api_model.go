@@ -1,6 +1,8 @@
 package gatewayV2
 
 import (
+	"fmt"
+
 	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2/types"
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
@@ -15,4 +17,5 @@ type ApiModel struct {
 	loc      *errorsink.Location
 	coin     corebottom.CoinId
 	protocol types.ProtocolType
+	rse      fmt.Stringer
 }
