@@ -1,5 +1,6 @@
 package gatewayV2
 
 type apiCoins struct {
-	api *apiCreator
+	api    *apiCreator
+	routes map[string]*routeCreator
 }

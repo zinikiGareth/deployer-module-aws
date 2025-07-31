@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"ziniki.org/deployer/coremod/pkg/corebottom"
+	"ziniki.org/deployer/coremod/pkg/coretop"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/drivertop"
 	"ziniki.org/deployer/driver/pkg/errorsink"
@@ -76,7 +77,7 @@ func (a *apiAction) Completed() {
 		a.tools.Reporter.ReportAtf(a.loc, "no teardown specified")
 		return
 	}
-	a.coins = &apiCoins{}
+	a.coins = &apiCoins{routes: make(map[string]*routeCreator)}
 	notused := utils.PropsMap(a.props)
 	apiCoin := corebottom.CoinId(a.tools.Storage.PendingObjId(a.named.Loc()))
 
@@ -95,17 +96,20 @@ func (a *apiAction) Completed() {
 	funcProps := utils.UseProps(a.props, notused, "Protocol", "RouteSelectionExpression")
 	a.coins.api = &apiCreator{tools: a.tools, teardown: a.teardown, loc: a.loc, coin: apiCoin, name: a.named.Text(), props: funcProps}
 
-	/*
-		if utils.HasProp(a.props, "PublishVersion", "Alias") {
-			versionerCoin := corebottom.CoinId(a.tools.Storage.PendingObjId(a.loc))
-			props := utils.UseProps(a.props, notused, "PublishVersion", "Alias")
-			nameId := drivertop.NewIdentifierToken(a.named.Loc(), "Name")
-			getLambda := coretop.MakeGetCoinMethod(a.named.Loc(), a.coins.lambda.coin)
-			arnId := drivertop.NewIdentifierToken(a.named.Loc(), "arn")
-			props[nameId] = drivertop.MakeInvokeExpr(getLambda, arnId)
-			a.coins.versioner = &lambdaVersioner{tools: a.tools, coin: versionerCoin, props: props}
-		}
-	*/
+	// I'm not quite sure how to express this yet in the file
+
+	// this deffo wants to be done here
+	props := utils.UseProps(a.props, notused, "PublishVersion", "Alias")
+	apiId := drivertop.NewIdentifierToken(a.named.Loc(), "Api")
+	getApi := coretop.MakeGetCoinMethod(a.named.Loc(), a.coins.api.coin)
+	arnId := drivertop.NewIdentifierToken(a.named.Loc(), "id")
+	props[apiId] = drivertop.MakeInvokeExpr(getApi, arnId)
+
+	route := drivertop.MakeString(a.named.Loc(), "/*")
+	routeId := drivertop.NewIdentifierToken(a.named.Loc(), "Route")
+	props[routeId] = route
+
+	a.coins.routes["/*"] = &routeCreator{tools: a.tools, teardown: a.teardown, loc: a.loc}
 
 	// check all properties specified have been used
 	for k, id := range notused {

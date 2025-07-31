@@ -6,18 +6,18 @@ import (
 	"ziniki.org/deployer/driver/pkg/errorsink"
 )
 
-type DistributionBlank struct{}
+type LambdaBlank struct{}
 
-func (b *DistributionBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) corebottom.Ensurable {
+func (b *LambdaBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr, teardown corebottom.TearDown) corebottom.Ensurable {
 	return &lambdaCreator{tools: tools, teardown: teardown, loc: loc, name: named, coin: id, props: props}
 }
 
-func (b *DistributionBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) corebottom.FindCoin {
+func (b *LambdaBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) corebottom.FindCoin {
 	return &lambdaCreator{tools: tools, loc: loc, name: named, coin: id}
 }
 
-func (b *DistributionBlank) ShortDescription() string {
+func (b *LambdaBlank) ShortDescription() string {
 	return "aws.CloudFront.Distribution[]"
 }
 
-var _ corebottom.Blank = &DistributionBlank{}
+var _ corebottom.Blank = &LambdaBlank{}
