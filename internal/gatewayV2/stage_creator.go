@@ -123,7 +123,7 @@ func (sc *stageCreator) UpdateReality() {
 	input := &apigatewayv2.CreateStageInput{ApiId: &apiId, StageName: &sc.name}
 	out, err := sc.client.CreateStage(context.TODO(), input)
 	if err != nil {
-		log.Fatalf("failed to create api route %s: %v\n", sc.name, err)
+		log.Fatalf("failed to create api stage %s: %v\n", sc.name, err)
 	}
 	log.Printf("created api stage %s\n", *out.StageName)
 	created.name = sc.name
