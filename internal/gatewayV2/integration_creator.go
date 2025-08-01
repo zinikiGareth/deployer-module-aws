@@ -1,0 +1,213 @@
+package gatewayV2
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2"
+	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2/types"
+	"ziniki.org/deployer/coremod/pkg/corebottom"
+	"ziniki.org/deployer/driver/pkg/driverbottom"
+	"ziniki.org/deployer/driver/pkg/errorsink"
+	"ziniki.org/deployer/driver/pkg/utils"
+	"ziniki.org/deployer/modules/aws/internal/env"
+)
+
+type integrationCreator struct {
+	tools *corebottom.Tools
+
+	loc      *errorsink.Location
+	name     string
+	coin     corebottom.CoinId
+	props    map[driverbottom.Identifier]driverbottom.Expr
+	teardown corebottom.TearDown
+
+	client *apigatewayv2.Client
+}
+
+func (ic *integrationCreator) Loc() *errorsink.Location {
+	return ic.loc
+}
+
+func (ic *integrationCreator) ShortDescription() string {
+	return "api.gatewayV2.Integration[" + ic.name + "]"
+}
+
+func (ic *integrationCreator) DumpTo(iw driverbottom.IndentWriter) {
+	iw.Intro("api.gatewayV2.Integration %s", ic.name)
+	iw.AttrsWhere(ic)
+	iw.EndAttrs()
+}
+
+func (ic *integrationCreator) CoinId() corebottom.CoinId {
+	return ic.coin
+}
+
+func (ic *integrationCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
+	eq := ic.tools.Recall.ObtainDriver("aws.AwsEnv")
+	awsEnv, ok := eq.(*env.AwsEnv)
+	if !ok {
+		panic("could not cast env to AwsEnv")
+	}
+	ic.client = awsEnv.ApiGatewayV2Client()
+
+	ae := utils.FindProp(ic.props, nil, "Api")
+	if ae == nil {
+		// we can't carry on ... error will be reported below
+		return
+	}
+
+	apiStr, ok := ic.tools.Storage.EvalAsStringer(ae)
+	if !ok {
+		panic("not ok")
+	}
+	apiId := apiStr.String()
+
+	var nextTok *string
+	var wanted *types.Integration
+	dname := fmt.Sprintf("zd[%s]", ic.name)
+outer:
+	for {
+		curr, err := ic.client.GetIntegrations(context.TODO(), &apigatewayv2.GetIntegrationsInput{ApiId: &apiId, NextToken: nextTok})
+		if err != nil {
+			log.Fatalf("could not recover integration list: %v\n", err)
+		}
+		for _, intg := range curr.Items {
+			if *intg.Description == dname {
+				wanted = &intg
+				break outer
+			}
+		}
+		if curr.NextToken == nil {
+			log.Printf("did not find integration for %s called %s\n", apiId, ic.name)
+			pres.NotFound()
+			return
+		}
+	}
+	log.Printf("found integration %s\n", *wanted.IntegrationId)
+	model := &IntegrationAWSModel{integration: wanted}
+	pres.Present(model)
+}
+
+func (ic *integrationCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
+	var api driverbottom.Expr
+	var itype driverbottom.Expr
+	var region driverbottom.Expr
+	var uri driverbottom.Expr
+	for p, v := range ic.props {
+		switch p.Id() {
+		case "Description":
+			ic.tools.Reporter.ReportAtf(ic.loc, "Description is not allowed for Integration because we use it for Name")
+		case "Api":
+			api = v
+		case "Region":
+			region = v
+		case "Type":
+			itype = v
+		case "Uri":
+			uri = v
+		default:
+			ic.tools.Reporter.ReportAtf(ic.loc, "invalid property for Api Integration: %s", p.Id())
+		}
+	}
+	if api == nil {
+		ic.tools.Reporter.ReportAtf(ic.loc, "no Api specified for Integration")
+		return
+	}
+	if region == nil {
+		ic.tools.Reporter.ReportAtf(ic.loc, "no Region specified for Integration")
+		return
+	}
+	if itype == nil {
+		ic.tools.Reporter.ReportAtf(ic.loc, "no Type specified for Integration")
+		return
+	}
+	if uri == nil {
+		ic.tools.Reporter.ReportAtf(ic.loc, "no Uri specified for Integration")
+		return
+	}
+
+	apiStr, ok := ic.tools.Storage.EvalAsStringer(api)
+	if !ok {
+		panic("not ok")
+	}
+
+	regionStr, ok := ic.tools.Storage.EvalAsStringer(region)
+	if !ok {
+		panic("not ok")
+	}
+
+	typeStr, ok := ic.tools.Storage.EvalAsStringer(itype)
+	if !ok {
+		panic("not ok")
+	}
+
+	uriStr, ok := ic.tools.Storage.EvalAsStringer(uri)
+	if !ok {
+		panic("not ok")
+	}
+
+	model := &IntegrationModel{name: ic.name, loc: ic.loc, coin: ic.coin, api: apiStr, region: regionStr, itype: typeStr, uri: uriStr}
+	pres.Present(model)
+}
+
+func (ic *integrationCreator) UpdateReality() {
+	tmp := ic.tools.Storage.GetCoin(ic.coin, corebottom.DETERMINE_INITIAL_MODE)
+	desired := ic.tools.Storage.GetCoin(ic.coin, corebottom.DETERMINE_DESIRED_MODE).(*IntegrationModel)
+	created := &IntegrationAWSModel{}
+	if tmp != nil {
+		found := tmp.(*IntegrationAWSModel)
+		created.integration = found.integration
+
+		log.Printf("integration already existed for %s: %s\n", ic.name, *found.integration.IntegrationId)
+		log.Printf("not handling diffs yet; just copying ...")
+		ic.tools.Storage.Bind(ic.coin, created)
+		return
+
+	}
+
+	uri := desired.uri.String()
+	log.Printf("have base uri %s\n", uri)
+
+	region := desired.region.String()
+	full := fmt.Sprintf("arn:aws:apigateway:%s:%s", region, uri)
+	log.Printf("have integration uri %s\n", full)
+	
+	/*
+		input := &apigatewayv2.CreateApiInput{Name: &ic.name, ProtocolType: desired.protocol}
+		if desired.rse != nil {
+			s := desired.rse.String()
+			if s != "" {
+				input.RouteSelectionExpression = &s
+			}
+		}
+		out, err := ic.client.CreateApi(context.TODO(), input)
+		if err != nil {
+			log.Fatalf("failed to create lambda %s: %v\n", ic.name, err)
+		}
+		log.Printf("created api %s %s\n", *out.ApiId, *out.ApiEndpoint)
+		created.api = &types.Api{Name: out.Name, ApiId: out.ApiId, ApiEndpoint: out.ApiEndpoint}
+		ic.tools.Storage.Bind(ic.coin, created)
+	*/
+}
+
+func (ic *integrationCreator) TearDown() {
+	/*
+		tmp := ic.tools.Storage.GetCoin(ic.coin, corebottom.DETERMINE_INITIAL_MODE)
+
+		if tmp != nil {
+			found := tmp.(*ApiAWSModel)
+			log.Printf("you have asked to tear down lambda %s with mode %s\n", ic.name, ic.teardown.Mode())
+
+			_, err := ic.client.DeleteApi(context.TODO(), &apigatewayv2.DeleteApiInput{ApiId: found.api.ApiId})
+			if err != nil {
+				log.Fatalf("failed to delete lambda %s: %v\n", ic.name, err)
+			}
+		} else {
+			log.Printf("no api existed called %s\n", ic.name)
+		}
+	*/
+}
+
+var _ corebottom.Ensurable = &integrationCreator{}

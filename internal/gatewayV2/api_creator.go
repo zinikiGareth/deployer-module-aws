@@ -30,11 +30,11 @@ func (ac *apiCreator) Loc() *errorsink.Location {
 }
 
 func (ac *apiCreator) ShortDescription() string {
-	return "api.gatewayV2[" + ac.name + "]"
+	return "api.gatewayV2.Api[" + ac.name + "]"
 }
 
 func (ac *apiCreator) DumpTo(iw driverbottom.IndentWriter) {
-	iw.Intro("api.gatewayV2 %s", ac.name)
+	iw.Intro("api.gatewayV2.Api %s", ac.name)
 	iw.AttrsWhere(ac)
 	iw.EndAttrs()
 }
@@ -70,23 +70,8 @@ outer:
 			return
 		}
 	}
-	log.Printf("found %s\n", *wanted.ApiId)
-	model := &ApiAWSModel{api: wanted}
-	/*
-		req, err := ac.client.GetFunction(context.TODO(), &lambda.GetFunctionInput{FunctionName: &ac.name})
-		if err != nil {
-			if !lambdaExists(err) {
-				pres.NotFound()
-				return
-			}
-			log.Fatalf("could not recover function %s: %v\n", ac.name, err)
-		}
-		if req == nil {
-			pres.NotFound()
-			return
-		}
-		model := &LambdaAWSModel{name: ac.name, config: req.Configuration}
-	*/
+	log.Printf("found api gateway %s\n", *wanted.ApiId)
+	model := &ApiAWSModel{api: wanted, coin: ac.coin}
 	pres.Present(model)
 }
 

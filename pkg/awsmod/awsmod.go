@@ -40,6 +40,7 @@ func RegisterWithDriver(deployer driverbottom.Driver) error {
 	tools.Register.Register("target", "api.gatewayV2", gatewayV2.NewAPI(mytools))
 
 	tools.Register.Register("blank", "aws.ApiGatewayV2.Api", &gatewayV2.ApiBlank{})
+	tools.Register.Register("blank", "aws.ApiGatewayV2.Integration", &gatewayV2.IntegrationBlank{})
 	tools.Register.Register("blank", "aws.CertificateManager.Certificate", &acm.CertificateBlank{})
 	tools.Register.Register("blank", "aws.CloudFront.OriginAccessControl", &cfront.OACBlank{})
 	tools.Register.Register("blank", "aws.CloudFront.ResponseHeadersPolicy", &cfront.RHPBlank{})
