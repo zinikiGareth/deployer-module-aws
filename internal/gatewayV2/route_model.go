@@ -1,14 +1,19 @@
 package gatewayV2
 
-type RouteModel struct {
-	// name string
-	// loc  *errorsink.Location
-	// coin corebottom.CoinId
+import (
+	"fmt"
 
-	// code    *s3.S3Location
-	// runtime driverbottom.Expr
-	// handler driverbottom.Expr
-	// role    driverbottom.Expr
+	"ziniki.org/deployer/coremod/pkg/corebottom"
+	"ziniki.org/deployer/driver/pkg/errorsink"
+)
+
+type RouteModel struct {
+	path string
+	loc  *errorsink.Location
+	coin corebottom.CoinId
+
+	api    fmt.Stringer
+	target fmt.Stringer
 }
 
 /*
@@ -42,7 +47,7 @@ type RouteAWSModel struct {
 	// name string
 	// coin corebottom.CoinId
 
-	// config *types.FunctionConfiguration
+	routeId string
 }
 
 /*

@@ -52,12 +52,12 @@ func (ic *integrationCreator) DetermineInitialState(pres corebottom.ValuePresent
 	}
 	ic.client = awsEnv.ApiGatewayV2Client()
 
-	ae := utils.FindProp(ic.props, nil, "Api")
-	if ae == nil {
-		// we can't carry on ... error will be reported below
+	if !utils.HasProp(ic.props, "Api") {
+		pres.NotFound()
 		return
 	}
 
+	ae := utils.FindProp(ic.props, nil, "Api")
 	apiStr, ok := ic.tools.Storage.EvalAsStringer(ae)
 	if apiStr == nil {
 		// if we can't resolve apiId, we won't be able to find it :-)
@@ -91,7 +91,7 @@ outer:
 		}
 	}
 	log.Printf("found integration %s\n", *wanted.IntegrationId)
-	model := &IntegrationAWSModel{integration: wanted}
+	model := &IntegrationAWSModel{integration: wanted, coin: ic.coin}
 	pres.Present(model)
 }
 
@@ -213,17 +213,17 @@ func (ic *integrationCreator) TearDown() {
 	tmp := ic.tools.Storage.GetCoin(ic.coin, corebottom.DETERMINE_INITIAL_MODE)
 	desired := ic.tools.Storage.GetCoin(ic.coin, corebottom.DETERMINE_DESIRED_MODE).(*IntegrationModel)
 
+	apiId := desired.api.String()
 	if tmp != nil {
 		found := tmp.(*IntegrationAWSModel)
 		log.Printf("you have asked to tear down api integration %s with mode %s\n", ic.name, ic.teardown.Mode())
 
-		apiId := desired.api.String()
 		_, err := ic.client.DeleteIntegration(context.TODO(), &apigatewayv2.DeleteIntegrationInput{ApiId: &apiId, IntegrationId: found.integration.IntegrationId})
 		if err != nil {
 			log.Fatalf("failed to delete integration %s: %v\n", ic.name, err)
 		}
 	} else {
-		log.Printf("no api existed called %s\n", ic.name)
+		log.Printf("no api integration existed called %s for api %s\n", ic.name, apiId)
 	}
 }
 

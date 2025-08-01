@@ -1,10 +1,16 @@
 package gatewayV2
 
 import (
+	"context"
+	"fmt"
+	"log"
+
 	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2"
+	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2/types"
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
+	"ziniki.org/deployer/driver/pkg/utils"
 	"ziniki.org/deployer/modules/aws/internal/env"
 )
 
@@ -47,166 +53,128 @@ func (rc *routeCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 	}
 	rc.client = awsEnv.ApiGatewayV2Client()
 
-	/*
-		req, err := rc.client.GetFunction(context.TODO(), &lambda.GetFunctionInput{FunctionName: &rc.path})
+	if !utils.HasProp(rc.props, "Api") {
+		pres.NotFound()
+		return
+	}
+	ae := utils.FindProp(rc.props, nil, "Api")
+	apiStr, ok := rc.tools.Storage.EvalAsStringer(ae)
+	if apiStr == nil {
+		// if we can't resolve apiId, we won't be able to find it :-)
+		pres.NotFound()
+		return
+	}
+	if !ok {
+		panic("not ok")
+	}
+	apiId := apiStr.String()
+
+	var nextTok *string
+	var wanted *types.Route
+outer:
+	for {
+		curr, err := rc.client.GetRoutes(context.TODO(), &apigatewayv2.GetRoutesInput{ApiId: &apiId, NextToken: nextTok})
 		if err != nil {
-			if !lambdaExists(err) {
-				pres.NotFound()
-				return
-			}
-			log.Fatalf("could not recover function %s: %v\n", rc.path, err)
+			log.Fatalf("could not recover route list: %v\n", err)
 		}
-		if req == nil {
+		for _, rt := range curr.Items {
+			if *rt.RouteKey == rc.path {
+				wanted = &rt
+				break outer
+			}
+		}
+		if curr.NextToken == nil {
+			log.Printf("did not find route for %s with path %s\n", apiId, rc.path)
 			pres.NotFound()
 			return
 		}
-		model := &LambdaAWSModel{name: rc.path, config: req.Configuration}
-		pres.Present(model)
-	*/
+	}
+	log.Printf("found route %s\n", *wanted.RouteId)
+	model := &RouteAWSModel{routeId: *wanted.RouteId}
+	pres.Present(model)
 }
 
 func (rc *routeCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
-	/*
-		var runtime driverbottom.Expr
-		var handler driverbottom.Expr
-		var role driverbottom.Expr
-		var code *s3.S3Location
-		for p, v := range rc.props {
-			switch p.Id() {
-			case "Runtime":
-				runtime = v
-			case "Code":
-				code = v.(*s3.S3Location)
-			case "Handler":
-				handler = v
-			case "Role":
-				role = v
-			default:
-				rc.tools.Reporter.ReportAtf(rc.loc, "invalid property for Lambda: %s", p.Id())
-			}
+	var api driverbottom.Expr
+	var target driverbottom.Expr
+	for p, v := range rc.props {
+		switch p.Id() {
+		case "Api":
+			api = v
+		case "Target":
+			target = v
+		default:
+			rc.tools.Reporter.ReportAtf(rc.loc, "invalid property for Api route: %s", p.Id())
 		}
-		if code == nil {
-			rc.tools.Reporter.ReportAtf(rc.loc, "Code was not defined")
-		}
-		if runtime == nil {
-			rc.tools.Reporter.ReportAtf(rc.loc, "Runtime was not defined")
-		}
-		if role == nil {
-			rc.tools.Reporter.ReportAtf(rc.loc, "Role was not defined")
-		}
+	}
+	if api == nil {
+		rc.tools.Reporter.ReportAtf(rc.loc, "no Api specified for Route")
+		return
+	}
+	if target == nil {
+		rc.tools.Reporter.ReportAtf(rc.loc, "no Target specified for Route")
+		return
+	}
 
-		model := &LambdaModel{name: rc.path, loc: rc.loc, coin: rc.coin, code: code, handler: handler, runtime: runtime, role: role}
-		pres.Present(model)
-	*/
+	apiStr, ok := rc.tools.Storage.EvalAsStringer(api)
+	if !ok {
+		panic("not ok")
+	}
+
+	targetStr, ok := rc.tools.Storage.EvalAsStringer(target)
+	if !ok {
+		panic("not ok")
+	}
+
+	model := &RouteModel{path: rc.path, loc: rc.loc, coin: rc.coin, api: apiStr, target: targetStr}
+	pres.Present(model)
 }
 
 func (rc *routeCreator) UpdateReality() {
-	/*
-		tmp := rc.tools.Storage.GetCoin(rc.coin, corebottom.DETERMINE_INITIAL_MODE)
-		desired := rc.tools.Storage.GetCoin(rc.coin, corebottom.DETERMINE_DESIRED_MODE).(*LambdaModel)
-		created := &LambdaAWSModel{name: rc.path}
+	tmp := rc.tools.Storage.GetCoin(rc.coin, corebottom.DETERMINE_INITIAL_MODE)
+	desired := rc.tools.Storage.GetCoin(rc.coin, corebottom.DETERMINE_DESIRED_MODE).(*RouteModel)
+	created := &RouteAWSModel{}
+	if tmp != nil {
+		found := tmp.(*RouteAWSModel)
+		created.routeId = found.routeId
 
-		var handler string
-		if desired.handler != nil {
-			h, ok := rc.tools.Storage.EvalAsStringer(desired.handler)
-			if !ok {
-				log.Fatalf("Failed to get handler")
-			}
-			handler = h.String()
-		}
-
-		rt, ok := rc.tools.Storage.EvalAsStringer(desired.runtime)
-		if !ok {
-			log.Fatalf("Failed to get runtime")
-		}
-		var runtime types.Runtime
-		switch rt.String() {
-		case "go":
-			runtime = types.RuntimeProvidedal2023
-			if handler == "" {
-				handler = "main-point"
-			}
-		default:
-			for _, r := range types.RuntimeProvided.Values() {
-				if string(r) == rt.String() {
-					runtime = types.Runtime(rt.String())
-					break
-				}
-			}
-			if runtime == "" {
-				rc.tools.Reporter.ReportAtf(rc.loc, "invalid runtime: %s", rt.String())
-				return
-			}
-		}
-		b1, ok := rc.tools.Storage.EvalAsStringer(desired.code.Bucket)
-		if !ok {
-			log.Fatalf("Failed to get bucket")
-		}
-		b2, ok := rc.tools.Storage.EvalAsStringer(desired.code.Key)
-		if !ok {
-			log.Fatalf("Failed to get key")
-		}
-		bucket := b1.String()
-		key := b2.String()
-
-		roleArn, ok := rc.tools.Storage.EvalAsStringer(desired.role)
-		if !ok {
-			log.Fatalf("Failed to evaluate role")
-		}
-		role := roleArn.String()
-
-		if handler == "" {
-			rc.tools.Reporter.ReportAtf(rc.loc, "must specify Handler for Runtime %s", rt.String())
-			return
-		}
-
-		if tmp != nil {
-			found := tmp.(*LambdaAWSModel)
-			created.config = found.config
-			log.Printf("lambda %s already existed for %s\n", *found.config.FunctionArn, found.name)
-			log.Printf("not handling diffs yet; just copying ...")
-			rc.tools.Storage.Bind(rc.coin, created)
-			return
-		}
-
-		req, err := rc.client.CreateFunction(context.TODO(), &lambda.CreateFunctionInput{FunctionName: &rc.path, Runtime: runtime, Handler: &handler, Code: &types.FunctionCode{S3Bucket: &bucket, S3Key: &key}, Role: &role})
-		if err != nil {
-			log.Fatalf("failed to create lambda %s: %v\n", rc.path, err)
-		}
-		utils.ExponentialBackoff(func() bool {
-			stat, err := rc.client.GetFunction(context.TODO(), &lambda.GetFunctionInput{FunctionName: &rc.path})
-			if err != nil {
-				panic(err)
-			}
-			if stat.Configuration.State == "Active" {
-				return true
-			}
-			log.Printf("waiting for lambda to be active, stat = %v\n", stat.Configuration.State)
-			return false
-		})
-		log.Printf("created lambda %s: %s\n", rc.path, *req.FunctionArn)
-		created.config = &types.FunctionConfiguration{FunctionArn: req.FunctionArn}
-
+		log.Printf("route already existed for %s: %s\n", rc.path, found.routeId)
+		log.Printf("not handling diffs yet; just copying ...")
 		rc.tools.Storage.Bind(rc.coin, created)
-	*/
+		return
+	}
+
+	apiId := desired.api.String()
+	tgt := fmt.Sprintf("integrations/%s", desired.target.String())
+
+	input := &apigatewayv2.CreateRouteInput{ApiId: &apiId, RouteKey: &rc.path, Target: &tgt}
+	out, err := rc.client.CreateRoute(context.TODO(), input)
+	if err != nil {
+		log.Fatalf("failed to create api route %s: %v\n", rc.path, err)
+	}
+	log.Printf("created api route %s\n", *out.RouteId)
+	created.routeId = *out.RouteId
+	rc.tools.Storage.Bind(rc.coin, created)
+
 }
 
 func (rc *routeCreator) TearDown() {
-	/*
-		tmp := rc.tools.Storage.GetCoin(rc.coin, corebottom.DETERMINE_INITIAL_MODE)
+	tmp := rc.tools.Storage.GetCoin(rc.coin, corebottom.DETERMINE_INITIAL_MODE)
+	desired := rc.tools.Storage.GetCoin(rc.coin, corebottom.DETERMINE_DESIRED_MODE).(*RouteModel)
 
-		if tmp != nil {
-			found := tmp.(*LambdaAWSModel)
-			log.Printf("you have asked to tear down lambda %s with mode %s\n", found.name, rc.teardown.Mode())
+	apiId := desired.api.String()
+	if tmp != nil {
+		found := tmp.(*RouteAWSModel)
+		log.Printf("you have asked to tear down api route %s with mode %s\n", rc.path, rc.teardown.Mode())
 
-			_, err := rc.client.DeleteFunction(context.TODO(), &lambda.DeleteFunctionInput{FunctionName: &found.name})
-			if err != nil {
-				log.Fatalf("failed to delete lambda %s: %v\n", found.name, err)
-			}
-		} else {
-			log.Printf("no lambda existed for %s\n", rc.path)
+		_, err := rc.client.DeleteRoute(context.TODO(), &apigatewayv2.DeleteRouteInput{ApiId: &apiId, RouteId: &found.routeId})
+		if err != nil {
+			log.Fatalf("failed to delete route %s: %v\n", rc.path, err)
 		}
-	*/
+	} else {
+		log.Printf("no api route existed called %s for api %s\n", rc.path, apiId)
+	}
+
 }
 
 var _ corebottom.Ensurable = &routeCreator{}

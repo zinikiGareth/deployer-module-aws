@@ -60,7 +60,6 @@ func (w *apiInterpreter) Completed() {
 
 type apiRoute struct {
 	driverbottom.Locatable
-	tools *driverbottom.CoreTools
 	name  string
 }
 
