@@ -17,7 +17,7 @@ func (b *RouteBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id c
 }
 
 func (b *RouteBlank) ShortDescription() string {
-	return "aws.CloudFront.Distribution[]"
+	return "aws.ApiGatewayV2.Route[]"
 }
 
 var _ corebottom.Blank = &RouteBlank{}

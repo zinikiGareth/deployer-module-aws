@@ -72,12 +72,18 @@ func (a *apiAction) AddProperty(name driverbottom.Identifier, value driverbottom
 	}
 }
 
+func (a *apiAction) AddRoute( /*??*/ ) {
+
+}
+
 func (a *apiAction) Completed() {
-	if a.teardown == nil {
-		a.tools.Reporter.ReportAtf(a.loc, "no teardown specified")
-		return
-	}
 	a.coins = &apiCoins{routes: make(map[string]*routeCreator)}
+	if a.teardown == nil {
+		// a.tools.Reporter.ReportAtf(a.loc, "no teardown specified")
+		log.Printf("... no teardown specified")
+		a.teardown = &ApiTearDown{mode: "delete"}
+		// return
+	}
 	notused := utils.PropsMap(a.props)
 	apiCoin := corebottom.CoinId(a.tools.Storage.PendingObjId(a.named.Loc()))
 

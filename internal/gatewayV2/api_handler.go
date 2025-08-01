@@ -22,12 +22,12 @@ func (wh *apiHandler) Handle(attacher driverbottom.AttachResult, scope driverbot
 		return drivertop.NewIgnoreInnerScope()
 	}
 
-	ea := &apiAction{tools: wh.tools, loc: tokens[0].Loc(), named: name, props: make(map[driverbottom.Identifier]driverbottom.Expr)}
-	if err := attacher.Attach(ea); err != nil {
+	api := &apiAction{tools: wh.tools, loc: tokens[0].Loc(), named: name, props: make(map[driverbottom.Identifier]driverbottom.Expr)}
+	if err := attacher.Attach(api); err != nil {
 		panic(err)
 	}
 
-	return drivertop.NewPropertiesInnerScope(wh.tools.CoreTools, ea)
+	return NewApiInterpreter(wh.tools.CoreTools, scope, api)
 }
 
 func NewAPI(tools *corebottom.Tools) driverbottom.VerbCommand {
