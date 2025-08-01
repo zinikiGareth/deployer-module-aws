@@ -59,6 +59,11 @@ func (ic *integrationCreator) DetermineInitialState(pres corebottom.ValuePresent
 	}
 
 	apiStr, ok := ic.tools.Storage.EvalAsStringer(ae)
+	if apiStr == nil {
+		// if we can't resolve apiId, we won't be able to find it :-)
+		pres.NotFound()
+		return
+	}
 	if !ok {
 		panic("not ok")
 	}
@@ -74,7 +79,7 @@ outer:
 			log.Fatalf("could not recover integration list: %v\n", err)
 		}
 		for _, intg := range curr.Items {
-			if *intg.Description == dname {
+			if intg.Description != nil && *intg.Description == dname {
 				wanted = &intg
 				break outer
 			}
@@ -164,50 +169,62 @@ func (ic *integrationCreator) UpdateReality() {
 		log.Printf("not handling diffs yet; just copying ...")
 		ic.tools.Storage.Bind(ic.coin, created)
 		return
-
 	}
 
+	apiId := desired.api.String()
+	var itype types.IntegrationType
+	switch desired.itype.String() {
+	case "aws":
+		fallthrough
+	case "AWS":
+		fallthrough
+	case "lambda":
+		itype = types.IntegrationTypeAws
+	case "aws_proxy":
+		fallthrough
+	case "AWS_PROXY":
+		fallthrough
+	case "lambda_proxy":
+		itype = types.IntegrationTypeAwsProxy
+	default:
+		ic.tools.Reporter.ReportAtf(ic.loc, "invalid integration type: %s\n", desired.itype.String())
+	}
 	uri := desired.uri.String()
 	log.Printf("have base uri %s\n", uri)
 
 	region := desired.region.String()
 	full := fmt.Sprintf("arn:aws:apigateway:%s:%s", region, uri)
 	log.Printf("have integration uri %s\n", full)
-	
-	/*
-		input := &apigatewayv2.CreateApiInput{Name: &ic.name, ProtocolType: desired.protocol}
-		if desired.rse != nil {
-			s := desired.rse.String()
-			if s != "" {
-				input.RouteSelectionExpression = &s
-			}
-		}
-		out, err := ic.client.CreateApi(context.TODO(), input)
-		if err != nil {
-			log.Fatalf("failed to create lambda %s: %v\n", ic.name, err)
-		}
-		log.Printf("created api %s %s\n", *out.ApiId, *out.ApiEndpoint)
-		created.api = &types.Api{Name: out.Name, ApiId: out.ApiId, ApiEndpoint: out.ApiEndpoint}
-		ic.tools.Storage.Bind(ic.coin, created)
-	*/
+
+	dname := fmt.Sprintf("zd[%s]", ic.name)
+
+	pfv := "2.0"
+	input := &apigatewayv2.CreateIntegrationInput{Description: &dname, ApiId: &apiId, IntegrationType: types.IntegrationType(itype), IntegrationUri: &full, PayloadFormatVersion: &pfv}
+	out, err := ic.client.CreateIntegration(context.TODO(), input)
+	if err != nil {
+		log.Fatalf("failed to create api integration %s: %v\n", ic.name, err)
+	}
+	log.Printf("created api integration %s\n", *out.IntegrationId)
+	created.integration = &types.Integration{IntegrationId: out.IntegrationId}
+	ic.tools.Storage.Bind(ic.coin, created)
 }
 
 func (ic *integrationCreator) TearDown() {
-	/*
-		tmp := ic.tools.Storage.GetCoin(ic.coin, corebottom.DETERMINE_INITIAL_MODE)
+	tmp := ic.tools.Storage.GetCoin(ic.coin, corebottom.DETERMINE_INITIAL_MODE)
+	desired := ic.tools.Storage.GetCoin(ic.coin, corebottom.DETERMINE_DESIRED_MODE).(*IntegrationModel)
 
-		if tmp != nil {
-			found := tmp.(*ApiAWSModel)
-			log.Printf("you have asked to tear down lambda %s with mode %s\n", ic.name, ic.teardown.Mode())
+	if tmp != nil {
+		found := tmp.(*IntegrationAWSModel)
+		log.Printf("you have asked to tear down api integration %s with mode %s\n", ic.name, ic.teardown.Mode())
 
-			_, err := ic.client.DeleteApi(context.TODO(), &apigatewayv2.DeleteApiInput{ApiId: found.api.ApiId})
-			if err != nil {
-				log.Fatalf("failed to delete lambda %s: %v\n", ic.name, err)
-			}
-		} else {
-			log.Printf("no api existed called %s\n", ic.name)
+		apiId := desired.api.String()
+		_, err := ic.client.DeleteIntegration(context.TODO(), &apigatewayv2.DeleteIntegrationInput{ApiId: &apiId, IntegrationId: found.integration.IntegrationId})
+		if err != nil {
+			log.Fatalf("failed to delete integration %s: %v\n", ic.name, err)
 		}
-	*/
+	} else {
+		log.Printf("no api existed called %s\n", ic.name)
+	}
 }
 
 var _ corebottom.Ensurable = &integrationCreator{}
