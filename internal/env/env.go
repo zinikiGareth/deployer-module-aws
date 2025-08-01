@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/neptune"
@@ -24,6 +25,7 @@ type AwsEnv struct {
 	apiGatewayV2Client   *apigatewayv2.Client
 	cfclient             *cloudfront.Client
 	dynamoClient         *dynamodb.Client
+	ec2Client            *ec2.Client
 	iamclient            *iam.Client
 	lambdaClient         *lambda.Client
 	neptuneClient        *neptune.Client
@@ -42,6 +44,7 @@ func (a *AwsEnv) Init() {
 	a.apiGatewayV2Client = apigatewayv2.NewFromConfig(a.cfg)
 	a.cfclient = cloudfront.NewFromConfig(a.cfg)
 	a.dynamoClient = dynamodb.NewFromConfig(a.cfg)
+	a.ec2Client = ec2.NewFromConfig(a.cfg)
 	a.iamclient = iam.NewFromConfig(a.cfg)
 	a.lambdaClient = lambda.NewFromConfig(a.cfg)
 	a.neptuneClient = neptune.NewFromConfig(a.cfg)
@@ -64,6 +67,10 @@ func (a *AwsEnv) CFClient() *cloudfront.Client {
 
 func (a *AwsEnv) DynamoClient() *dynamodb.Client {
 	return a.dynamoClient
+}
+
+func (a *AwsEnv) EC2Client() *ec2.Client {
+	return a.ec2Client
 }
 
 func (a *AwsEnv) IAMClient() *iam.Client {

@@ -194,7 +194,7 @@ func (ic *integrationCreator) UpdateReality() {
 		created.integration = found.integration
 		log.Printf("integration already existed for %s: %s\n", ic.name, *found.integration.IntegrationId)
 
-		input := &apigatewayv2.UpdateIntegrationInput{Description: &dname, ApiId: &apiId, IntegrationId: *&found.integration.IntegrationId, IntegrationType: types.IntegrationType(itype), IntegrationUri: &uri, PayloadFormatVersion: &pfv}
+		input := &apigatewayv2.UpdateIntegrationInput{Description: &dname, ApiId: &apiId, IntegrationId: found.integration.IntegrationId, IntegrationType: types.IntegrationType(itype), IntegrationUri: &uri, PayloadFormatVersion: &pfv}
 		out, err := ic.client.UpdateIntegration(context.TODO(), input)
 		if err != nil {
 			log.Fatalf("failed to update api integration %s: %v\n", ic.name, err)

@@ -15,6 +15,7 @@ import (
 	"ziniki.org/deployer/modules/aws/internal/neptune"
 	"ziniki.org/deployer/modules/aws/internal/route53"
 	"ziniki.org/deployer/modules/aws/internal/s3"
+	"ziniki.org/deployer/modules/aws/internal/vpc"
 )
 
 // var testRunner deployer.TestRunner
@@ -61,6 +62,7 @@ func RegisterWithDriver(deployer driverbottom.Driver) error {
 	tools.Register.Register("blank", "aws.Route53.ALIAS", &route53.ALIASBlank{})
 	tools.Register.Register("blank", "aws.Route53.CNAME", &route53.CNAMEBlank{})
 	tools.Register.Register("blank", "aws.S3.Bucket", &s3.BucketBlank{})
+	tools.Register.Register("blank", "aws.VPC.VPC", &vpc.VPCBlank{})
 
 	tools.Register.Register("prop-interpreter", "aws.DynamoFields", driverbottom.CreateInterpreter(dynamodb.CreateFieldInterpreter))
 	tools.Register.Register("prop-interpreter", "aws.S3.Location", driverbottom.CreateInterpreter(s3.CreateLocationInterpreter))
