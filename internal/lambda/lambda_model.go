@@ -57,7 +57,7 @@ type LambdaAWSModel struct {
 // this is only the bit after "arn:aws:apigateway:api-region:" which is common to all
 // and the api-region is only known to the api
 func (model *LambdaAWSModel) makeIntegrationUri() string {
-	return fmt.Sprintf("lambda:path//2015-03-31/functions/%s/invocations", *model.config.FunctionArn)
+	return fmt.Sprintf("lambda:path/2015-03-31/functions/%s/invocations", *model.config.FunctionArn)
 }
 
 func (model *LambdaAWSModel) ObtainMethod(name string) driverbottom.Method {

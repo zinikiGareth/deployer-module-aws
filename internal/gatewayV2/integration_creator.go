@@ -160,17 +160,6 @@ func (ic *integrationCreator) DetermineDesiredState(pres corebottom.ValuePresent
 func (ic *integrationCreator) UpdateReality() {
 	tmp := ic.tools.Storage.GetCoin(ic.coin, corebottom.DETERMINE_INITIAL_MODE)
 	desired := ic.tools.Storage.GetCoin(ic.coin, corebottom.DETERMINE_DESIRED_MODE).(*IntegrationModel)
-	created := &IntegrationAWSModel{}
-	if tmp != nil {
-		found := tmp.(*IntegrationAWSModel)
-		created.integration = found.integration
-
-		log.Printf("integration already existed for %s: %s\n", ic.name, *found.integration.IntegrationId)
-		log.Printf("not handling diffs yet; just copying ...")
-		ic.tools.Storage.Bind(ic.coin, created)
-		return
-	}
-
 	apiId := desired.api.String()
 	var itype types.IntegrationType
 	switch desired.itype.String() {
@@ -192,14 +181,32 @@ func (ic *integrationCreator) UpdateReality() {
 	uri := desired.uri.String()
 	log.Printf("have base uri %s\n", uri)
 
-	region := desired.region.String()
-	full := fmt.Sprintf("arn:aws:apigateway:%s:%s", region, uri)
-	log.Printf("have integration uri %s\n", full)
+	// region := desired.region.String()
+	// full := fmt.Sprintf("arn:aws:apigateway:%s:%s", region, uri)
+	// log.Printf("have integration uri %s\n", full)
 
 	dname := fmt.Sprintf("zd[%s]", ic.name)
-
 	pfv := "2.0"
-	input := &apigatewayv2.CreateIntegrationInput{Description: &dname, ApiId: &apiId, IntegrationType: types.IntegrationType(itype), IntegrationUri: &full, PayloadFormatVersion: &pfv}
+
+	created := &IntegrationAWSModel{}
+	if tmp != nil {
+		found := tmp.(*IntegrationAWSModel)
+		created.integration = found.integration
+		log.Printf("integration already existed for %s: %s\n", ic.name, *found.integration.IntegrationId)
+
+		input := &apigatewayv2.UpdateIntegrationInput{Description: &dname, ApiId: &apiId, IntegrationId: *&found.integration.IntegrationId, IntegrationType: types.IntegrationType(itype), IntegrationUri: &uri, PayloadFormatVersion: &pfv}
+		out, err := ic.client.UpdateIntegration(context.TODO(), input)
+		if err != nil {
+			log.Fatalf("failed to update api integration %s: %v\n", ic.name, err)
+		}
+
+		log.Printf("updated api integration %s\n", *out.IntegrationId)
+		created.integration = &types.Integration{IntegrationId: out.IntegrationId}
+		ic.tools.Storage.Bind(ic.coin, created)
+		return
+	}
+
+	input := &apigatewayv2.CreateIntegrationInput{Description: &dname, ApiId: &apiId, IntegrationType: types.IntegrationType(itype), IntegrationUri: &uri, PayloadFormatVersion: &pfv}
 	out, err := ic.client.CreateIntegration(context.TODO(), input)
 	if err != nil {
 		log.Fatalf("failed to create api integration %s: %v\n", ic.name, err)
