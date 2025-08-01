@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"log"
 
+	hterr "github.com/aws/aws-sdk-go-v2/aws/transport/http"
+
 	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2"
 	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2/types"
+	"github.com/aws/smithy-go"
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
@@ -226,30 +229,29 @@ func (ac *apiCreator) TearDown() {
 	}
 }
 
-/*
-	func lambdaExists(err error) bool {
-		if err == nil {
-			return true
-		}
-		e1, ok := err.(*smithy.OperationError)
-		if ok {
-			e2, ok := e1.Err.(*http.ResponseError)
-			if ok {
-				if e2.ResponseError.Response.StatusCode == 404 {
-					switch e4 := e2.Err.(type) {
-					case *types.ResourceNotFoundException:
-						return false
-					default:
-						log.Printf("error: %T %v", e4, e4)
-						panic("what error?")
-					}
-				}
-				log.Fatalf("error: %T %v %T %v", e2.Response.Status, e2.Response.Status, e2.ResponseError.Response.StatusCode, e2.ResponseError.Response.StatusCode)
-			}
-			log.Fatalf("error: %T %v", e1.Err, e1.Err)
-		}
-		log.Fatalf("getting lambda failed: %T %v", err, err)
-		panic("failed")
+func thingExists(err error) bool {
+	if err == nil {
+		return true
 	}
-*/
+	e1, ok := err.(*smithy.OperationError)
+	if ok {
+		e2, ok := e1.Err.(*hterr.ResponseError)
+		if ok {
+			if e2.ResponseError.Response.StatusCode == 404 {
+				switch e4 := e2.Err.(type) {
+				case *types.NotFoundException:
+					return false
+				default:
+					log.Printf("error: %T %v", e4, e4)
+					panic("what error?")
+				}
+			}
+			log.Fatalf("error: %T %v %T %v", e2.Response.Status, e2.Response.Status, e2.ResponseError.Response.StatusCode, e2.ResponseError.Response.StatusCode)
+		}
+		log.Fatalf("error: %T %v", e1.Err, e1.Err)
+	}
+	log.Fatalf("getting thing failed: %T %v", err, err)
+	panic("failed")
+}
+
 var _ corebottom.Ensurable = &apiCreator{}
