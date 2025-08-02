@@ -9,8 +9,10 @@ import (
 )
 
 type vpcAWSModel struct {
-	loc *errorsink.Location
-	vpc *types.Vpc
+	loc            *errorsink.Location
+	vpc            *types.Vpc
+	subnets        []string
+	securityGroups []string
 }
 
 func (model *vpcAWSModel) ObtainMethod(name string) driverbottom.Method {

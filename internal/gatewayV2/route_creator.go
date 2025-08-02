@@ -84,11 +84,16 @@ outer:
 			}
 		}
 		if curr.NextToken == nil {
-			log.Printf("did not find route for %s with path %s\n", apiId, rc.path)
-			pres.NotFound()
-			return
+			break
 		}
+		nextTok = curr.NextToken
 	}
+	if wanted == nil {
+		log.Printf("did not find route for %s with path %s\n", apiId, rc.path)
+		pres.NotFound()
+		return
+	}
+
 	log.Printf("found route %s\n", *wanted.RouteId)
 	model := &RouteAWSModel{routeId: *wanted.RouteId}
 	pres.Present(model)

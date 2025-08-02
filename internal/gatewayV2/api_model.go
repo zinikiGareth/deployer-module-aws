@@ -46,7 +46,7 @@ func getIdLater(s driverbottom.RuntimeStorage, coin corebottom.CoinId) fmt.Strin
 	return utils.DeferString(func() string {
 		curr := s.GetCoinFrom(coin, []int{1, 3})
 		if curr == nil {
-			panic("could not find find/create version of " + coin.VarName().Id())
+			return "" // the api didn't exist
 		}
 
 		currModel := curr.(*ApiAWSModel)

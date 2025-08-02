@@ -69,9 +69,13 @@ outer:
 			}
 		}
 		if curr.NextToken == nil {
-			pres.NotFound()
-			return
+			break
 		}
+		nextTok = curr.NextToken
+	}
+	if wanted == nil {
+		pres.NotFound()
+		return
 	}
 	log.Printf("found api gateway %s\n", *wanted.ApiId)
 	model := &ApiAWSModel{api: wanted, coin: ac.coin}

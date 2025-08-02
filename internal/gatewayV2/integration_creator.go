@@ -85,11 +85,16 @@ outer:
 			}
 		}
 		if curr.NextToken == nil {
-			log.Printf("did not find integration for %s called %s\n", apiId, ic.name)
-			pres.NotFound()
-			return
+			break
 		}
+		nextTok = curr.NextToken
 	}
+	if wanted == nil {
+		log.Printf("did not find integration for %s called %s\n", apiId, ic.name)
+		pres.NotFound()
+		return
+	}
+
 	log.Printf("found integration %s\n", *wanted.IntegrationId)
 	model := &IntegrationAWSModel{integration: wanted, coin: ic.coin}
 	pres.Present(model)
