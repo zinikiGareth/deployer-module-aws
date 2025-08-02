@@ -94,7 +94,7 @@ func (l *lambdaAction) Completed() {
 		l.coins.roleCreator.(iam.AcceptPolicies).AddPolicies(v.Managed, v.Inline)
 	}
 
-	funcProps := utils.UseProps(l.props, notused, "Code", "Handler", "Role", "Runtime")
+	funcProps := utils.UseProps(l.props, notused, "Code", "Handler", "Role", "Runtime", "VpcConfig")
 	l.coins.lambda = &lambdaCreator{tools: l.tools, teardown: l.teardown, loc: l.loc, coin: lambdaCoin, name: l.named.Text(), props: funcProps}
 
 	if utils.HasProp(l.props, "PublishVersion", "Alias") {
@@ -116,6 +116,7 @@ func (l *lambdaAction) Completed() {
 }
 
 func (l *lambdaAction) Resolve(r driverbottom.Resolver) driverbottom.BindingRequirement {
+	ret := driverbottom.MAY_BE_BOUND
 	l.coins.lambda.coin.Resolve(l.tools.Storage)
 	l.coins.roleCoin.Resolve(l.tools.Storage)
 	l.coins.withRole.Resolve(r)
@@ -123,7 +124,10 @@ func (l *lambdaAction) Resolve(r driverbottom.Resolver) driverbottom.BindingRequ
 		l.coins.versioner.coin.Resolve(l.tools.Storage)
 		l.coins.versioner.Resolve(r)
 	}
-	return driverbottom.MAY_BE_BOUND
+	for _, p := range l.props {
+		ret = ret.Merge(p.Resolve(r))
+	}
+	return ret
 }
 
 func (l *lambdaAction) DetermineInitialState(pres corebottom.ValuePresenter) {

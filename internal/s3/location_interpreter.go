@@ -6,7 +6,6 @@ import (
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/drivertop"
-	"ziniki.org/deployer/driver/pkg/errorsink"
 )
 
 type S3Location struct {
@@ -16,12 +15,10 @@ type S3Location struct {
 	Key    driverbottom.Expr
 }
 
-// AddAdverb implements driverbottom.PropertyParent.
 func (s *S3Location) AddAdverb(adverb driverbottom.Adverb, args []driverbottom.Token) driverbottom.Interpreter {
 	panic("unimplemented")
 }
 
-// AddProperty implements driverbottom.PropertyParent.
 func (s *S3Location) AddProperty(name driverbottom.Identifier, expr driverbottom.Expr) {
 	switch name.Id() {
 	case "Bucket":
@@ -41,7 +38,6 @@ func (s *S3Location) AddProperty(name driverbottom.Identifier, expr driverbottom
 	}
 }
 
-// Completed implements driverbottom.PropertyParent.
 func (s *S3Location) Completed() {
 	if s.Bucket == nil {
 		s.tools.Reporter.ReportAtf(s.Loc(), "must set Bucket on an S3Location")
@@ -51,37 +47,27 @@ func (s *S3Location) Completed() {
 	}
 }
 
-// DumpTo implements driverbottom.Expr.
-func (s *S3Location) DumpTo(to driverbottom.IndentWriter) {
-	panic("unimplemented")
-}
-
-// Eval implements driverbottom.Expr.
-func (*S3Location) Eval(s driverbottom.RuntimeStorage) any {
-	panic("unimplemented")
-}
-
-// Loc implements driverbottom.Expr.
-func (s *S3Location) Loc() *errorsink.Location {
-	panic("unimplemented")
-}
-
-// Resolve implements driverbottom.Expr.
-func (s *S3Location) Resolve(r driverbottom.Resolver) driverbottom.BindingRequirement {
-	ret	:= driverbottom.MAY_BE_BOUND
-	s.Bucket.Resolve(r)
-	s.Key.Resolve(r)
-	return ret
-}
-
-// ShortDescription implements driverbottom.Expr.
 func (s *S3Location) ShortDescription() string {
 	panic("unimplemented")
 }
 
-// String implements driverbottom.Expr.
+func (s *S3Location) DumpTo(to driverbottom.IndentWriter) {
+	panic("unimplemented")
+}
+
 func (s *S3Location) String() string {
 	return fmt.Sprintf("S3[%s:%s]", s.Bucket.String(), s.Key.String())
+}
+
+func (*S3Location) Eval(s driverbottom.RuntimeStorage) any {
+	panic("unimplemented")
+}
+
+func (s *S3Location) Resolve(r driverbottom.Resolver) driverbottom.BindingRequirement {
+	ret := driverbottom.MAY_BE_BOUND
+	ret = ret.Merge(s.Bucket.Resolve(r))
+	ret = ret.Merge(s.Key.Resolve(r))
+	return ret
 }
 
 func CreateLocationInterpreter(tools *driverbottom.CoreTools, scope driverbottom.Scope, parent driverbottom.PropertyParent, prop driverbottom.Identifier, tokens []driverbottom.Token) driverbottom.Interpreter {
@@ -89,5 +75,3 @@ func CreateLocationInterpreter(tools *driverbottom.CoreTools, scope driverbottom
 	parent.AddProperty(prop, s3loc)
 	return drivertop.NewPropertiesInnerScope(tools, s3loc)
 }
-
-// var _ driverbottom.Interpreter = &S3LocationInterpreter{}

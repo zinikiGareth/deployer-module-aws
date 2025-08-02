@@ -75,6 +75,7 @@ func (lc *lambdaCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 	var runtime driverbottom.Expr
 	var handler driverbottom.Expr
 	var role driverbottom.Expr
+	var vpcConfig driverbottom.Expr
 	var code *s3.S3Location
 	for p, v := range lc.props {
 		switch p.Id() {
@@ -86,6 +87,8 @@ func (lc *lambdaCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 			handler = v
 		case "Role":
 			role = v
+		case "VpcConfig":
+			vpcConfig = v
 		default:
 			lc.tools.Reporter.ReportAtf(lc.loc, "invalid property for Lambda: %s", p.Id())
 		}
@@ -100,7 +103,7 @@ func (lc *lambdaCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 		lc.tools.Reporter.ReportAtf(lc.loc, "Role was not defined")
 	}
 
-	model := &LambdaModel{name: lc.name, loc: lc.loc, coin: lc.coin, code: code, handler: handler, runtime: runtime, role: role}
+	model := &LambdaModel{name: lc.name, loc: lc.loc, coin: lc.coin, code: code, handler: handler, runtime: runtime, role: role, vpcConfig: vpcConfig}
 	pres.Present(model)
 }
 
@@ -163,6 +166,16 @@ func (lc *lambdaCreator) UpdateReality() {
 		return
 	}
 
+	var vpcConfig *types.VpcConfig
+	if desired.vpcConfig != nil {
+		t1 := desired.vpcConfig.Eval(lc.tools.Storage)
+		vpcc, ok := t1.(map[string][]string)
+		if !ok {
+			lc.tools.Reporter.ReportAtf(desired.vpcConfig.Loc(), "not a valid VPC config")
+			return
+		}
+		vpcConfig = &types.VpcConfig{SubnetIds: vpcc["Subnets"], SecurityGroupIds: vpcc["SecurityGroups"]}
+	}
 	if tmp != nil {
 		found := tmp.(*LambdaAWSModel)
 		created.config = found.config
@@ -172,7 +185,7 @@ func (lc *lambdaCreator) UpdateReality() {
 		return
 	}
 
-	req, err := lc.client.CreateFunction(context.TODO(), &lambda.CreateFunctionInput{FunctionName: &lc.name, Runtime: runtime, Handler: &handler, Code: &types.FunctionCode{S3Bucket: &bucket, S3Key: &key}, Role: &role})
+	req, err := lc.client.CreateFunction(context.TODO(), &lambda.CreateFunctionInput{FunctionName: &lc.name, Runtime: runtime, Handler: &handler, Code: &types.FunctionCode{S3Bucket: &bucket, S3Key: &key}, Role: &role, VpcConfig: vpcConfig})
 	if err != nil {
 		log.Fatalf("failed to create lambda %s: %v\n", lc.name, err)
 	}

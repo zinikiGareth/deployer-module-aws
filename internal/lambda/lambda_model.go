@@ -16,10 +16,11 @@ type LambdaModel struct {
 	loc  *errorsink.Location
 	coin corebottom.CoinId
 
-	code    *s3.S3Location
-	runtime driverbottom.Expr
-	handler driverbottom.Expr
-	role    driverbottom.Expr
+	code      *s3.S3Location
+	runtime   driverbottom.Expr
+	handler   driverbottom.Expr
+	role      driverbottom.Expr
+	vpcConfig driverbottom.Expr
 }
 
 func (model *LambdaModel) ObtainMethod(name string) driverbottom.Method {

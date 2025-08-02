@@ -65,8 +65,9 @@ func RegisterWithDriver(deployer driverbottom.Driver) error {
 	tools.Register.Register("blank", "aws.VPC.VPC", &vpc.VPCBlank{})
 
 	tools.Register.Register("prop-interpreter", "aws.DynamoFields", driverbottom.CreateInterpreter(dynamodb.CreateFieldInterpreter))
-	tools.Register.Register("prop-interpreter", "aws.S3.Location", driverbottom.CreateInterpreter(s3.CreateLocationInterpreter))
 	tools.Register.Register("prop-interpreter", "aws.IAM.WithRole", driverbottom.CreateInterpreter(iam.CreateWithRoleInterpreter))
+	tools.Register.Register("prop-interpreter", "aws.S3.Location", driverbottom.CreateInterpreter(s3.CreateLocationInterpreter))
+	tools.Register.Register("prop-interpreter", "aws.VPC.Config", driverbottom.CreateInterpreter(vpc.CreateConfigInterpreter))
 
 	loc := &errorsink.Location{}
 	// Permissions by name
