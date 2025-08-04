@@ -37,6 +37,7 @@ func RegisterWithDriver(deployer driverbottom.Driver) error {
 	tools.Register.Register("target", "cloudfront.invalidate", cfront.NewInvalidateHandler(mytools))
 
 	tools.Register.Register("target", "lambda.function", lambda.NewLambdaFunction(mytools))
+	tools.Register.Register("target", "lambda.addPermissions", lambda.AddLambdaPermissions(mytools))
 
 	tools.Register.Register("target", "api.gatewayV2", gatewayV2.NewAPI(mytools))
 
