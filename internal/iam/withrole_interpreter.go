@@ -34,15 +34,26 @@ type withRoleInterpreter struct {
 
 func (w *withRoleInterpreter) HaveTokens(scope driverbottom.Scope, tokens []driverbottom.Token) driverbottom.Interpreter {
 	if len(tokens) < 1 {
-		w.tools.Reporter.Report(0, "expected policy [name]")
+		w.tools.Reporter.Report(0, "expected policy [name] or assume")
 		return drivertop.NewIgnoreInnerScope()
 	}
 	verb, ok := tokens[0].(driverbottom.Identifier)
 	if !ok {
-		w.tools.Reporter.Report(0, "expected policy [name]")
+		w.tools.Reporter.Report(0, "expected policy [name] or assume")
 		return drivertop.NewIgnoreInnerScope()
 	}
 	switch verb.Id() {
+	case "assume":
+		if len(tokens) != 1 {
+			w.tools.Reporter.ReportAtf(verb.Loc(), "expected assume by itself")
+			return drivertop.NewIgnoreInnerScope()
+		}
+		if w.withRole.Assumes != nil {
+			w.tools.Reporter.ReportAtf(verb.Loc(), "cannot define assume more than once")
+			return drivertop.NewIgnoreInnerScope()
+		}
+		w.withRole.Assumes = coretop.NewPolicyActionList(verb.Loc())
+		return drivertop.NewVerbCommandInterpreter(w.tools, attachToPolicy{list: w.withRole.Assumes}, "policy-statements", false)
 	case "policy":
 		if len(tokens) > 1 {
 			expr, ok := w.tools.Parser.Parse(scope, tokens[1:])
@@ -52,41 +63,30 @@ func (w *withRoleInterpreter) HaveTokens(scope driverbottom.Scope, tokens []driv
 			w.withRole.Managed = append(w.withRole.Managed, expr)
 			return drivertop.NewDisallowInnerScope(w.tools)
 		} else {
-			pd := coretop.NewPolicyActionList(verb.Loc())
-			w.withRole.Attach(pd)
+			pal := coretop.NewPolicyActionList(verb.Loc())
+			w.withRole.Inline = append(w.withRole.Inline, pal)
 
-			return drivertop.NewVerbCommandInterpreter(w.tools, attachToPolicy{list: pd}, "policy-statements", false)
+			return drivertop.NewVerbCommandInterpreter(w.tools, attachToPolicy{list: pal}, "policy-statements", false)
 		}
 	default:
-		w.tools.Reporter.Report(0, "expected policy [name]")
+		w.tools.Reporter.Report(0, "expected policy [name] or assume")
 		return drivertop.NewIgnoreInnerScope()
 	}
 }
 
 func (w *withRoleInterpreter) Completed() {
+	if w.withRole.Assumes == nil {
+		w.tools.Reporter.ReportAtf(w.withRole.Loc(), "role definition must specify assumes")
+	}
 }
 
 type WithRole struct {
 	driverbottom.Locatable
 	tools   *driverbottom.CoreTools
 	name    string
+	Assumes corebottom.PolicyActionList
 	Managed []driverbottom.Expr
 	Inline  []corebottom.PolicyActionList
-}
-
-func (w *WithRole) Attach(item any) error {
-	// log.Printf("attaching %v of type %T", item, item)
-	pra, ok := item.(corebottom.PolicyActionList)
-	if !ok {
-		return fmt.Errorf("cannot attach %T to WithRole, not a PolicyDocument", item)
-	}
-
-	w.Inline = append(w.Inline, pra)
-	return nil
-}
-
-func (w *WithRole) MakeAssign(holder driverbottom.Holder, assignTo driverbottom.Identifier, action any) any {
-	panic("this should not be able to happen in this context")
 }
 
 func (w *WithRole) Name() string {

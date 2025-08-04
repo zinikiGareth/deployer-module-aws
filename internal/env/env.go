@@ -17,6 +17,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	"github.com/aws/aws-sdk-go-v2/service/route53domains"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
 type AwsEnv struct {
@@ -32,6 +33,7 @@ type AwsEnv struct {
 	route53client        *route53.Client
 	route53domainsclient *route53domains.Client
 	s3client             *s3.Client
+	stsClient            *sts.Client
 }
 
 func (a *AwsEnv) Init() {
@@ -51,6 +53,7 @@ func (a *AwsEnv) Init() {
 	a.route53client = route53.NewFromConfig(a.cfg)
 	a.route53domainsclient = route53domains.NewFromConfig(a.cfg)
 	a.s3client = s3.NewFromConfig(a.cfg)
+	a.stsClient = sts.NewFromConfig(a.cfg)
 }
 
 func (a *AwsEnv) ACMClient() *acm.Client {
@@ -95,6 +98,10 @@ func (a *AwsEnv) Route53DomainsClient() *route53domains.Client {
 
 func (a *AwsEnv) S3Client() *s3.Client {
 	return a.s3client
+}
+
+func (a *AwsEnv) STSClient() *sts.Client {
+	return a.stsClient
 }
 
 func InitAwsEnv() *AwsEnv {

@@ -27,7 +27,7 @@ type bucketModel struct {
 
 func (b *bucketModel) Attach(doc corebottom.PolicyDocument) {
 	// TODO: I assume we either have to merge or do duplicate detection
-	policyJson, err := policyjson.BuildFrom(b.name, doc)
+	policyJson, err := policyjson.BuildFrom(b.name, doc, policyjson.StandardRules())
 	if err != nil {
 		log.Fatalf("could not build policy: %v", err)
 	}

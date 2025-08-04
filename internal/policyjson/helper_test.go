@@ -20,7 +20,7 @@ func compare(t *testing.T, doc corebottom.PolicyDocument, test string) {
 	// remember that you are no worse off with the other 10%
 	test = strings.ReplaceAll(test, "\t", "    ")
 
-	json, err := policyjson.BuildFrom("test", doc)
+	json, err := policyjson.BuildFrom("test", doc, policyjson.StandardRules())
 	if err != nil {
 		t.Fatalf("error generating json")
 	}

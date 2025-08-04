@@ -14,8 +14,9 @@ type RoleModel struct {
 	name string
 	coin corebottom.CoinId
 
-	managed []driverbottom.Expr
-	inline  []corebottom.PolicyActionList
+	assumption corebottom.PolicyActionList
+	managed    []driverbottom.Expr
+	inline     []corebottom.PolicyActionList
 }
 
 func (r *RoleModel) ObtainMethod(name string) driverbottom.Method {

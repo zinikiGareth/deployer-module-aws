@@ -105,7 +105,7 @@ func (p *policyCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 func (p *policyCreator) UpdateReality() {
 	log.Printf("Need to actually create the policy for %s on AWS\n", p.name)
 
-	json, err := policyjson.BuildFrom(p.name, p.policyDoc)
+	json, err := policyjson.BuildFrom(p.name, p.policyDoc, policyjson.StandardRules())
 	if err != nil {
 		p.tools.Reporter.Reportf(p.loc.Offset, "error compiling JSON policy: %v", err)
 	}

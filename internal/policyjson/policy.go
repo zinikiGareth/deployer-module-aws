@@ -12,12 +12,12 @@ type policyJson struct {
 	Statement []stmtJson
 }
 
-func makePolicyJson(name string, policy corebottom.PolicyDocument) *policyJson {
+func makePolicyJson(name string, policy corebottom.PolicyDocument, rules PolicyRules) *policyJson {
 	ret := &policyJson{}
 	ret.Version = "2012-10-17"
 	ret.Statement = []stmtJson{}
 	for k, item := range policy.Items() {
-		ret.Statement = append(ret.Statement, makeStmtJson(name, k, item))
+		ret.Statement = append(ret.Statement, makeStmtJson(name, k, item, rules))
 	}
 	return ret
 }
@@ -26,12 +26,12 @@ type stmtJson struct {
 	Sid       string
 	Effect    string
 	Action    any // can be string or []string
-	Resource  any // can be string or []string
+	Resource  any `json:",omitempty"` // can be string or []string
 	Principal any `json:",omitempty"`
 	Condition any `json:",omitempty"`
 }
 
-func makeStmtJson(policyName string, k int, item corebottom.PolicyEffect) stmtJson {
+func makeStmtJson(policyName string, k int, item corebottom.PolicyEffect, rules PolicyRules) stmtJson {
 	ret := stmtJson{Sid: fmt.Sprintf("%sSid%d", policyName, k), Effect: item.Effect()}
 	as := item.Actions()
 	if len(as) == 0 {
@@ -42,12 +42,16 @@ func makeStmtJson(policyName string, k int, item corebottom.PolicyEffect) stmtJs
 		ret.Action = as
 	}
 	rs := item.Resources()
-	if len(rs) == 0 {
-		ret.Resource = "*"
-	} else if len(rs) == 1 {
-		ret.Resource = rs[0]
-	} else {
-		ret.Resource = rs
+	if rules.AllowResources() {
+		if len(rs) == 0 {
+			ret.Resource = "*"
+		} else if len(rs) == 1 {
+			ret.Resource = rs[0]
+		} else {
+			ret.Resource = rs
+		}
+	} else if len(rs) != 0 {
+		panic("resources not allowed here")
 	}
 	ps := item.Principals()
 	if len(ps) == 0 {

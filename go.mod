@@ -36,7 +36,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/lambda v1.73.0
 	github.com/aws/aws-sdk-go-v2/service/sso v1.25.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.30.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.33.19 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.33.19
 )
 
 replace ziniki.org/deployer/driver => ../deployer/driver

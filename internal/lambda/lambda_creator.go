@@ -3,6 +3,7 @@ package lambda
 import (
 	"context"
 	"log"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
@@ -185,10 +186,23 @@ func (lc *lambdaCreator) UpdateReality() {
 		return
 	}
 
-	req, err := lc.client.CreateFunction(context.TODO(), &lambda.CreateFunctionInput{FunctionName: &lc.name, Runtime: runtime, Handler: &handler, Code: &types.FunctionCode{S3Bucket: &bucket, S3Key: &key}, Role: &role, VpcConfig: vpcConfig})
-	if err != nil {
-		log.Fatalf("failed to create lambda %s: %v\n", lc.name, err)
-	}
+	// Because we can create the role just before we create the lambda, it can be the case that it is "not ready yet" and CreateFunction fails.
+	// Handle this
+
+	var arn string
+	utils.ExponentialBackoff(func() bool {
+		req, err := lc.client.CreateFunction(context.TODO(), &lambda.CreateFunctionInput{FunctionName: &lc.name, Runtime: runtime, Handler: &handler, Code: &types.FunctionCode{S3Bucket: &bucket, S3Key: &key}, Role: &role, VpcConfig: vpcConfig})
+		if err != nil {
+			if invalidRole(err) {
+				log.Printf("failed to create lambda %s because role was unassumable, waiting...\n", lc.name)
+				return false
+			}
+			log.Fatalf("failed to create lambda %s: %v\n", lc.name, err)
+		}
+		arn = *req.FunctionArn
+		return true
+	})
+
 	utils.ExponentialBackoff(func() bool {
 		stat, err := lc.client.GetFunction(context.TODO(), &lambda.GetFunctionInput{FunctionName: &lc.name})
 		if err != nil {
@@ -200,8 +214,9 @@ func (lc *lambdaCreator) UpdateReality() {
 		log.Printf("waiting for lambda to be active, stat = %v\n", stat.Configuration.State)
 		return false
 	})
-	log.Printf("created lambda %s: %s\n", lc.name, *req.FunctionArn)
-	created.config = &types.FunctionConfiguration{FunctionArn: req.FunctionArn}
+
+	log.Printf("created lambda %s: %s\n", lc.name, arn)
+	created.config = &types.FunctionConfiguration{FunctionArn: &arn}
 
 	lc.tools.Storage.Bind(lc.coin, created)
 }
@@ -244,6 +259,35 @@ func lambdaExists(err error) bool {
 		log.Fatalf("error: %T %v", e1.Err, e1.Err)
 	}
 	log.Fatalf("getting lambda failed: %T %v", err, err)
+	panic("failed")
+}
+
+func invalidRole(err error) bool {
+	if err == nil {
+		return false
+	}
+	e1, ok := err.(*smithy.OperationError)
+	if ok {
+		e2, ok := e1.Err.(*http.ResponseError)
+		if ok {
+			log.Printf("%v %s", e2, e2.Err)
+			if e2.ResponseError.Response.StatusCode == 400 {
+				switch e4 := e2.Err.(type) {
+				case *types.InvalidParameterValueException:
+					// log.Printf("error: %T %v %s", e4, e4, e4.ErrorMessage())
+					s := e4.ErrorMessage()
+					ret := strings.HasSuffix(s, "cannot be assumed by Lambda.")
+					return ret
+				default:
+					log.Printf("not invalid: %T %v", e4, e4)
+					panic("what error?")
+				}
+			}
+			log.Fatalf("error: %T %v %T %v", e2.Response.Status, e2.Response.Status, e2.ResponseError.Response.StatusCode, e2.ResponseError.Response.StatusCode)
+		}
+		log.Fatalf("not response error: %T %v", e1.Err, e1.Err)
+	}
+	log.Fatalf("creating lambda failed: %T %v", err, err)
 	panic("failed")
 }
 

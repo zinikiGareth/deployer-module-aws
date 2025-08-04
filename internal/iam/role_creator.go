@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/iam/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/aws/smithy-go"
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/coremod/pkg/coretop"
@@ -36,6 +37,7 @@ type roleCreator struct {
 	inline  []corebottom.PolicyActionList
 
 	client *iam.Client
+	sts    *sts.Client
 }
 
 func (r *roleCreator) Loc() *errorsink.Location {
@@ -70,6 +72,7 @@ func (r *roleCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 	}
 
 	r.client = awsEnv.IAMClient()
+	r.sts = awsEnv.STSClient()
 
 	resp, err := r.client.GetRole(context.TODO(), &iam.GetRoleInput{RoleName: &r.name})
 	if err != nil {
@@ -89,6 +92,19 @@ func (r *roleCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 }
 
 func (r *roleCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
+	if !utils.HasProp(r.props, "Assume") {
+		r.tools.Reporter.ReportAtf(r.loc, "cannot define role without Assume")
+		return
+	}
+	assumption := utils.FindProp(r.props, nil, "Assume")
+	assumeClause := assumption.Eval(r.tools.Storage)
+	var assumeList corebottom.PolicyActionList
+	switch ac := assumeClause.(type) {
+	case corebottom.PolicyActionList:
+		assumeList = ac
+	default:
+		panic("not a PAL")
+	}
 	if utils.HasProp(r.props, "Inline") {
 		switch il := utils.FindProp(r.props, nil, "Inline").(type) {
 		case corebottom.PolicyActionList:
@@ -97,7 +113,7 @@ func (r *roleCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 			log.Fatalf("cannot handle Inline prop %T\n", il)
 		}
 	}
-	pres.Present(&RoleModel{name: r.name, coin: r.coin, inline: r.inline, managed: r.managed})
+	pres.Present(&RoleModel{name: r.name, coin: r.coin, assumption: assumeList, inline: r.inline, managed: r.managed})
 }
 
 func (r *roleCreator) UpdateReality() {
@@ -107,8 +123,12 @@ func (r *roleCreator) UpdateReality() {
 	created := &RoleAWSModel{}
 	if tmp == nil {
 		log.Printf("creating role %s\n", r.name)
-		// TODO: the assume policy should be able to be specified
-		assumeJson := `{"Version": "2012-10-17", "Statement": [ { "Effect" : "Allow", "Principal" : { "Service": "lambda.amazonaws.com" }, "Action": [ "sts:AssumeRole" ]}]}`
+		assume := coretop.NewPolicyDocument(desired.assumption.Loc())
+		desired.assumption.ApplyTo(assume)
+		assumeJson, err := policyjson.BuildFrom("", assume, policyjson.AssumeRoleRules())
+		if err != nil {
+			log.Fatalf("could not generate policy: %v", err)
+		}
 		out, err := r.client.CreateRole(context.TODO(), &iam.CreateRoleInput{RoleName: &r.name, AssumeRolePolicyDocument: &assumeJson})
 		if err != nil {
 			log.Fatalf("failed to create role %s: %v\n", r.name, err)
@@ -124,7 +144,7 @@ func (r *roleCreator) UpdateReality() {
 		policy := coretop.NewPolicyDocument(ip.Loc())
 		ip.ApplyTo(policy)
 		pname := fmt.Sprintf("%s-%d", desired.name, k)
-		ps, err := policyjson.BuildFrom(strings.ReplaceAll(pname, "-", ""), policy)
+		ps, err := policyjson.BuildFrom(strings.ReplaceAll(pname, "-", ""), policy, policyjson.StandardRules())
 		if err != nil {
 			log.Fatalf("could not generate policy: %v", err)
 		}
@@ -134,7 +154,6 @@ func (r *roleCreator) UpdateReality() {
 		}
 		log.Printf("attached policy %s", pname)
 	}
-
 	r.tools.Storage.Bind(r.coin, created)
 }
 
