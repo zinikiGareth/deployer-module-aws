@@ -14,14 +14,29 @@ import (
 
 type lambdaVersioner struct {
 	tools *corebottom.Tools
+	loc   *errorsink.Location
 	coin  corebottom.CoinId
 	props map[driverbottom.Identifier]driverbottom.Expr
+
+	defaultPV float64
 
 	client *lambda.Client
 }
 
-func (v *lambdaVersioner) Loc() *errorsink.Location {
+func (v *lambdaVersioner) AddAdverb(adverb driverbottom.Adverb, args []driverbottom.Token) driverbottom.Interpreter {
 	panic("unimplemented")
+}
+
+func (v *lambdaVersioner) AddProperty(name driverbottom.Identifier, expr driverbottom.Expr) {
+	v.props[name] = expr
+}
+
+func (v *lambdaVersioner) Completed() {
+	v.coin = corebottom.CoinId(v.tools.Storage.PendingObjId(v.loc))
+}
+
+func (v *lambdaVersioner) Loc() *errorsink.Location {
+	return v.loc
 }
 
 func (v *lambdaVersioner) ShortDescription() string {
@@ -34,10 +49,15 @@ func (v *lambdaVersioner) DumpTo(to driverbottom.IndentWriter) {
 
 func (v *lambdaVersioner) Resolve(r driverbottom.Resolver) driverbottom.BindingRequirement {
 	ret := driverbottom.MAY_BE_BOUND
+	v.coin.Resolve(v.tools.Storage)
 	for _, e := range v.props {
 		ret = ret.Merge(e.Resolve(r))
 	}
 	return ret
+}
+
+func (v *lambdaVersioner) CoinId() corebottom.CoinId {
+	return v.coin
 }
 
 func (v *lambdaVersioner) DetermineInitialState(pres corebottom.ValuePresenter) {
@@ -88,7 +108,7 @@ func (v *lambdaVersioner) DetermineInitialState(pres corebottom.ValuePresenter) 
 }
 
 func (v *lambdaVersioner) DetermineDesiredState(pres corebottom.ValuePresenter) {
-	pv := utils.F64AsNumber(0)
+	pv := utils.F64AsNumber(v.defaultPV)
 	if utils.HasProp(v.props, "PublishVersion") {
 		pv = v.tools.Storage.EvalAsNumber(utils.FindProp(v.props, nil, "PublishVersion"))
 	}
@@ -164,4 +184,5 @@ func (v *lambdaVersioner) TearDown() {
 	log.Printf("What would it mean to tear down a version?  I think cleaning up old versions is a separate op")
 }
 
+var _ corebottom.CoinProvider = &lambdaVersioner{}
 var _ corebottom.RealityShifter = &lambdaVersioner{}
