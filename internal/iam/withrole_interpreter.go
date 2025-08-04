@@ -2,7 +2,6 @@ package iam
 
 import (
 	"fmt"
-	"log"
 
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/coremod/pkg/coretop"
@@ -109,15 +108,6 @@ func (w *WithRole) DumpTo(to driverbottom.IndentWriter) {
 	panic("unimplemented")
 }
 
-// This needs to return an ARN
-func (w *WithRole) Eval(s driverbottom.RuntimeStorage) any {
-	if !s.IsMode(corebottom.UPDATE_REALITY_MODE) {
-		log.Fatalf("cannot Eval WithRole in mode %d", s.CurrentMode())
-	}
-	panic("this is a hack")
-	// return "arn:aws:iam::331358773365:role/aws-ziniki-staging-Role-11P80DK9U9T9L"
-}
-
 func (w *WithRole) Resolve(r driverbottom.Resolver) driverbottom.BindingRequirement {
 	ret := driverbottom.MAY_BE_BOUND
 	for _, m := range w.Managed {
@@ -135,6 +125,11 @@ func (w *WithRole) ShortDescription() string {
 
 func (w *WithRole) String() string {
 	panic("unimplemented")
+}
+
+// TODO: should this actually return a policy document or something?
+func (w *WithRole) Eval(s driverbottom.RuntimeStorage) any {
+	return nil
 }
 
 func CreateWithRoleInterpreter(tools *driverbottom.CoreTools, scope driverbottom.Scope, parent driverbottom.PropertyParent, prop driverbottom.Identifier, tokens []driverbottom.Token) driverbottom.Interpreter {

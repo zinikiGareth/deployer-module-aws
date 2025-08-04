@@ -85,6 +85,7 @@ func (l *lambdaAction) Completed() {
 	lambdaCoin := corebottom.CoinId(l.tools.Storage.PendingObjId(l.named.Loc()))
 
 	role := utils.FindProp(l.props, notused, "Role")
+	funcProps := utils.UseProps(l.props, notused, "Code", "Handler", "Runtime", "VpcConfig")
 	switch v := role.(type) {
 	case *iam.WithRole:
 		l.coins.withRole = v
@@ -92,9 +93,12 @@ func (l *lambdaAction) Completed() {
 		l.coins.roleCoin = roleCoin
 		l.coins.roleCreator = (&iam.RoleBlank{}).Mint(l.tools, l.coins.withRole.Loc(), roleCoin, l.coins.withRole.Name(), nil, l.teardown)
 		l.coins.roleCreator.(iam.AcceptPolicies).AddPolicies(v.Managed, v.Inline)
+		roleId := utils.PropId(l.props, "Role")
+		funcProps[roleId] = drivertop.MakeInvokeExpr(coretop.MakeGetCoinMethod(v.Loc(), roleCoin), drivertop.NewIdentifierToken(v.Loc(), "arn"))
+	default:
+		utils.CopyProps(funcProps, l.props, notused, "Role")
 	}
 
-	funcProps := utils.UseProps(l.props, notused, "Code", "Handler", "Role", "Runtime", "VpcConfig")
 	l.coins.lambda = &lambdaCreator{tools: l.tools, teardown: l.teardown, loc: l.loc, coin: lambdaCoin, name: l.named.Text(), props: funcProps}
 
 	if utils.HasProp(l.props, "PublishVersion", "Alias") {
