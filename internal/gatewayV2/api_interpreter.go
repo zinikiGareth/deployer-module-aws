@@ -1,9 +1,6 @@
 package gatewayV2
 
 import (
-	"log"
-
-	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/drivertop"
 )
@@ -18,102 +15,81 @@ func (w *apiInterpreter) HaveTokens(scope driverbottom.Scope, tokens []driverbot
 		w.tools.Reporter.Report(0, "expected policy [name]")
 		return drivertop.NewIgnoreInnerScope()
 	}
+	adverb, ok := tokens[0].(driverbottom.Adverb)
+	if ok {
+		return w.api.AddAdverb(adverb, tokens[1:])
+	}
 	verb, ok := tokens[0].(driverbottom.Identifier)
 	if !ok {
-		log.Printf("--- need to implement adverbs")
-		// w.tools.Reporter.Report(0, "expected policy [name]")
+		w.tools.Reporter.ReportAtf(verb.Loc(), "syntax error")
 		return drivertop.NewIgnoreInnerScope()
 	}
 	switch verb.Id() {
-	case "route":
-		/* WRONG!!!
-		if len(tokens) > 1 {
-			expr, ok := w.tools.Parser.Parse(scope, tokens[1:])
-			if !ok {
-				return drivertop.NewIgnoreInnerScope()
-			}
-			w.withRole.Managed = append(w.withRole.Managed, expr)
-			return drivertop.NewDisallowInnerScope(w.tools)
-		} else {
-			pd := coretop.NewPolicyActionList(verb.Loc())
-			w.withRole.Attach(pd)
-
-			return drivertop.NewVerbCommandInterpreter(w.tools, attachToPolicy{list: pd}, "policy-statements", false)
+	case "integration":
+		// is this overly restrictive? can we not allow expressions?
+		if len(tokens) != 2 {
+			w.tools.Reporter.ReportAtf(verb.Loc(), "integration <name>")
+			return drivertop.NewIgnoreInnerScope()
 		}
-		*/
-		log.Printf("--- need to implement route")
-		return drivertop.NewIgnoreInnerScope()
+		name, ok := tokens[1].(driverbottom.String)
+		if !ok {
+			w.tools.Reporter.ReportAtf(verb.Loc(), "integration: name must be a string")
+			return drivertop.NewIgnoreInnerScope()
+		}
+		intg := &intgConfig{name: name, props: make(map[driverbottom.Identifier]driverbottom.Expr)}
+		w.api.intgs = append(w.api.intgs, intg)
+		return drivertop.NewPropertiesInnerScope(w.tools, intg)
+	case "route":
+		// is this overly restrictive? can we not allow expressions?
+		if len(tokens) != 3 {
+			w.tools.Reporter.ReportAtf(verb.Loc(), "route <route> <integration>")
+			return drivertop.NewIgnoreInnerScope()
+		}
+		routePath, ok := tokens[1].(driverbottom.String)
+		if !ok {
+			w.tools.Reporter.ReportAtf(verb.Loc(), "route: route must be a string")
+			return drivertop.NewIgnoreInnerScope()
+		}
+		routeIntg, ok := tokens[2].(driverbottom.String)
+		if !ok {
+			w.tools.Reporter.ReportAtf(verb.Loc(), "route: integration must be a string")
+			return drivertop.NewIgnoreInnerScope()
+		}
+		route := &routeConfig{route: routePath, integration: routeIntg}
+		w.api.routes = append(w.api.routes, route)
+		return drivertop.NewDisallowInnerScope(w.tools)
+	case "stage":
+		// is this overly restrictive? can we not allow expressions?
+		if len(tokens) != 2 {
+			w.tools.Reporter.ReportAtf(verb.Loc(), "stage <name>")
+			return drivertop.NewIgnoreInnerScope()
+		}
+		name, ok := tokens[1].(driverbottom.String)
+		if !ok {
+			w.tools.Reporter.ReportAtf(verb.Loc(), "stage: name must be a string")
+			return drivertop.NewIgnoreInnerScope()
+		}
+		stage := &stageConfig{name: name}
+		w.api.stages = append(w.api.stages, stage)
+		return drivertop.NewDisallowInnerScope(w.tools)
 	case "Protocol":
 		fallthrough
 	case "RouteSelectionExpression":
-		log.Printf("--- need to support properties")
-		return drivertop.NewIgnoreInnerScope()
+		pis := drivertop.NewPropertiesInnerScope(w.tools, w.api)
+		return pis.HaveTokens(scope, tokens)
 	default:
-		w.tools.Reporter.Report(0, "expected policy [name]")
+		w.tools.Reporter.ReportAtf(verb.Loc(), "invalid configuration action: %s", verb.Id())
 		return drivertop.NewIgnoreInnerScope()
 	}
 }
 
 func (w *apiInterpreter) Completed() {
+	// TODO: check all route integrations exist in integrations
 	w.api.Completed()
-}
-
-type apiRoute struct {
-	driverbottom.Locatable
-	name  string
-}
-
-func (w *apiRoute) Attach(item any) error {
-	return nil
-}
-
-func (w *apiRoute) MakeAssign(holder driverbottom.Holder, assignTo driverbottom.Identifier, action any) any {
-	panic("this should not be able to happen in this context")
-}
-
-func (w *apiRoute) Name() string {
-	return w.name
-}
-
-func (w *apiRoute) AddAdverb(adverb driverbottom.Adverb, args []driverbottom.Token) driverbottom.Interpreter {
-	panic("unimplemented")
-}
-
-func (w *apiRoute) AddProperty(name driverbottom.Identifier, expr driverbottom.Expr) {
-	panic("unimplemented")
-}
-
-func (w *apiRoute) Completed() {
-}
-
-func (w *apiRoute) DumpTo(to driverbottom.IndentWriter) {
-	panic("unimplemented")
-}
-
-// This needs to return an ARN
-func (w *apiRoute) Eval(s driverbottom.RuntimeStorage) any {
-	if !s.IsMode(corebottom.UPDATE_REALITY_MODE) {
-		log.Fatalf("cannot Eval WithRole in mode %d", s.CurrentMode())
-	}
-	return "arn:aws:iam::331358773365:role/aws-ziniki-staging-Role-11P80DK9U9T9L"
-}
-
-func (w *apiRoute) Resolve(r driverbottom.Resolver) driverbottom.BindingRequirement {
-	ret := driverbottom.MAY_BE_BOUND
-	return ret
-}
-
-func (w *apiRoute) ShortDescription() string {
-	panic("unimplemented")
-}
-
-func (w *apiRoute) String() string {
-	panic("unimplemented")
 }
 
 func NewApiInterpreter(tools *driverbottom.CoreTools, scope driverbottom.Scope, parent *apiAction) driverbottom.Interpreter {
 	return &apiInterpreter{tools: tools, api: parent}
 }
 
-var _ driverbottom.Expr = &apiRoute{}
 var _ driverbottom.Interpreter = &apiInterpreter{}

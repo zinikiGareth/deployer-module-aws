@@ -19,6 +19,10 @@ type apiAction struct {
 	props    map[driverbottom.Identifier]driverbottom.Expr
 	teardown corebottom.TearDown
 
+	intgs  []*intgConfig
+	routes []*routeConfig
+	stages []*stageConfig
+
 	coins *apiCoins
 }
 

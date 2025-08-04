@@ -36,7 +36,6 @@ func (a *addPermsAction) DumpTo(to driverbottom.IndentWriter) {
 }
 
 func (a *addPermsAction) Attach(item any) error {
-	log.Printf("adding perms of type %T", item)
 	a.actions = append(a.actions, item.(corebottom.PolicyRuleAction))
 	return nil
 }
