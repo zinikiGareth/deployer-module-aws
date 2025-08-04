@@ -90,7 +90,7 @@ func (lc *lambdaCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 		case "VpcConfig":
 			vpcConfig = v
 		default:
-			lc.tools.Reporter.ReportAtf(lc.loc, "invalid property for Lambda: %s", p.Id())
+			lc.tools.Reporter.ReportAtf(p.Loc(), "invalid property for Lambda: %s", p.Id())
 		}
 	}
 	if code == nil {

@@ -109,7 +109,7 @@ func (rc *routeCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 		case "Target":
 			target = v
 		default:
-			rc.tools.Reporter.ReportAtf(rc.loc, "invalid property for Api route: %s", p.Id())
+			rc.tools.Reporter.ReportAtf(p.Loc(), "invalid property for Api route: %s", p.Id())
 		}
 	}
 	if api == nil {

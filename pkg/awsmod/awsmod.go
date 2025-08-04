@@ -45,6 +45,7 @@ func RegisterWithDriver(deployer driverbottom.Driver) error {
 	tools.Register.Register("blank", "aws.ApiGatewayV2.Integration", &gatewayV2.IntegrationBlank{})
 	tools.Register.Register("blank", "aws.ApiGatewayV2.Route", &gatewayV2.RouteBlank{})
 	tools.Register.Register("blank", "aws.ApiGatewayV2.Stage", &gatewayV2.StageBlank{})
+	tools.Register.Register("blank", "aws.ApiGatewayV2.VPCLink", &gatewayV2.VPCLinkBlank{})
 	tools.Register.Register("blank", "aws.CertificateManager.Certificate", &acm.CertificateBlank{})
 	tools.Register.Register("blank", "aws.CloudFront.OriginAccessControl", &cfront.OACBlank{})
 	tools.Register.Register("blank", "aws.CloudFront.ResponseHeadersPolicy", &cfront.RHPBlank{})
@@ -71,9 +72,12 @@ func RegisterWithDriver(deployer driverbottom.Driver) error {
 
 	loc := &errorsink.Location{}
 	// Permissions by name
+	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.action.APIGateway.GET"), drivertop.MakeString(loc, "apigateway:GET"))
+	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.action.ec2.CreateNetworkInterface"), drivertop.MakeString(loc, "ec2:CreateNetworkInterface"))
+	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.action.ec2.DescribeNetworkInterfaces"), drivertop.MakeString(loc, "ec2:DescribeNetworkInterfaces"))
+	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.action.ec2.DeleteNetworkInterface"), drivertop.MakeString(loc, "ec2:DeleteNetworkInterface"))
 	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.action.S3.GetObject"), drivertop.MakeString(loc, "s3:GetObject"))
 	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.action.S3.PutObject"), drivertop.MakeString(loc, "s3:PutObject"))
-	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.action.APIGateway.GET"), drivertop.MakeString(loc, "apigateway:GET"))
 
 	// Principals
 	tools.Repository.TopScope().IntroduceSymbol(driverbottom.SymbolName("aws.principal.AWS"), drivertop.MakeString(loc, "AWS"))

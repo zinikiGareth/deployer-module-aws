@@ -35,7 +35,7 @@ func (sc *stageCreator) ShortDescription() string {
 func (sc *stageCreator) DumpTo(iw driverbottom.IndentWriter) {
 	iw.Intro("aws.gateway.Stage[")
 	iw.AttrsWhere(sc)
-	iw.TextAttr("path", sc.name)
+	iw.TextAttr("name", sc.name)
 	iw.EndAttrs()
 }
 
@@ -87,7 +87,7 @@ func (sc *stageCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 		case "Api":
 			api = v
 		default:
-			sc.tools.Reporter.ReportAtf(sc.loc, "invalid property for Api stage: %s", p.Id())
+			sc.tools.Reporter.ReportAtf(p.Loc(), "invalid property for Api stage: %s", p.Id())
 		}
 	}
 	if api == nil {

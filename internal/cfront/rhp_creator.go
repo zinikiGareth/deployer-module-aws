@@ -91,7 +91,7 @@ func (rhpc *RHPCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 		case "Value":
 			value = v
 		default:
-			rhpc.tools.Reporter.ReportAtf(rhpc.loc, "invalid property for ResponseHeaderPolicy: %s", p.Id())
+			rhpc.tools.Reporter.ReportAtf(p.Loc(), "invalid property for ResponseHeaderPolicy: %s", p.Id())
 		}
 	}
 

@@ -88,7 +88,7 @@ func (oacc *OACCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 		case "SigningProtocol":
 			sp = v
 		default:
-			oacc.tools.Reporter.ReportAtf(oacc.loc, "invalid property for OriginAccessControl: %s", p.Id())
+			oacc.tools.Reporter.ReportAtf(p.Loc(), "invalid property for OriginAccessControl: %s", p.Id())
 		}
 	}
 

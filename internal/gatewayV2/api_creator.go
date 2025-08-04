@@ -92,7 +92,7 @@ func (ac *apiCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 		case "RouteSelectionExpression":
 			rse = v
 		default:
-			ac.tools.Reporter.ReportAtf(ac.loc, "invalid property for ApiGateway: %s", p.Id())
+			ac.tools.Reporter.ReportAtf(p.Loc(), "invalid property for ApiGateway: %s", p.Id())
 		}
 	}
 	if protocol == nil {
@@ -222,11 +222,11 @@ func (ac *apiCreator) TearDown() {
 
 	if tmp != nil {
 		found := tmp.(*ApiAWSModel)
-		log.Printf("you have asked to tear down lambda %s with mode %s\n", ac.name, ac.teardown.Mode())
+		log.Printf("you have asked to tear down api %s with mode %s\n", ac.name, ac.teardown.Mode())
 
 		_, err := ac.client.DeleteApi(context.TODO(), &apigatewayv2.DeleteApiInput{ApiId: found.api.ApiId})
 		if err != nil {
-			log.Fatalf("failed to delete lambda %s: %v\n", ac.name, err)
+			log.Fatalf("failed to delete api %s: %v\n", ac.name, err)
 		}
 	} else {
 		log.Printf("no api existed called %s\n", ac.name)

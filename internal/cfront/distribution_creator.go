@@ -129,7 +129,7 @@ func (cfdc *distributionCreator) DetermineDesiredState(pres corebottom.ValuePres
 		case "TargetOriginId":
 			toid = v
 		default:
-			cfdc.tools.Reporter.ReportAtf(cfdc.loc, "invalid property for Distribution: %s", p.Id())
+			cfdc.tools.Reporter.ReportAtf(p.Loc(), "invalid property for Distribution: %s", p.Id())
 		}
 	}
 	if comment == nil {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2"
 	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2/types"
 	"ziniki.org/deployer/coremod/pkg/corebottom"
@@ -102,6 +103,8 @@ outer:
 
 func (ic *integrationCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 	var api driverbottom.Expr
+	var connId driverbottom.Expr
+	var connType driverbottom.Expr
 	var itype driverbottom.Expr
 	var region driverbottom.Expr
 	var uri driverbottom.Expr
@@ -111,6 +114,10 @@ func (ic *integrationCreator) DetermineDesiredState(pres corebottom.ValuePresent
 			ic.tools.Reporter.ReportAtf(ic.loc, "Description is not allowed for Integration because we use it for Name")
 		case "Api":
 			api = v
+		case "ConnectionId":
+			connId = v
+		case "ConnectionType":
+			connType = v
 		case "Region":
 			region = v
 		case "Type":
@@ -118,7 +125,7 @@ func (ic *integrationCreator) DetermineDesiredState(pres corebottom.ValuePresent
 		case "Uri":
 			uri = v
 		default:
-			ic.tools.Reporter.ReportAtf(ic.loc, "invalid property for Api Integration: %s", p.Id())
+			ic.tools.Reporter.ReportAtf(p.Loc(), "invalid property for Api Integration: %s", p.Id())
 		}
 	}
 	if api == nil {
@@ -158,7 +165,22 @@ func (ic *integrationCreator) DetermineDesiredState(pres corebottom.ValuePresent
 		panic("not ok")
 	}
 
-	model := &IntegrationModel{name: ic.name, loc: ic.loc, coin: ic.coin, api: apiStr, region: regionStr, itype: typeStr, uri: uriStr}
+	var cType fmt.Stringer
+	if connType != nil {
+		cType, ok = ic.tools.Storage.EvalAsStringer(connType)
+		if !ok {
+			panic("not ok")
+		}
+	}
+	var cId fmt.Stringer
+	if connId != nil {
+		cId, ok = ic.tools.Storage.EvalAsStringer(connId)
+		if !ok {
+			panic("not ok")
+		}
+	}
+
+	model := &IntegrationModel{name: ic.name, loc: ic.loc, coin: ic.coin, api: apiStr, region: regionStr, itype: typeStr, uri: uriStr, connType: cType, connId: cId}
 	pres.Present(model)
 }
 
@@ -212,6 +234,12 @@ func (ic *integrationCreator) UpdateReality() {
 	}
 
 	input := &apigatewayv2.CreateIntegrationInput{Description: &dname, ApiId: &apiId, IntegrationType: types.IntegrationType(itype), IntegrationUri: &uri, PayloadFormatVersion: &pfv}
+	if desired.connType != nil {
+		input.ConnectionType = types.ConnectionType(desired.connType.String())
+	}
+	if desired.connId != nil {
+		input.ConnectionId = aws.String(desired.connType.String())
+	}
 	out, err := ic.client.CreateIntegration(context.TODO(), input)
 	if err != nil {
 		log.Fatalf("failed to create api integration %s: %v\n", ic.name, err)

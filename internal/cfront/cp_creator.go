@@ -80,7 +80,7 @@ func (cfdc *CachePolicyCreator) DetermineDesiredState(pres corebottom.ValuePrese
 		case "MinTTL":
 			minttl = v
 		default:
-			cfdc.tools.Reporter.ReportAtf(cfdc.loc, "invalid property for CachePolicy: %s", p.Id())
+			cfdc.tools.Reporter.ReportAtf(p.Loc(), "invalid property for CachePolicy: %s", p.Id())
 		}
 	}
 

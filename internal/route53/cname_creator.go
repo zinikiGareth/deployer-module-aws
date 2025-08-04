@@ -52,7 +52,7 @@ func (cc *cnameCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 		case "Zone":
 			zone = v
 		default:
-			cc.tools.Reporter.ReportAtf(cc.loc, "invalid property for IAM policy: %s", p.Id())
+			cc.tools.Reporter.ReportAtf(p.Loc(), "invalid property for IAM policy: %s", p.Id())
 		}
 	}
 	if !seenErr && zone == nil {
@@ -102,7 +102,7 @@ func (cc *cnameCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 		case "Zone":
 			zone = v
 		default:
-			cc.tools.Reporter.ReportAtf(cc.loc, "invalid property for IAM policy: %s", p.Id())
+			cc.tools.Reporter.ReportAtf(p.Loc(), "invalid property for IAM policy: %s", p.Id())
 			seenErr = true
 		}
 	}

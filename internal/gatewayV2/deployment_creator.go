@@ -63,7 +63,7 @@ func (sc *deploymentCreator) DetermineDesiredState(pres corebottom.ValuePresente
 		case "Api":
 			api = v
 		default:
-			sc.tools.Reporter.ReportAtf(sc.loc, "invalid property for Api stage: %s", p.Id())
+			sc.tools.Reporter.ReportAtf(p.Loc(), "invalid property for Api stage: %s", p.Id())
 		}
 	}
 	if api == nil {
@@ -99,7 +99,6 @@ func (sc *deploymentCreator) UpdateReality() {
 		log.Printf("have status %s\n", out.DeploymentStatus)
 		return out.DeploymentStatus == types.DeploymentStatusDeployed
 	})
-	log.Printf("created api deployment %s\n", *out.DeploymentId)
 	created.name = sc.name
 	created.deploymentId = *out.DeploymentId
 	sc.tools.Storage.Bind(sc.coin, created)

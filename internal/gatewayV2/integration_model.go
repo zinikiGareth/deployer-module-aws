@@ -63,10 +63,12 @@ type IntegrationModel struct {
 	loc  *errorsink.Location
 	coin corebottom.CoinId
 
-	api    fmt.Stringer
-	region fmt.Stringer
-	itype  fmt.Stringer
-	uri    fmt.Stringer
+	api      fmt.Stringer
+	region   fmt.Stringer
+	itype    fmt.Stringer
+	uri      fmt.Stringer
+	connType fmt.Stringer
+	connId   fmt.Stringer
 }
 
 func (i *IntegrationModel) ObtainMethod(name string) driverbottom.Method {

@@ -114,7 +114,8 @@ func (w *WithRole) Eval(s driverbottom.RuntimeStorage) any {
 	if !s.IsMode(corebottom.UPDATE_REALITY_MODE) {
 		log.Fatalf("cannot Eval WithRole in mode %d", s.CurrentMode())
 	}
-	return "arn:aws:iam::331358773365:role/aws-ziniki-staging-Role-11P80DK9U9T9L"
+	panic("this is a hack")
+	// return "arn:aws:iam::331358773365:role/aws-ziniki-staging-Role-11P80DK9U9T9L"
 }
 
 func (w *WithRole) Resolve(r driverbottom.Resolver) driverbottom.BindingRequirement {

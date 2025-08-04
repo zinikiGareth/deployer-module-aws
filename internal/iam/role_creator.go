@@ -14,6 +14,7 @@ import (
 	"ziniki.org/deployer/coremod/pkg/coretop"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
+	"ziniki.org/deployer/driver/pkg/utils"
 	"ziniki.org/deployer/modules/aws/internal/env"
 	"ziniki.org/deployer/modules/aws/internal/policyjson"
 )
@@ -28,6 +29,7 @@ type roleCreator struct {
 	loc      *errorsink.Location
 	name     string
 	coin     corebottom.CoinId
+	props    map[driverbottom.Identifier]driverbottom.Expr
 	teardown corebottom.TearDown
 
 	managed []driverbottom.Expr
@@ -87,26 +89,33 @@ func (r *roleCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 }
 
 func (r *roleCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
-	pres.Present(&RoleModel{name: r.name, inline: r.inline, managed: r.managed})
+	if utils.HasProp(r.props, "Inline") {
+		switch il := utils.FindProp(r.props, nil, "Inline").(type) {
+		case corebottom.PolicyActionList:
+			r.inline = append(r.inline, il)
+		default:
+			log.Fatalf("cannot handle Inline prop %T\n", il)
+		}
+	}
+	pres.Present(&RoleModel{name: r.name, coin: r.coin, inline: r.inline, managed: r.managed})
 }
 
 func (r *roleCreator) UpdateReality() {
-	log.Printf("updating role %s\n", r.name)
 	tmp := r.tools.Storage.GetCoin(r.coin, corebottom.DETERMINE_INITIAL_MODE)
 	desired := r.tools.Storage.GetCoin(r.coin, corebottom.DETERMINE_DESIRED_MODE).(*RoleModel)
 
 	created := &RoleAWSModel{}
 	if tmp == nil {
-		var assumeJson string
-		log.Printf("need to actually create the role for %s on AWS\n", r.name)
-		assumeJson = `{"Version": "2012-10-17", "Statement": [ { "Effect" : "Allow", "Principal" : { "Service": "lambda.amazonaws.com" }, "Action": [ "sts:AssumeRole" ]}]}`
+		log.Printf("creating role %s\n", r.name)
+		// TODO: the assume policy should be able to be specified
+		assumeJson := `{"Version": "2012-10-17", "Statement": [ { "Effect" : "Allow", "Principal" : { "Service": "lambda.amazonaws.com" }, "Action": [ "sts:AssumeRole" ]}]}`
 		out, err := r.client.CreateRole(context.TODO(), &iam.CreateRoleInput{RoleName: &r.name, AssumeRolePolicyDocument: &assumeJson})
 		if err != nil {
 			log.Fatalf("failed to create role %s: %v\n", r.name, err)
 		}
-		log.Printf("have %v\n", out.Role)
 		created.role = out.Role
 	} else {
+		log.Printf("updating role %s\n", r.name)
 		found := tmp.(*RoleAWSModel)
 		created.role = found.role
 	}
@@ -119,12 +128,14 @@ func (r *roleCreator) UpdateReality() {
 		if err != nil {
 			log.Fatalf("could not generate policy: %v", err)
 		}
-		pout, err := r.client.PutRolePolicy(context.TODO(), &iam.PutRolePolicyInput{RoleName: &r.name, PolicyName: &pname, PolicyDocument: &ps})
+		_, err = r.client.PutRolePolicy(context.TODO(), &iam.PutRolePolicyInput{RoleName: &r.name, PolicyName: &pname, PolicyDocument: &ps})
 		if err != nil {
 			log.Fatalf("could not generate policy: %v", err)
 		}
-		log.Printf("attached policy %p", pout)
+		log.Printf("attached policy %s", pname)
 	}
+
+	r.tools.Storage.Bind(r.coin, created)
 }
 
 func (r *roleCreator) TearDown() {
