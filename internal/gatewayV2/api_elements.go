@@ -3,7 +3,7 @@ package gatewayV2
 import "ziniki.org/deployer/driver/pkg/driverbottom"
 
 type intgConfig struct {
-	name  driverbottom.Expr
+	name  driverbottom.String
 	props map[driverbottom.Identifier]driverbottom.Expr
 }
 

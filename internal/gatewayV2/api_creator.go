@@ -141,7 +141,7 @@ func (ac *apiCreator) UpdateReality() {
 		if desired.handler != nil {
 			h, ok := ac.tools.Storage.EvalAsStringer(desired.handler)
 			if !ok {
-				log.Fatalf("Failed to get handler")
+				log.Fatalf("Faa.coins.apiiled to get handler")
 			}
 			handler = h.String()
 		}
@@ -162,7 +162,7 @@ func (ac *apiCreator) UpdateReality() {
 				if string(r) == rt.String() {
 					runtime = types.Runtime(rt.String())
 					break
-				}
+				}a.coins.api
 			}
 			if runtime == "" {
 				ac.tools.Reporter.ReportAtf(ac.loc, "invalid runtime: %s", rt.String())

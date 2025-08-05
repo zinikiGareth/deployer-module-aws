@@ -356,7 +356,7 @@ func (c *coinPresenter) Present(value any) {
 }
 
 func (c *coinPresenter) WantDestruction(loc *errorsink.Location) {
-	panic("need to handle website.@destroy")
+	log.Printf("need to handle website.@destroy")
 }
 
 func (w *websiteAction) newCoinPresenter() *coinPresenter {

@@ -9,6 +9,7 @@ import (
 	"ziniki.org/deployer/driver/pkg/drivertop"
 	"ziniki.org/deployer/driver/pkg/errorsink"
 	"ziniki.org/deployer/driver/pkg/utils"
+	"ziniki.org/deployer/modules/aws/internal/lambda"
 )
 
 type apiAction struct {
@@ -23,7 +24,8 @@ type apiAction struct {
 	routes []*routeConfig
 	stages []*stageConfig
 
-	coins *apiCoins
+	creators []corebottom.BasicShifter
+	coins    *apiCoins
 }
 
 func (a *apiAction) Loc() *errorsink.Location {
@@ -76,12 +78,8 @@ func (a *apiAction) AddProperty(name driverbottom.Identifier, value driverbottom
 	}
 }
 
-func (a *apiAction) AddRoute( /*??*/ ) {
-
-}
-
 func (a *apiAction) Completed() {
-	a.coins = &apiCoins{routes: make(map[string]*routeCreator)}
+	a.coins = &apiCoins{intgs: make(map[string]*integrationCreator), routes: make(map[string]*routeCreator), stages: make(map[string]*stageCreator)}
 	if a.teardown == nil {
 		// a.tools.Reporter.ReportAtf(a.loc, "no teardown specified")
 		log.Printf("... no teardown specified")
@@ -91,35 +89,57 @@ func (a *apiAction) Completed() {
 	notused := utils.PropsMap(a.props)
 	apiCoin := corebottom.CoinId(a.tools.Storage.PendingObjId(a.named.Loc()))
 
-	/*
-		role := utils.FindProp(a.props, notused, "Role")
-		switch v := role.(type) {
-		case *iam.WithRole:
-			a.coins.withRole = v
-			roleCoin := corebottom.CoinId(a.tools.Storage.PendingObjId(a.coins.withRole.Loc()))
-			a.coins.roleCoin = roleCoin
-			a.coins.roleCreator = (&iam.RoleBlank{}).Mint(a.tools, a.coins.withRole.Loc(), roleCoin, a.coins.withRole.Name(), nil, teardown)
-			a.coins.roleCreator.(iam.AcceptPolicies).AddPolicies(v.Managed, v.Inline)
-		}
-
-	*/
+	// First create the Api itself
 	funcProps := utils.UseProps(a.props, notused, "Protocol", "RouteSelectionExpression")
 	a.coins.api = &apiCreator{tools: a.tools, teardown: a.teardown, loc: a.loc, coin: apiCoin, name: a.named.Text(), props: funcProps}
+	a.creators = append(a.creators, a.coins.api)
 
-	// I'm not quite sure how to express this yet in the file
-
-	// this deffo wants to be done here
-	props := utils.UseProps(a.props, notused, "PublishVersion", "Alias")
+	// TODO: this is copied here but has the wrong things ...
 	apiId := drivertop.NewIdentifierToken(a.named.Loc(), "Api")
+	regionId := drivertop.NewIdentifierToken(a.named.Loc(), "Region")
 	getApi := coretop.MakeGetCoinMethod(a.named.Loc(), a.coins.api.coin)
 	arnId := drivertop.NewIdentifierToken(a.named.Loc(), "id")
-	props[apiId] = drivertop.MakeInvokeExpr(getApi, arnId)
+	region := drivertop.MakeString(a.named.Loc(), "us-east-1")
+	invokePerm := drivertop.MakeString(a.named.Loc(), "lambda:InvokeFunction")
 
-	route := drivertop.MakeString(a.named.Loc(), "/*")
-	routeId := drivertop.NewIdentifierToken(a.named.Loc(), "Route")
-	props[routeId] = route
+	for _, i := range a.intgs {
+		name, ok := a.tools.Storage.EvalAsStringer(i.name)
+		if !ok {
+			panic("not ok")
+		}
 
-	a.coins.routes["/*"] = &routeCreator{tools: a.tools, teardown: a.teardown, loc: a.loc}
+		// create the integration itself
+		icoin := corebottom.CoinId(a.tools.Storage.PendingObjId(i.name.Loc()))
+		i.props[apiId] = drivertop.MakeInvokeExpr(getApi, arnId)
+		i.props[regionId] = region
+		ic := &integrationCreator{tools: a.tools, loc: i.name.Loc(), coin: icoin, props: i.props}
+		a.coins.intgs[name.String()] = ic
+		a.creators = append(a.creators, ic)
+
+		// add the invocation permission for the lambda
+		principal := coretop.NewPolicyPrincipalAction(a.tools, i.name.Loc(), drivertop.MakeString(i.name.Loc(), "Service"), drivertop.MakeString(i.name.Loc(), "apigateway.amazonaws.com"))
+		allowExection := coretop.NewPolicyAllowAction(a.tools, i.name.Loc(), []driverbottom.Expr{invokePerm}, []driverbottom.Expr{utils.FindProp(i.props, nil, "Uri")}, []corebottom.UpdatePolicyAllowAction{principal})
+		alp := lambda.AddLambdaPermissionsAction(a.tools, i.name.Loc(), i.name, []corebottom.PolicyRuleAction{allowExection})
+		a.creators = append(a.creators, alp)
+	}
+
+	for _, r := range a.routes {
+		path, ok := a.tools.Storage.EvalAsStringer(r.route)
+		if !ok {
+			panic("not ok")
+		}
+		rcoin := corebottom.CoinId(a.tools.Storage.PendingObjId(r.route.Loc()))
+		a.coins.routes[path.String()] = &routeCreator{tools: a.tools, loc: r.route.Loc(), coin: rcoin, props: make(map[driverbottom.Identifier]driverbottom.Expr)}
+	}
+
+	for _, s := range a.stages {
+		name, ok := a.tools.Storage.EvalAsStringer(s.name)
+		if !ok {
+			panic("not ok")
+		}
+		scoin := corebottom.CoinId(a.tools.Storage.PendingObjId(s.name.Loc()))
+		a.coins.stages[name.String()] = &stageCreator{tools: a.tools, loc: s.name.Loc(), coin: scoin, props: make(map[driverbottom.Identifier]driverbottom.Expr)}
+	}
 
 	// check all properties specified have been used
 	for k, id := range notused {
@@ -130,44 +150,46 @@ func (a *apiAction) Completed() {
 }
 
 func (a *apiAction) Resolve(r driverbottom.Resolver) driverbottom.BindingRequirement {
-	a.coins.api.coin.Resolve(a.tools.Storage)
-	/*
-		a.coins.roleCoin.Resolve(a.tools.Storage)
-		a.coins.withRole.Resolve(r)
-		if a.coins.versioner != nil {
-			a.coins.versioner.coin.Resolve(a.tools.Storage)
-			a.coins.versioner.Resolve(r)
+	ret := driverbottom.MAY_BE_BOUND
+	for _, c := range a.creators {
+		if rc, ok := c.(driverbottom.Resolvable); ok {
+			ret = ret.Merge(rc.Resolve(r))
 		}
-	*/
-	return driverbottom.MAY_BE_BOUND
+		if cp, ok := c.(corebottom.CoinProvider); ok {
+			cp.CoinId().Resolve(a.tools.Storage)
+		}
+	}
+	return ret
 }
 
 func (a *apiAction) DetermineInitialState(pres corebottom.ValuePresenter) {
-	mypres := a.newCoinPresenter()
-	a.coins.api.DetermineInitialState(mypres)
-	/*
-		if a.coins.roleCreator != nil {
-			a.coins.roleCreator.DetermineInitialState(mypres)
+	dummy := coretop.NewDummyPresenter()
+	for _, c := range a.creators {
+		var mypres corebottom.ValuePresenter
+		cp, ok := c.(corebottom.CoinProvider)
+		if ok {
+			mypres = coretop.NewCoinPresenter(a.tools.Storage, cp.CoinId(), dummy)
+		} else {
+			mypres = dummy
 		}
-		if a.coins.versioner != nil {
-			a.coins.versioner.DetermineInitialState(mypres)
-		}
-	*/
-	pres.Present(mypres)
+		c.DetermineInitialState(mypres)
+	}
+	// TODO: we probably should have some kind of composite model we present
 }
 
 func (a *apiAction) DetermineDesiredState(pres corebottom.ValuePresenter) {
-	mypres := a.newCoinPresenter()
-	a.coins.api.DetermineDesiredState(mypres)
-	/*
-		if a.coins.roleCreator != nil {
-			a.coins.roleCreator.DetermineDesiredState(mypres)
+	dummy := coretop.NewDummyPresenter()
+	for _, c := range a.creators {
+		var mypres corebottom.ValuePresenter
+		cp, ok := c.(corebottom.CoinProvider)
+		if ok {
+			mypres = coretop.NewCoinPresenter(a.tools.Storage, cp.CoinId(), dummy)
+		} else {
+			mypres = dummy
 		}
-		if a.coins.versioner != nil {
-			a.coins.versioner.DetermineDesiredState(mypres)
-		}
-	*/
-	pres.Present(mypres)
+		c.DetermineDesiredState(mypres)
+	}
+	// TODO: we probably should have some kind of composite model we present
 }
 
 func (a *apiAction) ShouldDestroy() bool {
@@ -175,28 +197,15 @@ func (a *apiAction) ShouldDestroy() bool {
 }
 
 func (a *apiAction) UpdateReality() {
-	a.coins.api.UpdateReality()
-	/*
-		if a.coins.roleCreator != nil {
-			a.coins.roleCreator.UpdateReality()
-		}
-		a.coins.lambda.UpdateReality()
-		if a.coins.versioner != nil {
-			a.coins.versioner.UpdateReality()
-		}
-	*/
+	for _, c := range a.creators {
+		c.UpdateReality()
+	}
 }
 
 func (a *apiAction) TearDown() {
-	a.coins.api.TearDown()
-	/*
-		if a.coins.versioner != nil {
-			a.coins.versioner.TearDown()
-		}
-		if a.coins.roleCreator != nil {
-			a.coins.roleCreator.TearDown()
-		}
-	*/
+	for _, c := range a.creators {
+		c.TearDown()
+	}
 }
 
 type ApiTearDown struct {
@@ -208,53 +217,3 @@ func (m *ApiTearDown) Mode() string {
 }
 
 var _ corebottom.RealityShifter = &apiAction{}
-
-type coinPresenter struct {
-	main *apiAction
-	// roleFound      *iam.RoleAWSModel
-	// role           *iam.RoleModel
-	apiFound *ApiAWSModel
-	api      *ApiModel
-	// publishAWS     *publishVersionAWS
-	// publishVersion *publishVersionModel
-}
-
-func (c *coinPresenter) NotFound() {
-	log.Printf("not found\n")
-}
-
-func (c *coinPresenter) Present(value any) {
-	a := c.main
-	switch value := value.(type) {
-	// case *iam.RoleAWSModel:
-	// 	c.roleFound = value
-	// 	l.tools.Storage.Bind(l.coins.roleCoin, value)
-	// case *iam.RoleModel:
-	// 	c.role = value
-	// 	l.tools.Storage.Bind(l.coins.roleCoin, value)
-	case *ApiAWSModel:
-		c.apiFound = value
-		a.tools.Storage.Bind(a.coins.api.coin, value)
-	case *ApiModel:
-		c.api = value
-		a.tools.Storage.Bind(a.coins.api.coin, value)
-	// case *publishVersionAWS:
-	// 	c.publishAWS = value
-	// 	l.tools.Storage.Bind(l.coins.versioner.coin, value)
-	// case *publishVersionModel:
-	// 	c.publishVersion = value
-	// 	l.tools.Storage.Bind(l.coins.versioner.coin, value)
-	default:
-		log.Fatalf("need to handle present(%T %v)\n", value, value)
-	}
-}
-
-func (c *coinPresenter) WantDestruction(loc *errorsink.Location) {
-	panic("need to handle lambda.@destroy")
-}
-
-func (a *apiAction) newCoinPresenter() *coinPresenter {
-	return &coinPresenter{main: a}
-}
-
-var _ corebottom.ValuePresenter = &coinPresenter{}

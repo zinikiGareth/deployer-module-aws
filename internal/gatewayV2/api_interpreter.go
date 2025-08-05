@@ -84,7 +84,20 @@ func (w *apiInterpreter) HaveTokens(scope driverbottom.Scope, tokens []driverbot
 }
 
 func (w *apiInterpreter) Completed() {
-	// TODO: check all route integrations exist in integrations
+	for _, r := range w.api.routes {
+		found := false
+		want := r.integration.(driverbottom.String).Text()
+		for _, i := range w.api.intgs {
+			have := i.name.Text()
+			if want == have {
+				found = true
+				break
+			}
+		}
+		if !found {
+			w.tools.Reporter.ReportAtf(r.integration.Loc(), "there is no integration defined for %s", r.integration)
+		}
+	}
 	w.api.Completed()
 }
 
