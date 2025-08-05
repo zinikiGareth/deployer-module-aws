@@ -23,7 +23,7 @@ func (i *intgConfig) Completed() {
 }
 
 type routeConfig struct {
-	route       driverbottom.String
+	route       driverbottom.Expr
 	integration driverbottom.String
 }
 

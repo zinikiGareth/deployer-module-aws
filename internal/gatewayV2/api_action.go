@@ -1,7 +1,7 @@
 package gatewayV2
 
 import (
-	"log"
+	"slices"
 
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/coremod/pkg/coretop"
@@ -25,7 +25,6 @@ type apiAction struct {
 	stages []*stageConfig
 
 	creators []corebottom.BasicShifter
-	coins    *apiCoins
 }
 
 func (a *apiAction) Loc() *errorsink.Location {
@@ -79,26 +78,22 @@ func (a *apiAction) AddProperty(name driverbottom.Identifier, value driverbottom
 }
 
 func (a *apiAction) Completed() {
-	a.coins = &apiCoins{intgs: make(map[string]*integrationCreator), routes: make(map[string]*routeCreator), stages: make(map[string]*stageCreator)}
 	if a.teardown == nil {
-		// a.tools.Reporter.ReportAtf(a.loc, "no teardown specified")
-		log.Printf("... no teardown specified")
-		a.teardown = &ApiTearDown{mode: "delete"}
-		// return
+		a.tools.Reporter.ReportAtf(a.loc, "no teardown specified")
+		return
 	}
 	notused := utils.PropsMap(a.props)
 	apiCoin := corebottom.CoinId(a.tools.Storage.PendingObjId(a.named.Loc()))
 
 	// First create the Api itself
 	funcProps := utils.UseProps(a.props, notused, "Protocol", "RouteSelectionExpression")
-	a.coins.api = &apiCreator{tools: a.tools, teardown: a.teardown, loc: a.loc, coin: apiCoin, name: a.named.Text(), props: funcProps}
-	a.creators = append(a.creators, a.coins.api)
+	ac := &apiCreator{tools: a.tools, teardown: a.teardown, loc: a.loc, coin: apiCoin, name: a.named.Text(), props: funcProps}
+	a.creators = append(a.creators, ac)
 
-	// TODO: this is copied here but has the wrong things ...
 	apiId := drivertop.NewIdentifierToken(a.named.Loc(), "Api")
 	regionId := drivertop.NewIdentifierToken(a.named.Loc(), "Region")
 	targetId := drivertop.NewIdentifierToken(a.named.Loc(), "Target")
-	getApi := coretop.MakeGetCoinMethod(a.named.Loc(), a.coins.api.coin)
+	getApi := coretop.MakeGetCoinMethod(a.named.Loc(), ac.coin)
 	arnId := drivertop.NewIdentifierToken(a.named.Loc(), "id")
 	integrationId := drivertop.NewIdentifierToken(a.named.Loc(), "integrationId")
 	region := drivertop.MakeString(a.named.Loc(), "us-east-1")
@@ -114,8 +109,7 @@ func (a *apiAction) Completed() {
 		i.coin = corebottom.CoinId(a.tools.Storage.PendingObjId(i.name.Loc()))
 		i.props[apiId] = drivertop.MakeInvokeExpr(getApi, arnId)
 		i.props[regionId] = region
-		ic := &integrationCreator{tools: a.tools, loc: i.name.Loc(), coin: i.coin, props: i.props}
-		a.coins.intgs[name.String()] = ic
+		ic := &integrationCreator{tools: a.tools, loc: i.name.Loc(), name: name.String(), coin: i.coin, props: i.props, teardown: a.teardown}
 		a.creators = append(a.creators, ic)
 
 		// add the invocation permission for the lambda
@@ -130,12 +124,15 @@ func (a *apiAction) Completed() {
 		if !ok {
 			panic("not ok")
 		}
-		rcoin := corebottom.CoinId(a.tools.Storage.PendingObjId(r.route.Loc()))
+		intg, ok := a.tools.Storage.EvalAsStringer(r.integration)
+		if !ok {
+			panic("not ok")
+		}
 
-		rc := &routeCreator{tools: a.tools, loc: r.route.Loc(), path: r.route.Text(), coin: rcoin, props: make(map[driverbottom.Identifier]driverbottom.Expr)}
+		rcoin := corebottom.CoinId(a.tools.Storage.PendingObjId(r.route.Loc()))
+		rc := &routeCreator{tools: a.tools, loc: r.route.Loc(), path: path.String(), coin: rcoin, props: make(map[driverbottom.Identifier]driverbottom.Expr), teardown: a.teardown}
 		rc.props[apiId] = drivertop.MakeInvokeExpr(getApi, arnId)
-		rc.props[targetId] = drivertop.MakeInvokeExpr(a.getIntegrationCoin(r.integration), integrationId)
-		a.coins.routes[path.String()] = rc
+		rc.props[targetId] = drivertop.MakeInvokeExpr(a.getIntegrationCoin(r.integration.Loc(), intg.String()), integrationId)
 		a.creators = append(a.creators, rc)
 	}
 
@@ -146,15 +143,13 @@ func (a *apiAction) Completed() {
 		}
 
 		scoin := corebottom.CoinId(a.tools.Storage.PendingObjId(s.name.Loc()))
-		sc := &stageCreator{tools: a.tools, loc: s.name.Loc(), name: s.name.Text(), coin: scoin, props: make(map[driverbottom.Identifier]driverbottom.Expr)}
+		sc := &stageCreator{tools: a.tools, loc: s.name.Loc(), name: name.String(), coin: scoin, props: make(map[driverbottom.Identifier]driverbottom.Expr), teardown: a.teardown}
 		sc.props[apiId] = drivertop.MakeInvokeExpr(getApi, arnId)
-		a.coins.stages[name.String()] = sc
 		a.creators = append(a.creators, sc)
 
 		dcoin := corebottom.CoinId(a.tools.Storage.PendingObjId(s.name.Loc()))
-		dc := &deploymentCreator{tools: a.tools, loc: s.name.Loc(), name: s.name.Text(), coin: dcoin, props: make(map[driverbottom.Identifier]driverbottom.Expr)}
+		dc := &deploymentCreator{tools: a.tools, loc: s.name.Loc(), name: name.String(), coin: dcoin, props: make(map[driverbottom.Identifier]driverbottom.Expr), teardown: a.teardown}
 		dc.props[apiId] = drivertop.MakeInvokeExpr(getApi, arnId)
-		// a.coins.stages[name.String()] = sc
 		a.creators = append(a.creators, dc)
 	}
 
@@ -166,15 +161,14 @@ func (a *apiAction) Completed() {
 	}
 }
 
-func (a *apiAction) getIntegrationCoin(integration driverbottom.String) driverbottom.Expr {
-	name := integration.Text()
+func (a *apiAction) getIntegrationCoin(loc *errorsink.Location, name string) driverbottom.Expr {
 	for _, i := range a.intgs {
 		if i.name.Text() == name {
 			return coretop.MakeGetCoinMethod(i.name.Loc(), i.coin)
 		}
 	}
-	a.tools.Reporter.ReportAtf(integration.Loc(), "no integration found for %s", name)
-	return integration // this is bogus but won't be executed
+	a.tools.Reporter.ReportAtf(loc, "no integration found for %s", name)
+	return drivertop.NewAlwaysNil(loc) // this is bogus but won't be executed
 }
 
 func (a *apiAction) Resolve(r driverbottom.Resolver) driverbottom.BindingRequirement {
@@ -231,7 +225,7 @@ func (a *apiAction) UpdateReality() {
 }
 
 func (a *apiAction) TearDown() {
-	for _, c := range a.creators {
+	for _, c := range slices.Backward(a.creators) {
 		c.TearDown()
 	}
 }
