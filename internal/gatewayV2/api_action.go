@@ -144,11 +144,18 @@ func (a *apiAction) Completed() {
 		if !ok {
 			panic("not ok")
 		}
+
 		scoin := corebottom.CoinId(a.tools.Storage.PendingObjId(s.name.Loc()))
 		sc := &stageCreator{tools: a.tools, loc: s.name.Loc(), name: s.name.Text(), coin: scoin, props: make(map[driverbottom.Identifier]driverbottom.Expr)}
 		sc.props[apiId] = drivertop.MakeInvokeExpr(getApi, arnId)
 		a.coins.stages[name.String()] = sc
 		a.creators = append(a.creators, sc)
+
+		dcoin := corebottom.CoinId(a.tools.Storage.PendingObjId(s.name.Loc()))
+		dc := &deploymentCreator{tools: a.tools, loc: s.name.Loc(), name: s.name.Text(), coin: dcoin, props: make(map[driverbottom.Identifier]driverbottom.Expr)}
+		dc.props[apiId] = drivertop.MakeInvokeExpr(getApi, arnId)
+		// a.coins.stages[name.String()] = sc
+		a.creators = append(a.creators, dc)
 	}
 
 	// check all properties specified have been used
