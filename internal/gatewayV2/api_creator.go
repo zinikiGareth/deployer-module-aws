@@ -135,63 +135,6 @@ func (ac *apiCreator) UpdateReality() {
 	tmp := ac.tools.Storage.GetCoin(ac.coin, corebottom.DETERMINE_INITIAL_MODE)
 	desired := ac.tools.Storage.GetCoin(ac.coin, corebottom.DETERMINE_DESIRED_MODE).(*ApiModel)
 	created := &ApiAWSModel{}
-	/*
-
-		var handler string
-		if desired.handler != nil {
-			h, ok := ac.tools.Storage.EvalAsStringer(desired.handler)
-			if !ok {
-				log.Fatalf("Faa.coins.apiiled to get handler")
-			}
-			handler = h.String()
-		}
-
-		rt, ok := ac.tools.Storage.EvalAsStringer(desired.runtime)
-		if !ok {
-			log.Fatalf("Failed to get runtime")
-		}
-		var runtime types.Runtime
-		switch rt.String() {
-		case "go":
-			runtime = types.RuntimeProvidedal2023
-			if handler == "" {
-				handler = "main-point"
-			}
-		default:
-			for _, r := range types.RuntimeProvided.Values() {
-				if string(r) == rt.String() {
-					runtime = types.Runtime(rt.String())
-					break
-				}a.coins.api
-			}
-			if runtime == "" {
-				ac.tools.Reporter.ReportAtf(ac.loc, "invalid runtime: %s", rt.String())
-				return
-			}
-		}
-		b1, ok := ac.tools.Storage.EvalAsStringer(desired.code.Bucket)
-		if !ok {
-			log.Fatalf("Failed to get bucket")
-		}
-		b2, ok := ac.tools.Storage.EvalAsStringer(desired.code.Key)
-		if !ok {
-			log.Fatalf("Failed to get key")
-		}
-		bucket := b1.String()
-		key := b2.String()
-
-		roleArn, ok := ac.tools.Storage.EvalAsStringer(desired.role)
-		if !ok {
-			log.Fatalf("Failed to evaluate role")
-		}
-		role := roleArn.String()
-
-		if handler == "" {
-			ac.tools.Reporter.ReportAtf(ac.loc, "must specify Handler for Runtime %s", rt.String())
-			return
-		}
-	*/
-
 	if tmp != nil {
 		found := tmp.(*ApiAWSModel)
 		// created.config = found.config

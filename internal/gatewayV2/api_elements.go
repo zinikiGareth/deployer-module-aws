@@ -1,9 +1,13 @@
 package gatewayV2
 
-import "ziniki.org/deployer/driver/pkg/driverbottom"
+import (
+	"ziniki.org/deployer/coremod/pkg/corebottom"
+	"ziniki.org/deployer/driver/pkg/driverbottom"
+)
 
 type intgConfig struct {
 	name  driverbottom.String
+	coin  corebottom.CoinId
 	props map[driverbottom.Identifier]driverbottom.Expr
 }
 
@@ -19,12 +23,12 @@ func (i *intgConfig) Completed() {
 }
 
 type routeConfig struct {
-	route       driverbottom.Expr
-	integration driverbottom.Expr
+	route       driverbottom.String
+	integration driverbottom.String
 }
 
 type stageConfig struct {
-	name driverbottom.Expr
+	name driverbottom.String
 }
 
 var _ driverbottom.PropertyParent = &intgConfig{}

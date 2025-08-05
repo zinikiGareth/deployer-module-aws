@@ -97,8 +97,10 @@ func (a *apiAction) Completed() {
 	// TODO: this is copied here but has the wrong things ...
 	apiId := drivertop.NewIdentifierToken(a.named.Loc(), "Api")
 	regionId := drivertop.NewIdentifierToken(a.named.Loc(), "Region")
+	targetId := drivertop.NewIdentifierToken(a.named.Loc(), "Target")
 	getApi := coretop.MakeGetCoinMethod(a.named.Loc(), a.coins.api.coin)
 	arnId := drivertop.NewIdentifierToken(a.named.Loc(), "id")
+	integrationId := drivertop.NewIdentifierToken(a.named.Loc(), "integrationId")
 	region := drivertop.MakeString(a.named.Loc(), "us-east-1")
 	invokePerm := drivertop.MakeString(a.named.Loc(), "lambda:InvokeFunction")
 
@@ -109,10 +111,10 @@ func (a *apiAction) Completed() {
 		}
 
 		// create the integration itself
-		icoin := corebottom.CoinId(a.tools.Storage.PendingObjId(i.name.Loc()))
+		i.coin = corebottom.CoinId(a.tools.Storage.PendingObjId(i.name.Loc()))
 		i.props[apiId] = drivertop.MakeInvokeExpr(getApi, arnId)
 		i.props[regionId] = region
-		ic := &integrationCreator{tools: a.tools, loc: i.name.Loc(), coin: icoin, props: i.props}
+		ic := &integrationCreator{tools: a.tools, loc: i.name.Loc(), coin: i.coin, props: i.props}
 		a.coins.intgs[name.String()] = ic
 		a.creators = append(a.creators, ic)
 
@@ -129,7 +131,12 @@ func (a *apiAction) Completed() {
 			panic("not ok")
 		}
 		rcoin := corebottom.CoinId(a.tools.Storage.PendingObjId(r.route.Loc()))
-		a.coins.routes[path.String()] = &routeCreator{tools: a.tools, loc: r.route.Loc(), coin: rcoin, props: make(map[driverbottom.Identifier]driverbottom.Expr)}
+
+		rc := &routeCreator{tools: a.tools, loc: r.route.Loc(), path: r.route.Text(), coin: rcoin, props: make(map[driverbottom.Identifier]driverbottom.Expr)}
+		rc.props[apiId] = drivertop.MakeInvokeExpr(getApi, arnId)
+		rc.props[targetId] = drivertop.MakeInvokeExpr(a.getIntegrationCoin(r.integration), integrationId)
+		a.coins.routes[path.String()] = rc
+		a.creators = append(a.creators, rc)
 	}
 
 	for _, s := range a.stages {
@@ -138,7 +145,10 @@ func (a *apiAction) Completed() {
 			panic("not ok")
 		}
 		scoin := corebottom.CoinId(a.tools.Storage.PendingObjId(s.name.Loc()))
-		a.coins.stages[name.String()] = &stageCreator{tools: a.tools, loc: s.name.Loc(), coin: scoin, props: make(map[driverbottom.Identifier]driverbottom.Expr)}
+		sc := &stageCreator{tools: a.tools, loc: s.name.Loc(), name: s.name.Text(), coin: scoin, props: make(map[driverbottom.Identifier]driverbottom.Expr)}
+		sc.props[apiId] = drivertop.MakeInvokeExpr(getApi, arnId)
+		a.coins.stages[name.String()] = sc
+		a.creators = append(a.creators, sc)
 	}
 
 	// check all properties specified have been used
@@ -147,6 +157,17 @@ func (a *apiAction) Completed() {
 			a.tools.Reporter.ReportAtf(id.Loc(), "no such property %s on api.gatewayV2", k)
 		}
 	}
+}
+
+func (a *apiAction) getIntegrationCoin(integration driverbottom.String) driverbottom.Expr {
+	name := integration.Text()
+	for _, i := range a.intgs {
+		if i.name.Text() == name {
+			return coretop.MakeGetCoinMethod(i.name.Loc(), i.coin)
+		}
+	}
+	a.tools.Reporter.ReportAtf(integration.Loc(), "no integration found for %s", name)
+	return integration // this is bogus but won't be executed
 }
 
 func (a *apiAction) Resolve(r driverbottom.Resolver) driverbottom.BindingRequirement {

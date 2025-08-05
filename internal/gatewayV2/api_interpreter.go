@@ -86,7 +86,7 @@ func (w *apiInterpreter) HaveTokens(scope driverbottom.Scope, tokens []driverbot
 func (w *apiInterpreter) Completed() {
 	for _, r := range w.api.routes {
 		found := false
-		want := r.integration.(driverbottom.String).Text()
+		want := r.integration.Text()
 		for _, i := range w.api.intgs {
 			have := i.name.Text()
 			if want == have {

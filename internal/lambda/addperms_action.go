@@ -88,7 +88,6 @@ func (a *addPermsAction) UpdateReality() {
 						stmtId := fmt.Sprintf("%sSid%d", a.named, cnt)
 						priName := pri.Value()
 						input := &lambda.AddPermissionInput{StatementId: &stmtId, Action: &act, FunctionName: &res, Principal: &priName}
-						log.Printf("%v\n", pra)
 						_, err := a.client.AddPermission(context.TODO(), input)
 						if err != nil {
 							if !alreadyExists(err) {
