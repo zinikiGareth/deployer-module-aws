@@ -57,6 +57,7 @@ func RegisterWithDriver(deployer driverbottom.Driver) error {
 	tools.Register.Register("blank", "aws.DynamoDB.Table", &dynamodb.TableBlank{})
 	tools.Register.Register("blank", "aws.IAM.Policy", &iam.PolicyBlank{})
 	tools.Register.Register("blank", "aws.IAM.Role", &iam.RoleBlank{})
+	tools.Register.Register("blank", "aws.Lambda.Alias", &lambda.AliasBlank{})
 	tools.Register.Register("blank", "aws.Lambda.Function", &lambda.FunctionBlank{})
 	tools.Register.Register("blank", "aws.Neptune.SubnetGroup", &neptune.SubnetBlank{})
 	tools.Register.Register("blank", "aws.Neptune.Cluster", &neptune.ClusterBlank{})
