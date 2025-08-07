@@ -13,7 +13,7 @@ func (b *VPCBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id cor
 	return nil
 }
 
-func (b *VPCBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) corebottom.FindCoin {
+func (b *VPCBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr) corebottom.FindCoin {
 	return &vpcFinder{tools: tools, loc: loc, name: named}
 }
 

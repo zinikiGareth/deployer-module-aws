@@ -12,7 +12,7 @@ func (b *StageBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id c
 	return &stageCreator{tools: tools, teardown: teardown, loc: loc, name: named, coin: id, props: props}
 }
 
-func (b *StageBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) corebottom.FindCoin {
+func (b *StageBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr) corebottom.FindCoin {
 	return &stageCreator{tools: tools, loc: loc, name: named, coin: id}
 }
 

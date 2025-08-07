@@ -12,7 +12,7 @@ func (b *ALIASBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id c
 	return &aliasCreator{tools: tools, teardown: teardown, coin: id, loc: loc, name: named, props: props}
 }
 
-func (b *ALIASBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) corebottom.FindCoin {
+func (b *ALIASBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr) corebottom.FindCoin {
 	return &aliasCreator{tools: tools, loc: loc, coin: id, name: named}
 }
 

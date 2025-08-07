@@ -13,7 +13,7 @@ func (b *DomainNameBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location,
 	return nil
 }
 
-func (b *DomainNameBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) corebottom.FindCoin {
+func (b *DomainNameBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr) corebottom.FindCoin {
 	return &domainNameFinder{tools: tools, loc: loc, name: named}
 }
 

@@ -12,7 +12,7 @@ func (b *CachePolicyBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location
 	return &CachePolicyCreator{tools: tools, teardown: teardown, loc: loc, coin: id, name: named, props: props}
 }
 
-func (b *CachePolicyBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) corebottom.FindCoin {
+func (b *CachePolicyBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr) corebottom.FindCoin {
 	return &CachePolicyCreator{tools: tools, loc: loc, name: named, coin: id}
 }
 

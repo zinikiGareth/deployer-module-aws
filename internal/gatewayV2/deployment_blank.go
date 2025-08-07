@@ -12,7 +12,7 @@ func (b *DeploymentBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location,
 	return &deploymentCreator{tools: tools, teardown: teardown, loc: loc, name: named, coin: id, props: props}
 }
 
-func (b *DeploymentBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) corebottom.FindCoin {
+func (b *DeploymentBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr) corebottom.FindCoin {
 	return &deploymentCreator{tools: tools, loc: loc, name: named, coin: id}
 }
 

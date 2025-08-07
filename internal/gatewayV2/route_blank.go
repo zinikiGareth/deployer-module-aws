@@ -12,7 +12,7 @@ func (b *RouteBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id c
 	return &routeCreator{tools: tools, teardown: teardown, loc: loc, path: named, coin: id, props: props}
 }
 
-func (b *RouteBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) corebottom.FindCoin {
+func (b *RouteBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr) corebottom.FindCoin {
 	return &routeCreator{tools: tools, loc: loc, path: named, coin: id}
 }
 

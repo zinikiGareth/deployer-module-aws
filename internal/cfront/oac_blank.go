@@ -12,7 +12,7 @@ func (b *OACBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id cor
 	return &OACCreator{tools: tools, teardown: teardown, loc: loc, coin: id, name: named, props: props}
 }
 
-func (b *OACBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) corebottom.FindCoin {
+func (b *OACBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr) corebottom.FindCoin {
 	return &OACCreator{tools: tools, loc: loc, name: named}
 }
 

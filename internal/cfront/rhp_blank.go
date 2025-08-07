@@ -12,7 +12,7 @@ func (b *RHPBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id cor
 	return &RHPCreator{tools: tools, teardown: teardown, loc: loc, name: named, coin: id, props: props}
 }
 
-func (b *RHPBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) corebottom.FindCoin {
+func (b *RHPBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr) corebottom.FindCoin {
 	return &RHPCreator{tools: tools, loc: loc, name: named, coin: id}
 }
 

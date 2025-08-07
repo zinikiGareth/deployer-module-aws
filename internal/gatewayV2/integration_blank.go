@@ -12,7 +12,7 @@ func (b *IntegrationBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location
 	return &integrationCreator{tools: tools, teardown: teardown, loc: loc, name: named, coin: id, props: props}
 }
 
-func (b *IntegrationBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) corebottom.FindCoin {
+func (b *IntegrationBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr) corebottom.FindCoin {
 	return &integrationCreator{tools: tools, loc: loc, name: named, coin: id}
 }
 

@@ -12,7 +12,7 @@ func (b *CNAMEBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id c
 	return &cnameCreator{tools: tools, loc: loc, name: named, coin: id, props: props}
 }
 
-func (b *CNAMEBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) corebottom.FindCoin {
+func (b *CNAMEBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr) corebottom.FindCoin {
 	return &cnameCreator{tools: tools, loc: loc, name: named, coin: id}
 }
 

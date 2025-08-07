@@ -14,7 +14,7 @@ func (b *SubnetBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id 
 	// return &subnetCreator{tools: tools, teardown: teardown, loc: loc, coin: id, name: named, props: props}
 }
 
-func (b *SubnetBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) corebottom.FindCoin {
+func (b *SubnetBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr) corebottom.FindCoin {
 	return &subnetCreator{tools: tools, loc: loc, name: named}
 }
 

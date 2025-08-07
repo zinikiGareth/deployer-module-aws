@@ -12,7 +12,7 @@ func (b *TableBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, id c
 	return &tableCreator{tools: tools, teardown: teardown, loc: loc, coin: id, name: named, props: props}
 }
 
-func (b *TableBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) corebottom.FindCoin {
+func (b *TableBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr) corebottom.FindCoin {
 	return &tableCreator{tools: tools, loc: loc, name: named}
 }
 
