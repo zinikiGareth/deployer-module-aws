@@ -176,32 +176,58 @@ func (lc *lambdaCreator) UpdateReality() {
 			return
 		}
 		vpcConfig = &types.VpcConfig{SubnetIds: vpcc["Subnets"], SecurityGroupIds: vpcc["SecurityGroups"]}
+		dualStack := vpcc["DualStack"] != nil
+		if dualStack {
+			vpcConfig.Ipv6AllowedForDualStack = &dualStack
+		}
 	}
+	var arn string
 	if tmp != nil {
 		found := tmp.(*LambdaAWSModel)
 		created.config = found.config
 		log.Printf("lambda %s already existed for %s\n", *found.config.FunctionArn, found.name)
-		log.Printf("not handling diffs yet; just copying ...")
-		lc.tools.Storage.Bind(lc.coin, created)
-		return
-	}
-
-	// Because we can create the role just before we create the lambda, it can be the case that it is "not ready yet" and CreateFunction fails.
-	// Handle this
-
-	var arn string
-	utils.ExponentialBackoff(func() bool {
-		req, err := lc.client.CreateFunction(context.TODO(), &lambda.CreateFunctionInput{FunctionName: &lc.name, Runtime: runtime, Handler: &handler, Code: &types.FunctionCode{S3Bucket: &bucket, S3Key: &key}, Role: &role, VpcConfig: vpcConfig})
-		if err != nil {
-			if invalidRole(err) {
-				log.Printf("failed to create lambda %s because role was unassumable, waiting...\n", lc.name)
-				return false
+		utils.ExponentialBackoff(func() bool {
+			input := lambda.UpdateFunctionConfigurationInput{FunctionName: &lc.name, Runtime: runtime, Handler: &handler, Role: &role, VpcConfig: vpcConfig}
+			out, err := lc.client.UpdateFunctionConfiguration(context.TODO(), &input)
+			if err != nil {
+				if invalidRole(err) {
+					log.Printf("failed to create lambda %s because role was unassumable, waiting...\n", lc.name)
+					return false
+				}
+				log.Fatalf("failed to create lambda %s: %v\n", lc.name, err)
 			}
-			log.Fatalf("failed to create lambda %s: %v\n", lc.name, err)
-		}
-		arn = *req.FunctionArn
-		return true
-	})
+			arn = *out.FunctionArn
+			return true
+		})
+		lc.tools.Storage.Bind(lc.coin, created)
+
+		log.Printf("updating function code")
+		utils.ExponentialBackoff(func() bool {
+
+			_, err := lc.client.UpdateFunctionCode(context.TODO(), &lambda.UpdateFunctionCodeInput{FunctionName: &lc.name, S3Bucket: &bucket, S3Key: &key})
+			if err != nil {
+				if isUpdatingFunction(err) {
+					log.Printf("failed to update lambda code %s because already updating configuration, waiting...\n", lc.name)
+					return false
+				}
+				log.Fatalf("failed to update function code: %v\n", err)
+			}
+			return true
+		})
+	} else {
+		utils.ExponentialBackoff(func() bool {
+			req, err := lc.client.CreateFunction(context.TODO(), &lambda.CreateFunctionInput{FunctionName: &lc.name, Runtime: runtime, Handler: &handler, Code: &types.FunctionCode{S3Bucket: &bucket, S3Key: &key}, Role: &role, VpcConfig: vpcConfig})
+			if err != nil {
+				if invalidRole(err) {
+					log.Printf("failed to create lambda %s because role was unassumable, waiting...\n", lc.name)
+					return false
+				}
+				log.Fatalf("failed to create lambda %s: %v\n", lc.name, err)
+			}
+			arn = *req.FunctionArn
+			return true
+		})
+	}
 
 	utils.ExponentialBackoff(func() bool {
 		stat, err := lc.client.GetFunction(context.TODO(), &lambda.GetFunctionInput{FunctionName: &lc.name})
@@ -270,7 +296,7 @@ func invalidRole(err error) bool {
 	if ok {
 		e2, ok := e1.Err.(*http.ResponseError)
 		if ok {
-			log.Printf("%v %s", e2, e2.Err)
+			// log.Printf("%v %s", e2, e2.Err)
 			if e2.ResponseError.Response.StatusCode == 400 {
 				switch e4 := e2.Err.(type) {
 				case *types.InvalidParameterValueException:

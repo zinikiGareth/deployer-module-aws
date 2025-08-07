@@ -12,12 +12,12 @@ func (b *FunctionBlank) Mint(tools *corebottom.Tools, loc *errorsink.Location, i
 	return &lambdaCreator{tools: tools, teardown: teardown, loc: loc, name: named, coin: id, props: props}
 }
 
-func (b *FunctionBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string) corebottom.FindCoin {
+func (b *FunctionBlank) Find(tools *corebottom.Tools, loc *errorsink.Location, id corebottom.CoinId, named string, props map[driverbottom.Identifier]driverbottom.Expr) corebottom.FindCoin {
 	return &lambdaCreator{tools: tools, loc: loc, name: named, coin: id}
 }
 
 func (b *FunctionBlank) ShortDescription() string {
-	return "aws.CloudFront.Distribution[]"
+	return "aws.Lambda.Function[]"
 }
 
 var _ corebottom.Blank = &FunctionBlank{}

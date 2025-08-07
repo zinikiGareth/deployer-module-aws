@@ -106,6 +106,7 @@ func (ic *integrationCreator) DetermineDesiredState(pres corebottom.ValuePresent
 	var connId driverbottom.Expr
 	var connType driverbottom.Expr
 	var itype driverbottom.Expr
+	var pfv driverbottom.Expr
 	var region driverbottom.Expr
 	var uri driverbottom.Expr
 	for p, v := range ic.props {
@@ -118,6 +119,8 @@ func (ic *integrationCreator) DetermineDesiredState(pres corebottom.ValuePresent
 			connId = v
 		case "ConnectionType":
 			connType = v
+		case "PayloadFormatVersion":
+			pfv = v
 		case "Region":
 			region = v
 		case "Type":
@@ -150,6 +153,15 @@ func (ic *integrationCreator) DetermineDesiredState(pres corebottom.ValuePresent
 		panic("not ok")
 	}
 
+	var pfvStr fmt.Stringer = nil
+	if pfv != nil {
+		pfvStr, ok = ic.tools.Storage.EvalAsStringer(pfv)
+		if !ok {
+			panic("not ok")
+		}
+
+	}
+
 	regionStr, ok := ic.tools.Storage.EvalAsStringer(region)
 	if !ok {
 		panic("not ok")
@@ -180,7 +192,7 @@ func (ic *integrationCreator) DetermineDesiredState(pres corebottom.ValuePresent
 		}
 	}
 
-	model := &IntegrationModel{name: ic.name, loc: ic.loc, coin: ic.coin, api: apiStr, region: regionStr, itype: typeStr, uri: uriStr, connType: cType, connId: cId}
+	model := &IntegrationModel{name: ic.name, loc: ic.loc, coin: ic.coin, api: apiStr, region: regionStr, itype: typeStr, pfv: pfvStr, uri: uriStr, connType: cType, connId: cId}
 	pres.Present(model)
 }
 
@@ -206,14 +218,18 @@ func (ic *integrationCreator) UpdateReality() {
 		ic.tools.Reporter.ReportAtf(ic.loc, "invalid integration type: %s\n", desired.itype.String())
 	}
 	uri := desired.uri.String()
-	log.Printf("have base uri %s\n", uri)
+	// log.Printf("have base uri %s\n", uri)
 
 	// region := desired.region.String()
 	// full := fmt.Sprintf("arn:aws:apigateway:%s:%s", region, uri)
 	// log.Printf("have integration uri %s\n", full)
 
 	dname := fmt.Sprintf("zd[%s]", ic.name)
-	pfv := "2.0"
+	var pfv *string
+
+	if desired.pfv != nil {
+		pfv = aws.String(desired.pfv.String())
+	}
 
 	created := &IntegrationAWSModel{}
 	if tmp != nil {
@@ -221,7 +237,7 @@ func (ic *integrationCreator) UpdateReality() {
 		created.integration = found.integration
 		log.Printf("integration already existed for %s: %s\n", ic.name, *found.integration.IntegrationId)
 
-		input := &apigatewayv2.UpdateIntegrationInput{Description: &dname, ApiId: &apiId, IntegrationId: found.integration.IntegrationId, IntegrationType: types.IntegrationType(itype), IntegrationUri: &uri, PayloadFormatVersion: &pfv}
+		input := &apigatewayv2.UpdateIntegrationInput{Description: &dname, ApiId: &apiId, IntegrationId: found.integration.IntegrationId, IntegrationType: types.IntegrationType(itype), IntegrationUri: &uri, PayloadFormatVersion: pfv}
 		out, err := ic.client.UpdateIntegration(context.TODO(), input)
 		if err != nil {
 			log.Fatalf("failed to update api integration %s: %v\n", ic.name, err)
@@ -233,7 +249,7 @@ func (ic *integrationCreator) UpdateReality() {
 		return
 	}
 
-	input := &apigatewayv2.CreateIntegrationInput{Description: &dname, ApiId: &apiId, IntegrationType: types.IntegrationType(itype), IntegrationUri: &uri, PayloadFormatVersion: &pfv}
+	input := &apigatewayv2.CreateIntegrationInput{Description: &dname, ApiId: &apiId, IntegrationType: types.IntegrationType(itype), IntegrationUri: &uri, PayloadFormatVersion: pfv}
 	if desired.connType != nil {
 		input.ConnectionType = types.ConnectionType(desired.connType.String())
 	}

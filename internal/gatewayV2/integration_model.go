@@ -66,6 +66,7 @@ type IntegrationModel struct {
 	api      fmt.Stringer
 	region   fmt.Stringer
 	itype    fmt.Stringer
+	pfv      fmt.Stringer
 	uri      fmt.Stringer
 	connType fmt.Stringer
 	connId   fmt.Stringer

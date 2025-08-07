@@ -3,8 +3,12 @@ package lambda
 import (
 	"context"
 	"log"
+	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
+	"github.com/aws/aws-sdk-go-v2/service/lambda/types"
+	"github.com/aws/smithy-go"
 	"ziniki.org/deployer/coremod/pkg/corebottom"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/errorsink"
@@ -82,15 +86,10 @@ func (v *lambdaVersioner) DetermineInitialState(pres corebottom.ValuePresenter) 
 	prop := utils.FindProp(v.props, nil, "Name")
 	name, ok := v.tools.Storage.EvalAsStringer(prop)
 	if !ok {
-		v.tools.Reporter.ReportAtf(prop.Loc(), "Name must be a string, not %T", prop)
-		return
-	}
-	fname := name.String()
-
-	if fname == "" { // if the function name is nil, that's probably because it hasn't been created (or has been destroyed), so we don't stand a chance of finding it ...
 		pres.NotFound()
 		return
 	}
+	fname := name.String()
 
 	out, err := v.client.GetAlias(context.TODO(), &lambda.GetAliasInput{FunctionName: &fname, Name: &alias})
 	if err != nil {
@@ -147,12 +146,19 @@ func (v *lambdaVersioner) UpdateReality() {
 	created := &publishVersionAWS{}
 	name := desired.name.String()
 	if desired.publish.F64() != 0 {
-		out, err := v.client.PublishVersion(context.TODO(), &lambda.PublishVersionInput{FunctionName: &name})
-		if err != nil {
-			log.Fatalf("failed to publish new version of %s: %v", name, err)
-		}
-		log.Printf("published version %s of %s\n", *out.Version, name)
-		created.publishedVersion = *out.Version
+		utils.ExponentialBackoff(func() bool {
+			out, err := v.client.PublishVersion(context.TODO(), &lambda.PublishVersionInput{FunctionName: &name})
+			if err != nil {
+				if isUpdatingFunction(err) {
+					log.Printf("still updating function code; cannot publish yet")
+					return false
+				}
+				log.Fatalf("failed to publish new version of %s: %v", name, err)
+			}
+			log.Printf("published version %s of %s\n", *out.Version, name)
+			created.publishedVersion = *out.Version
+			return true
+		})
 	}
 	if alias := desired.asAlias.String(); alias != "" {
 		if found == nil || found.aliasVersion == "" {
@@ -186,3 +192,33 @@ func (v *lambdaVersioner) TearDown() {
 
 var _ corebottom.CoinProvider = &lambdaVersioner{}
 var _ corebottom.RealityShifter = &lambdaVersioner{}
+
+func isUpdatingFunction(err error) bool {
+	if err == nil {
+		return false
+	}
+	e1, ok := err.(*smithy.OperationError)
+	if ok {
+		e2, ok := e1.Err.(*http.ResponseError)
+		if ok {
+			// log.Printf("%v %s", e2, e2.Err)
+			if e2.ResponseError.Response.StatusCode == 409 {
+				switch e4 := e2.Err.(type) {
+				case *types.ResourceConflictException:
+					// log.Printf("error: %T %v %s", e4, e4, e4.ErrorMessage())
+					s := e4.ErrorMessage()
+					if strings.Contains(s, "An update is in progress") {
+						return true
+					}
+				default:
+					log.Printf("not invalid: %T %v", e4, e4)
+					panic("what error?")
+				}
+			}
+			log.Fatalf("error: %T %v %T %v", e2.Response.Status, e2.Response.Status, e2.ResponseError.Response.StatusCode, e2.ResponseError.Response.StatusCode)
+		}
+		log.Fatalf("not response error: %T %v", e1.Err, e1.Err)
+	}
+	log.Fatalf("creating lambda failed: %T %v", err, err)
+	panic("failed")
+}

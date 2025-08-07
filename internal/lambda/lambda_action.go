@@ -91,7 +91,9 @@ func (l *lambdaAction) Completed() {
 		l.coins.withRole = v
 		roleCoin := corebottom.CoinId(l.tools.Storage.PendingObjId(l.coins.withRole.Loc()))
 		l.coins.roleCoin = roleCoin
-		l.coins.roleCreator = (&iam.RoleBlank{}).Mint(l.tools, l.coins.withRole.Loc(), roleCoin, l.coins.withRole.Name(), nil, l.teardown)
+		rprops := make(map[driverbottom.Identifier]driverbottom.Expr)
+		rprops[drivertop.NewIdentifierToken(role.Loc(), "Assume")] = v.Assumes
+		l.coins.roleCreator = (&iam.RoleBlank{}).Mint(l.tools, l.coins.withRole.Loc(), roleCoin, l.coins.withRole.Name(), rprops, l.teardown)
 		l.coins.roleCreator.(iam.AcceptPolicies).AddPolicies(v.Managed, v.Inline)
 		roleId := utils.PropId(l.props, "Role")
 		funcProps[roleId] = drivertop.MakeInvokeExpr(coretop.MakeGetCoinMethod(v.Loc(), roleCoin), drivertop.NewIdentifierToken(v.Loc(), "arn"))

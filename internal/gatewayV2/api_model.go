@@ -62,6 +62,7 @@ type ApiModel struct {
 	name     string
 	loc      *errorsink.Location
 	coin     corebottom.CoinId
+	ipat     types.IpAddressType
 	protocol types.ProtocolType
 	rse      fmt.Stringer
 }

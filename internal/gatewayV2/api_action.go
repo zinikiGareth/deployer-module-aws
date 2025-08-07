@@ -86,7 +86,7 @@ func (a *apiAction) Completed() {
 	apiCoin := corebottom.CoinId(a.tools.Storage.PendingObjId(a.named.Loc()))
 
 	// First create the Api itself
-	funcProps := utils.UseProps(a.props, notused, "Protocol", "RouteSelectionExpression")
+	funcProps := utils.UseProps(a.props, notused, "IpAddressType", "Protocol", "RouteSelectionExpression")
 	ac := &apiCreator{tools: a.tools, teardown: a.teardown, loc: a.loc, coin: apiCoin, name: a.named.Text(), props: funcProps}
 	a.creators = append(a.creators, ac)
 

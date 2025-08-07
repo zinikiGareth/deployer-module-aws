@@ -85,7 +85,7 @@ func (dnf *domainNameFinder) DetermineInitialState(pres corebottom.ValuePresente
 		}
 	}
 	if hzid == "" {
-		log.Fatalf("No hosted zone found for " + dnf.name)
+		log.Fatalf("No hosted zone found for %s", dnf.name)
 	}
 	model := CreateDomainModel(dnf.loc, detail, hzid)
 	pres.Present(model)

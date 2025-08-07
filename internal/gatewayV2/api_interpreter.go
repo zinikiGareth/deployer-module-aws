@@ -72,6 +72,8 @@ func (w *apiInterpreter) HaveTokens(scope driverbottom.Scope, tokens []driverbot
 		stage := &stageConfig{name: name}
 		w.api.stages = append(w.api.stages, stage)
 		return drivertop.NewDisallowInnerScope(w.tools)
+	case "IpAddressType":
+		fallthrough
 	case "Protocol":
 		fallthrough
 	case "RouteSelectionExpression":

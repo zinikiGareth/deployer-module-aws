@@ -83,10 +83,13 @@ outer:
 }
 
 func (ac *apiCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
+	var dualstack driverbottom.Expr
 	var protocol driverbottom.Expr
 	var rse driverbottom.Expr
 	for p, v := range ac.props {
 		switch p.Id() {
+		case "IpAddressType":
+			dualstack = v
 		case "Protocol":
 			protocol = v
 		case "RouteSelectionExpression":
@@ -97,6 +100,24 @@ func (ac *apiCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 	}
 	if protocol == nil {
 		ac.tools.Reporter.ReportAtf(ac.loc, "Protocol was not defined")
+	}
+
+	var at types.IpAddressType
+	if dualstack != nil {
+		ipat, ok := ac.tools.Storage.EvalAsStringer(dualstack)
+		if !ok {
+			panic("not ok")
+		}
+
+		switch ipat.String() {
+		case "dualstack":
+			at = types.IpAddressTypeDualstack
+		case "ipv4":
+			at = types.IpAddressTypeIpv4
+		default:
+			ac.tools.Reporter.ReportAtf(ac.loc, "invalid ip address type %s", ipat.String())
+			return
+		}
 	}
 
 	prot, ok := ac.tools.Storage.EvalAsStringer(protocol)
@@ -127,7 +148,7 @@ func (ac *apiCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 		}
 	}
 
-	model := &ApiModel{name: ac.name, loc: ac.loc, coin: ac.coin, protocol: pt, rse: route}
+	model := &ApiModel{name: ac.name, loc: ac.loc, coin: ac.coin, ipat: at, protocol: pt, rse: route}
 	pres.Present(model)
 }
 
@@ -137,10 +158,23 @@ func (ac *apiCreator) UpdateReality() {
 	created := &ApiAWSModel{}
 	if tmp != nil {
 		found := tmp.(*ApiAWSModel)
-		// created.config = found.config
-		log.Printf("api %s already existed for %s\n", *found.api.ApiId, *found.api.Name)
-		log.Printf("not handling diffs yet; just copying ...")
-		// ac.tools.Storage.Bind(ac.coin, created)
+		input := &apigatewayv2.UpdateApiInput{ApiId: found.api.ApiId}
+		if desired.rse != nil {
+			s := desired.rse.String()
+			if s != "" {
+				input.RouteSelectionExpression = &s
+			}
+		}
+		if desired.ipat != "" {
+			input.IpAddressType = desired.ipat
+		}
+		out, err := ac.client.UpdateApi(context.TODO(), input)
+		if err != nil {
+			log.Fatalf("failed to update api %s: %v\n", ac.name, err)
+		}
+		created.api = &types.Api{Name: out.Name, ApiId: out.ApiId, ApiEndpoint: out.ApiEndpoint}
+		log.Printf("updated api %s for %s\n", *found.api.ApiId, *found.api.Name)
+		ac.tools.Storage.Bind(ac.coin, created)
 		return
 	}
 
@@ -151,9 +185,12 @@ func (ac *apiCreator) UpdateReality() {
 			input.RouteSelectionExpression = &s
 		}
 	}
+	if desired.ipat != "" {
+		input.IpAddressType = desired.ipat
+	}
 	out, err := ac.client.CreateApi(context.TODO(), input)
 	if err != nil {
-		log.Fatalf("failed to create lambda %s: %v\n", ac.name, err)
+		log.Fatalf("failed to create api %s: %v\n", ac.name, err)
 	}
 	log.Printf("created api %s %s\n", *out.ApiId, *out.ApiEndpoint)
 	created.api = &types.Api{Name: out.Name, ApiId: out.ApiId, ApiEndpoint: out.ApiEndpoint}
