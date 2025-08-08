@@ -140,7 +140,6 @@ func (v *lambdaVersioner) UpdateReality() {
 	var found *publishVersionAWS
 	if tmp != nil {
 		found = tmp.(*publishVersionAWS)
-		log.Printf("have found version %p %T %v\n", found, found, found)
 	}
 	desired := v.tools.Storage.GetCoin(v.coin, corebottom.DETERMINE_DESIRED_MODE).(*publishVersionModel)
 	created := &publishVersionAWS{}
@@ -166,7 +165,15 @@ func (v *lambdaVersioner) UpdateReality() {
 			if err != nil {
 				log.Fatalf("failed to create alias %s:%s %v", name, alias, err)
 			}
-			log.Printf("alias returned %s\n", *out.AliasArn)
+			log.Printf("alias returned %s for version %s\n", *out.AliasArn, *out.FunctionVersion)
+			created.aliasVersion = *out.FunctionVersion
+			created.aliasRevId = *out.RevisionId
+		} else {
+			out, err := v.client.UpdateAlias(context.TODO(), &lambda.UpdateAliasInput{FunctionName: &name, Name: &alias, FunctionVersion: &created.publishedVersion})
+			if err != nil {
+				log.Fatalf("failed to create alias %s:%s %v", name, alias, err)
+			}
+			log.Printf("alias returned %s for version %s\n", *out.AliasArn, *out.FunctionVersion)
 			created.aliasVersion = *out.FunctionVersion
 			created.aliasRevId = *out.RevisionId
 		}
