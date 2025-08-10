@@ -172,9 +172,9 @@ func (ic *integrationCreator) DetermineDesiredState(pres corebottom.ValuePresent
 		panic("not ok")
 	}
 
-	uriStr, ok := ic.tools.Storage.EvalAsStringer(uri)
+	_, ok = ic.tools.Storage.EvalAsStringer(uri)
 	if !ok {
-		panic("not ok")
+		log.Printf("could not evaluate uri in mode 2")
 	}
 
 	var cType fmt.Stringer
@@ -192,7 +192,7 @@ func (ic *integrationCreator) DetermineDesiredState(pres corebottom.ValuePresent
 		}
 	}
 
-	model := &IntegrationModel{name: ic.name, loc: ic.loc, coin: ic.coin, api: apiStr, region: regionStr, itype: typeStr, pfv: pfvStr, uri: uriStr, connType: cType, connId: cId}
+	model := &IntegrationModel{name: ic.name, loc: ic.loc, coin: ic.coin, api: apiStr, region: regionStr, itype: typeStr, pfv: pfvStr, uri: uri, connType: cType, connId: cId}
 	pres.Present(model)
 }
 
@@ -217,12 +217,11 @@ func (ic *integrationCreator) UpdateReality() {
 	default:
 		ic.tools.Reporter.ReportAtf(ic.loc, "invalid integration type: %s\n", desired.itype.String())
 	}
-	uri := desired.uri.String()
-	// log.Printf("have base uri %s\n", uri)
-
-	// region := desired.region.String()
-	// full := fmt.Sprintf("arn:aws:apigateway:%s:%s", region, uri)
-	// log.Printf("have integration uri %s\n", full)
+	uriStr, ok := ic.tools.Storage.EvalAsStringer(desired.uri)
+	if !ok {
+		panic("not ok")
+	}
+	uri := uriStr.String()
 
 	dname := fmt.Sprintf("zd[%s]", ic.name)
 	var pfv *string

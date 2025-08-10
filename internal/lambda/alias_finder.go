@@ -60,7 +60,11 @@ func (lc *aliasFinder) DetermineInitialState(pres corebottom.ValuePresenter) {
 
 	req, err := lc.client.GetAlias(context.TODO(), &lambda.GetAliasInput{Name: &lc.name, FunctionName: aws.String(fnStr.String())})
 	if err != nil {
-		log.Fatalf("could not find alias %s: %v\n", lc.name, err)
+		if !lambdaExists(err) {
+			pres.NotFound()
+			return
+		}
+		log.Fatalf("error trying to find alias %s: %v\n", lc.name, err)
 	}
 	if req == nil {
 		pres.NotFound()
