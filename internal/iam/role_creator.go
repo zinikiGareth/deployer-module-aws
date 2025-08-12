@@ -140,6 +140,40 @@ func (r *roleCreator) UpdateReality() {
 		created.role = found.role
 	}
 
+	managed := map[string]string{}
+	for _, mp := range desired.managed {
+		name, ok := r.tools.Storage.EvalAsStringer(mp)
+		if !ok {
+			panic(ok)
+		}
+		managed[name.String()] = "--needed--"
+	}
+
+	var marker *string
+	for {
+		list, err := r.client.ListPolicies(context.TODO(), &iam.ListPoliciesInput{Marker: marker})
+		if err != nil {
+			panic(err)
+		}
+		for _, mp := range list.Policies {
+			if managed[*mp.PolicyName] == "--needed--" {
+				managed[*mp.PolicyName] = *mp.Arn
+			}
+		}
+		if list.Marker == nil {
+			break
+		}
+		marker = list.Marker
+	}
+	for n, a := range managed {
+		if a == "--needed--" {
+			r.tools.Reporter.ReportAtf(r.loc, "there is no managed policy %s", n)
+		}
+	}
+	for _, a := range managed {
+		r.client.AttachRolePolicy(context.TODO(), &iam.AttachRolePolicyInput{RoleName: &r.name, PolicyArn: &a})
+	}
+
 	for k, ip := range desired.inline {
 		policy := coretop.NewPolicyDocument(ip.Loc())
 		ip.ApplyTo(policy)
