@@ -62,14 +62,6 @@ func (tc *tableCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 		log.Printf("no dynamo table found called %s\n", tc.name)
 		pres.NotFound()
 	} else {
-		// 	model := NewCertificateModel(tc.loc, tc.coin)
-		// 	model.name = tc.name
-
-		// 	// log.Printf("found %d certs for %s\n", len(certs), tc.name)
-		// 	model.arn = certs[0]
-
-		// 	// tc.describeCertificate(tc.arn)
-		// 	// tc.tools.Storage.Bind(tc.coin, model)
 		pres.Present(table)
 	}
 }
@@ -97,33 +89,6 @@ func (tc *tableCreator) DetermineDesiredState(pres corebottom.ValuePresenter) {
 					panic("field was not a *DynamoFieldExpr")
 				}
 			}
-			// 	case "Domain":
-			// 		domain, ok := v.(myroute53.ExportedDomain)
-			// 		if !ok {
-			// 			log.Fatalf("Domain did not point to a domain instance")
-			// 		}
-			// 		model.hzid = domain.HostedZoneId()
-			// 	case "SubjectAlternativeNames":
-			// 		san, ok := utils.AsStringList(v)
-			// 		if !ok {
-			// 			justString, ok := v.(string)
-			// 			if !ok {
-			// 				log.Fatalf("SubjectAlternativeNames must be a list of strings")
-			// 				return
-			// 			} else {
-			// 				san = []string{justString}
-			// 			}
-			// 		}
-			// 		model.sans = san
-			// 	case "ValidationMethod":
-			// 		meth, ok := utils.AsStringer(v)
-			// 		if !ok {
-			// 			log.Fatalf("ValidationMethod must be a string")
-			// 			return
-			// 		}
-			// 		model.validationMethod = meth
-			// 	default:
-			// 		log.Fatalf("certificate coin does not support a parameter %s\n", k.Id())
 		}
 	}
 	pres.Present(model)
@@ -143,17 +108,8 @@ func (tc *tableCreator) UpdateReality() {
 
 	created := NewTableModel(desired.loc, tc.coin)
 	created.name = desired.name
-	// created.hzid = desired.hzid
-
-	// vm := types.ValidationMethod(desired.validationMethod.String())
-	// if vm == "" {
-	// 	vm = types.ValidationMethodDns
-	// }
 
 	input := dynamodb.CreateTableInput{TableName: &created.name, BillingMode: types.BillingModePayPerRequest, AttributeDefinitions: desired.attrs, KeySchema: desired.keys}
-	// if len(desired.sans) > 0 {
-	// 	input.SubjectAlternativeNames = desired.sans
-	// }
 	table, err := tc.client.CreateTable(context.TODO(), &input)
 	if err != nil {
 		log.Printf("failed to create table %s: %v\n", tc.name, err)

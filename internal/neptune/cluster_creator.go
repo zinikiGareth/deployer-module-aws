@@ -66,14 +66,6 @@ func (cc *clusterCreator) DetermineInitialState(pres corebottom.ValuePresenter) 
 		pres.NotFound()
 	} else {
 		log.Printf("cluster found for %s\n", cc.name)
-		// 	model := NewCertificateModel(cc.loc, cc.coin)
-		// 	model.name = cc.name
-
-		// 	// log.Printf("found %d certs for %s\n", len(certs), cc.name)
-		// 	model.arn = certs[0]
-
-		// 	// cc.describeCertificate(cc.arn)
-		// 	// cc.tools.Storage.Bind(cc.coin, model)
 		pres.Present(model)
 	}
 }
@@ -99,24 +91,6 @@ func (cc *clusterCreator) DetermineDesiredState(pres corebottom.ValuePresenter) 
 			if ok {
 				model.maxCapacity = cap
 			}
-		// 		san, ok := utils.AsStringList(v)
-		// 		if !ok {
-		// 			justString, ok := v.(string)
-		// 			if !ok {
-		// 				log.Fatalf("SubjectAlternativeNames must be a list of strings")
-		// 				return
-		// 			} else {
-		// 				san = []string{justString}
-		// 			}
-		// 		}
-		// 		model.sans = san
-		// 	case "ValidationMethod":
-		// 		meth, ok := utils.AsStringer(v)
-		// 		if !ok {
-		// 			log.Fatalf("ValidationMethod must be a string")
-		// 			return
-		// 		}
-		// 		model.validationMethod = meth
 		default:
 			log.Fatalf("neptune cluster does not support a parameter %s\n", k.Id())
 		}

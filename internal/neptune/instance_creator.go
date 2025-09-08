@@ -78,7 +78,7 @@ func (cc *instanceCreator) DetermineDesiredState(pres corebottom.ValuePresenter)
 		case "Cluster":
 			cluster, ok := v.(*clusterModel)
 			if !ok {
-				log.Fatalf("SubnetGroupName did not point to a subnet model")
+				log.Fatalf("Cluster did not point to a cluster model")
 			}
 			model.cluster = cluster.name
 		case "InstanceClass":

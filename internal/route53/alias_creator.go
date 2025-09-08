@@ -51,9 +51,9 @@ func (ac *aliasCreator) DetermineInitialState(pres corebottom.ValuePresenter) {
 	for p, v := range ac.props {
 		switch p.Id() {
 		case "PointsTo":
+			// ignoe this
 		case "AliasZone":
 			aliasZone = v
-
 		case "UpdateZone":
 			updZone = v
 		default:

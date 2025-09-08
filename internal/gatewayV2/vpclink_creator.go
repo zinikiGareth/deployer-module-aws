@@ -93,7 +93,7 @@ func (ic *vpcLinkCreator) DetermineDesiredState(pres corebottom.ValuePresenter) 
 		case "SecurityGroups":
 			groups = v
 		default:
-			ic.tools.Reporter.ReportAtf(p.Loc(), "invalid property for Api stage: %s", p.Id())
+			ic.tools.Reporter.ReportAtf(p.Loc(), "invalid property for vpc link: %s", p.Id())
 		}
 	}
 	if subnets == nil {
