@@ -1,11 +1,15 @@
 package awsmod
 
 import (
+	"reflect"
+
 	"ziniki.org/deployer/coremod/pkg/corebottom"
+	"ziniki.org/deployer/coremod/pkg/corepkg"
 	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/drivertop"
 	"ziniki.org/deployer/driver/pkg/errorsink"
 	"ziniki.org/deployer/modules/aws/internal/acm"
+	"ziniki.org/deployer/modules/aws/internal/auroraDSQL"
 	"ziniki.org/deployer/modules/aws/internal/cfront"
 	"ziniki.org/deployer/modules/aws/internal/dynamodb"
 	"ziniki.org/deployer/modules/aws/internal/env"
@@ -48,6 +52,7 @@ func RegisterWithDriver(deployer driverbottom.Driver) error {
 	tools.Register.Register("blank", "aws.ApiGatewayV2.Route", &gatewayV2.RouteBlank{})
 	tools.Register.Register("blank", "aws.ApiGatewayV2.Stage", &gatewayV2.StageBlank{})
 	tools.Register.Register("blank", "aws.ApiGatewayV2.VPCLink", &gatewayV2.VPCLinkBlank{})
+	tools.Register.Register("blank", "aws.AuroraDSQL.Cluster", &corepkg.CoreBlank{OfType: reflect.TypeFor[auroraDSQL.ClusterCreator](), Name: "aws.AuroraDSQL.Cluster"})
 	tools.Register.Register("blank", "aws.CertificateManager.Certificate", &acm.CertificateBlank{})
 	tools.Register.Register("blank", "aws.CloudFront.OriginAccessControl", &cfront.OACBlank{})
 	tools.Register.Register("blank", "aws.CloudFront.ResponseHeadersPolicy", &cfront.RHPBlank{})
