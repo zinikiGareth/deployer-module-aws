@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/acm"
 	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
+	"github.com/aws/aws-sdk-go-v2/service/dsql"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
@@ -24,6 +25,7 @@ type AwsEnv struct {
 	cfg                  aws.Config
 	acmclient            *acm.Client
 	apiGatewayV2Client   *apigatewayv2.Client
+	auroraClient         *dsql.Client
 	cfclient             *cloudfront.Client
 	dynamoClient         *dynamodb.Client
 	ec2Client            *ec2.Client
@@ -44,6 +46,7 @@ func (a *AwsEnv) Init() {
 	}
 	a.acmclient = acm.NewFromConfig(a.cfg)
 	a.apiGatewayV2Client = apigatewayv2.NewFromConfig(a.cfg)
+	a.auroraClient = dsql.NewFromConfig(a.cfg)
 	a.cfclient = cloudfront.NewFromConfig(a.cfg)
 	a.dynamoClient = dynamodb.NewFromConfig(a.cfg)
 	a.ec2Client = ec2.NewFromConfig(a.cfg)
@@ -62,6 +65,10 @@ func (a *AwsEnv) ACMClient() *acm.Client {
 
 func (a *AwsEnv) ApiGatewayV2Client() *apigatewayv2.Client {
 	return a.apiGatewayV2Client
+}
+
+func (a *AwsEnv) AuroraClient() *dsql.Client {
+	return a.auroraClient
 }
 
 func (a *AwsEnv) CFClient() *cloudfront.Client {
