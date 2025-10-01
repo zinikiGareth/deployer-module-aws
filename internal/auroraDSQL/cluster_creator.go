@@ -8,8 +8,10 @@ import (
 	ht "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 
 	"github.com/aws/aws-sdk-go-v2/service/dsql"
+	"github.com/aws/aws-sdk-go-v2/service/dsql/types"
 	"github.com/aws/smithy-go"
 	"ziniki.org/deployer/coremod/pkg/corebottom"
+	"ziniki.org/deployer/driver/pkg/utils"
 
 	"ziniki.org/deployer/coremod/pkg/corepkg"
 	"ziniki.org/deployer/modules/aws/internal/env"
@@ -35,7 +37,7 @@ type ClusterCreator struct {
 func (cc *ClusterCreator) DetermineInitialState(creator *corepkg.CoreCreator, pres corebottom.ValuePresenter) {
 	creator.GetEnv("aws.AwsEnv", reflect.TypeFor[*env.AwsEnv](), "AuroraClient", "Client")
 	log.Printf("client = %T %p\n", cc.Client, cc.Client)
-	model := cc.findClustersNamed(creator.Name())
+	model := cc.findClusterNamed(creator.Name())
 	if model == nil {
 		log.Printf("cluster %s not found\n", creator.Name())
 		pres.NotFound()
@@ -46,8 +48,8 @@ func (cc *ClusterCreator) DetermineInitialState(creator *corepkg.CoreCreator, pr
 }
 
 func (cc *ClusterCreator) DetermineDesiredState(creator *corepkg.CoreCreator, pres corebottom.ValuePresenter) {
+	model := &clusterModel{id: creator.Name()}
 	/*
-		model := NewClusterModel(cc.loc, cc.coin, cc.name, "")
 		for k, p := range cc.props {
 			v := cc.tools.Storage.Eval(p)
 			switch k.Id() {
@@ -81,50 +83,45 @@ func (cc *ClusterCreator) DetermineDesiredState(creator *corepkg.CoreCreator, pr
 			cc.tools.Reporter.ReportAtf(cc.loc, "must either specify neither MinCapacity or MaxCapacity or both")
 			return
 		}
-		log.Printf("have desired neptune config for %s\n", model.name)
-		pres.Present(model)
-
 	*/
+	log.Printf("have desired aurora config for %s\n", model.id)
+	pres.Present(model)
 }
 
 func (cc *ClusterCreator) UpdateReality(creator *corepkg.CoreCreator, initial any, desired any) {
+
+	if initial != nil {
+		found := initial.(*clusterAWSModel)
+		log.Printf("cluster %s already existed for %s\n", found.arn, creator.Name())
+		creator.Adopt(found)
+		return
+	}
+
+	tags := map[string]string{}
+	tags["Name"] = creator.Name()
+	ci := &dsql.CreateClusterInput{Tags: tags}
+
 	/*
-		tmp := cc.tools.Storage.GetCoin(cc.coin, corebottom.DETERMINE_INITIAL_MODE)
-
-		if tmp != nil {
-			found := tmp.(*clusterModel)
-			log.Printf("cluster %s already existed for %s\n", found.arn, found.name)
-			cc.tools.Storage.Adopt(cc.coin, found)
-			return
-		}
-
-		desired := cc.tools.Storage.GetCoin(cc.coin, corebottom.DETERMINE_DESIRED_MODE).(*clusterModel)
-
-		created := NewClusterModel(desired.loc, cc.coin, cc.name, "")
-
-		neptuneName := "neptune" // because of some way that AWS centralizes DB creation
-		ci := &neptune.CreateDBClusterInput{DBClusterIdentifier: &cc.name, Engine: &neptuneName, DBSubnetGroupName: &desired.subnetGroup}
 		minCap := 1.0
 		maxCap := 1.0
 		if desired.minCapacity != 0 && desired.maxCapacity != 0 {
 			scaling := &types.ServerlessV2ScalingConfiguration{MinCapacity: &minCap, MaxCapacity: &maxCap}
 			ci.ServerlessV2ScalingConfiguration = scaling
 		}
-		create, err := cc.client.CreateDBCluster(context.TODO(), ci)
-		if err != nil {
-			log.Fatalf("failed to create cluster %s: %v\n", cc.name, err)
-		}
-		created.arn = *create.DBCluster.DBClusterArn
-		log.Printf("initiated request to create cluster %s: %s %s\n", cc.name, *create.DBCluster.Status, *create.DBCluster.DBClusterArn)
-
-		utils.ExponentialBackoff(func() bool {
-			return cc.waitForCreation(created)
-		})
-
-		log.Printf("created neptune cluster %s %s", created.name, created.arn)
-		cc.tools.Storage.Bind(cc.coin, created)
-
 	*/
+	create, err := cc.Client.CreateCluster(context.TODO(), ci)
+	if err != nil {
+		log.Fatalf("failed to create cluster %s: %v\n", creator.Name(), err)
+	}
+	created := &clusterAWSModel{id: *create.Identifier, arn: *create.Arn}
+
+	log.Printf("initiated request to create cluster %s: %v %s\n", creator.Name(), create.Status, *create.Arn)
+	utils.ExponentialBackoff(func() bool {
+		return cc.waitForCreation(created)
+	})
+
+	log.Printf("created aurora dsql cluster %s %s", creator.Name(), created.arn)
+	creator.Created(created)
 }
 
 func (cc *ClusterCreator) TearDown(creator *corepkg.CoreCreator, initial any) {
@@ -159,11 +156,15 @@ func (cc *ClusterCreator) TearDown(creator *corepkg.CoreCreator, initial any) {
 }
 
 type clusterModel struct {
+	id string
+}
+
+type clusterAWSModel struct {
 	arn string
 	id  string
 }
 
-func (cc *ClusterCreator) findClustersNamed(name string) *clusterModel {
+func (cc *ClusterCreator) findClusterNamed(name string) *clusterAWSModel {
 	var tok *string
 	for {
 		clusters, err := cc.Client.ListClusters(context.TODO(), &dsql.ListClustersInput{NextToken: tok})
@@ -171,8 +172,12 @@ func (cc *ClusterCreator) findClustersNamed(name string) *clusterModel {
 			return nil
 		}
 		for _, c := range clusters.Clusters {
-			if *c.Identifier == name {
-				return &clusterModel{arn: *c.Arn, id: *c.Identifier}
+			tags, err := cc.Client.ListTagsForResource(context.TODO(), &dsql.ListTagsForResourceInput{ResourceArn: c.Arn})
+			if err != nil {
+				panic(err)
+			}
+			if tags.Tags["Name"] == name {
+				return &clusterAWSModel{arn: *c.Arn, id: *c.Identifier}
 			}
 		}
 		if clusters.NextToken == nil {
@@ -190,10 +195,10 @@ func clusterExists(err error) bool {
 	if ok {
 		e2, ok := e1.Err.(*ht.ResponseError)
 		if ok {
-			if e2.ResponseError.Response.StatusCode == 404 {
+			if e2.ResponseError.Response.StatusCode == 400 {
 				return false
 			}
-			log.Fatalf("error: %T %v %T %v", e2.Response.Status, e2.Response.Status, e2.ResponseError.Response.StatusCode, e2.ResponseError.Response.StatusCode)
+			log.Fatalf("error: %v %v", e2.ResponseError.Response.StatusCode, e2.Response.Status)
 		}
 		log.Fatalf("error: %T %v", e1.Err, e1.Err)
 	}
@@ -215,26 +220,23 @@ func (cc *ClusterCreator) deleteCluster(cluster *clusterModel, finalSnapshotId s
 		log.Fatalf("deleting cluster failed: %T %v", err, err)
 	}
 }
+*/
 
-func (cc *ClusterCreator) waitForCreation(cluster *clusterModel) bool {
-	clusters, err := cc.client.DescribeDBClusters(context.TODO(), &neptune.DescribeDBClustersInput{DBClusterIdentifier: &cluster.name})
-	if !clusterExists(err) || len(clusters.DBClusters) == 0 {
-		log.Printf("no clusters found with name %s\n", cluster.name)
+func (cc *ClusterCreator) waitForCreation(cluster *clusterAWSModel) bool {
+	c, err := cc.Client.GetCluster(context.TODO(), &dsql.GetClusterInput{Identifier: &cluster.id})
+	if !clusterExists(err) {
+		log.Printf("no clusters found with id %s\n", cluster.id)
 		return false
 	}
-	c := clusters.DBClusters[0]
-	if c.Status != nil {
-		if *c.Status == "available" {
-			return true
-		} else {
-			log.Printf("status was %s, not available", *c.Status)
-		}
+	if c.Status == types.ClusterStatusActive {
+		return true
 	} else {
-		log.Printf("status was nil")
+		log.Printf("status was %s, not available", c.Status)
 	}
 	return false
 }
 
+/*
 func (cc *ClusterCreator) waitForDeletion(cluster *clusterModel) bool {
 	clusters, err := cc.client.DescribeDBClusters(context.TODO(), &neptune.DescribeDBClustersInput{DBClusterIdentifier: &cluster.name})
 	if !clusterExists(err) || len(clusters.DBClusters) == 0 {
