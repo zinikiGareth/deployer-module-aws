@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dsql/types"
 	"github.com/aws/smithy-go"
 	"ziniki.org/deployer/coremod/pkg/corebottom"
+	"ziniki.org/deployer/driver/pkg/driverbottom"
 	"ziniki.org/deployer/driver/pkg/utils"
 
 	"ziniki.org/deployer/coremod/pkg/corepkg"
@@ -35,7 +36,7 @@ func (cc *ClusterCreator) DetermineInitialState(creator *corepkg.CoreCreator, pr
 }
 
 func (cc *ClusterCreator) DetermineDesiredState(creator *corepkg.CoreCreator, pres corebottom.ValuePresenter) {
-	model := &clusterModel{}
+	model := &clusterModel{core: creator}
 	log.Printf("have desired aurora config for %s\n", creator.Name())
 	pres.Present(model)
 }
@@ -95,11 +96,34 @@ func (cc *ClusterCreator) TearDown(creator *corepkg.CoreCreator, initial any, te
 }
 
 type clusterModel struct {
+	core *corepkg.CoreCreator
+}
+
+func (c *clusterModel) ObtainMethod(name string) driverbottom.Method {
+	return c.core.DeferredMethod(name)
 }
 
 type clusterAWSModel struct {
 	arn string
 	id  string
+}
+
+// ObtainMethod implements driverbottom.HasMethods.
+func (c *clusterAWSModel) ObtainMethod(name string) driverbottom.Method {
+	switch name {
+	case "arn":
+		return corepkg.SimpleMethod(func(storage driverbottom.RuntimeStorage, obj driverbottom.Expr) any {
+			eval := storage.Eval(obj).(*clusterAWSModel)
+			return eval.arn
+		})
+	case "id":
+		return corepkg.SimpleMethod(func(storage driverbottom.RuntimeStorage, obj driverbottom.Expr) any {
+			eval := storage.Eval(obj).(*clusterAWSModel)
+			return eval.id
+		})
+	default:
+		panic("no such method " + name)
+	}
 }
 
 func (cc *ClusterCreator) findClusterNamed(name string) *clusterAWSModel {
@@ -187,3 +211,5 @@ func (cc *ClusterCreator) waitForDeletion(creator *corepkg.CoreCreator, cluster 
 }
 
 var _ corepkg.CreationStrategy = &ClusterCreator{}
+var _ driverbottom.HasMethods = &clusterModel{}
+var _ driverbottom.HasMethods = &clusterAWSModel{}
