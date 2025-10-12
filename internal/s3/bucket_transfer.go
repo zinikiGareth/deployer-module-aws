@@ -16,13 +16,14 @@ type bucketTransfer struct {
 	path   string
 }
 
-func (b *bucketTransfer) PourInto(key string, contents io.Reader) {
+func (b *bucketTransfer) PourInto(key string, contents io.Reader) error {
 	log.Printf("want to pour %s into %s:%s", key, b.bucket, b.path+key)
-	b.client.PutObject(context.TODO(), &s3.PutObjectInput{
+	_, err := b.client.PutObject(context.TODO(), &s3.PutObjectInput{
 		Bucket: aws.String(b.bucket),
 		Key:    aws.String(b.path + key),
 		Body:   contents,
 	})
+	return err
 }
 
 func (b *bucketTransfer) Relative(name string) (corebottom.FileDest, error) {
