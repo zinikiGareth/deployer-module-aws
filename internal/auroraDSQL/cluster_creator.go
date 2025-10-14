@@ -24,7 +24,6 @@ type ClusterCreator struct {
 
 func (cc *ClusterCreator) DetermineInitialState(creator *corepkg.CoreCreator, pres corebottom.ValuePresenter) {
 	creator.GetEnv("aws.AwsEnv", reflect.TypeFor[*env.AwsEnv](), "AuroraClient", "Client")
-	log.Printf("client = %T %p\n", cc.Client, cc.Client)
 	model := cc.findClusterNamed(creator.Name())
 	if model == nil {
 		log.Printf("cluster %s not found\n", creator.Name())

@@ -17,7 +17,6 @@ type UserFinder struct {
 
 func (u *UserFinder) DetermineInitialState(creator *corepkg.CoreCreator, pres corebottom.ValuePresenter) {
 	creator.GetEnv("aws.AwsEnv", reflect.TypeFor[*env.AwsEnv](), "IAMClient", "Client")
-	log.Printf("client = %T %p\n", u.Client, u.Client)
 	model := u.findUserNamed(creator.Name())
 	if model == nil {
 		log.Printf("user %s not found\n", creator.Name())
